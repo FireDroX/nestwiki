@@ -292,14 +292,6 @@ export class AccessRulesService {
     if (dto.actions !== undefined) {
       AccessRulesService.validateActions(dto.actions);
       actions = AccessRulesService.normalizeActions(dto.actions);
-      const actor = await this.usersService.findById(actorId);
-      await this.assertNoEscalation(
-        actor,
-        rule.pageId,
-        rule.appliesTo,
-        actions,
-      );
-      await this.pageAccessRulesRepository.updateActions(rule.id, actions);
     }
 
     let excludedPageIds = await this.pageAccessRulesRepository.findExclusions(
@@ -311,6 +303,26 @@ export class AccessRulesService {
         rule.appliesTo,
         dto.excludedPageIds,
       );
+    }
+
+    // Narrowing/removing an exclusion widens the rule's effective coverage
+    // just as much as changing its actions does, so both must be re-checked
+    // against the actor's own access — skipping this on an exclusions-only
+    // update would let an actor drop an exclusion they had no right to drop.
+    if (dto.actions !== undefined || dto.excludedPageIds !== undefined) {
+      const actor = await this.usersService.findById(actorId);
+      await this.assertNoEscalation(
+        actor,
+        rule.pageId,
+        rule.appliesTo,
+        actions,
+      );
+    }
+
+    if (dto.actions !== undefined) {
+      await this.pageAccessRulesRepository.updateActions(rule.id, actions);
+    }
+    if (dto.excludedPageIds !== undefined) {
       await this.pageAccessRulesRepository.setExclusions(
         rule.id,
         excludedPageIds,

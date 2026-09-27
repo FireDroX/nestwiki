@@ -562,6 +562,77 @@ describe('AccessRulesService', () => {
     });
   });
 
+  describe('applyUpdate escalation checks', () => {
+    it('re-checks escalation when only excludedPageIds change, even though actions are untouched', async () => {
+      pageAccessRulesRepository.findById.mockResolvedValue(
+        buildRule({
+          id: 'rule-1',
+          pageId: 'parent',
+          appliesTo: 'subtree',
+          actions: ['page.read', 'page.edit'],
+        }),
+      );
+      pageHierarchyRepository.findChains.mockImplementation((ids: string[]) => {
+        if (ids.includes('child')) {
+          return Promise.resolve(
+            new Map([
+              [
+                'child',
+                {
+                  pageId: 'child',
+                  visibility: 'private' as const,
+                  chainIds: ['child', 'parent'],
+                },
+              ],
+            ]),
+          );
+        }
+        return Promise.resolve(chainFor('parent', ['parent']));
+      });
+      permissionsService.hasUnrestrictedActionOnSubtree.mockResolvedValue(
+        false,
+      );
+
+      await expect(
+        service.updateAccessRule(
+          { type: 'user', id: 'user-1' },
+          'rule-1',
+          { excludedPageIds: [] },
+          'actor-1',
+        ),
+      ).rejects.toBeInstanceOf(InsufficientPermissionException);
+      expect(pageAccessRulesRepository.setExclusions).not.toHaveBeenCalled();
+    });
+
+    it('applies the exclusion change once escalation passes', async () => {
+      pageAccessRulesRepository.findById.mockResolvedValue(
+        buildRule({
+          id: 'rule-1',
+          pageId: 'parent',
+          appliesTo: 'subtree',
+          actions: ['page.read', 'page.edit'],
+        }),
+      );
+      pageHierarchyRepository.findChains.mockResolvedValue(
+        chainFor('parent', ['parent']),
+      );
+      permissionsService.hasUnrestrictedActionOnSubtree.mockResolvedValue(true);
+
+      const rule = await service.updateAccessRule(
+        { type: 'user', id: 'user-1' },
+        'rule-1',
+        { excludedPageIds: [] },
+        'actor-1',
+      );
+
+      expect(rule.excludedPageIds).toEqual([]);
+      expect(pageAccessRulesRepository.setExclusions).toHaveBeenCalledWith(
+        'rule-1',
+        [],
+      );
+    });
+  });
+
   describe('setGlobalPermissions', () => {
     it('rejects an invalid permission code', async () => {
       await expect(
