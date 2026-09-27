@@ -37,6 +37,7 @@ import { extractErrorMessage } from '#lib/api-errors'
 interface PageTagsPanelProps {
   pageId: string
   canManageTags: boolean
+  canCreateTags: boolean
   canDeleteTags: boolean
 }
 
@@ -44,7 +45,7 @@ type Status = 'loading' | 'ready' | 'error'
 
 const DEFAULT_TAG_COLOR = '#6b7280'
 
-export function PageTagsPanel({ pageId, canManageTags, canDeleteTags }: PageTagsPanelProps) {
+export function PageTagsPanel({ pageId, canManageTags, canCreateTags, canDeleteTags }: PageTagsPanelProps) {
   const { t } = useTranslation()
   const [allTags, setAllTags] = useState<TagSummary[]>([])
   const [pageTags, setPageTags] = useState<TagSummary[]>([])
@@ -198,15 +199,17 @@ export function PageTagsPanel({ pageId, canManageTags, canDeleteTags }: PageTags
           >
             <TagIcon /> {t('tags.addExisting')}
           </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setCreateOpen(true)}
-            disabled={status === 'loading'}
-          >
-            <Plus /> {t('tags.createNew')}
-          </Button>
+          {canCreateTags && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setCreateOpen(true)}
+              disabled={status === 'loading'}
+            >
+              <Plus /> {t('tags.createNew')}
+            </Button>
+          )}
         </div>
       )}
 

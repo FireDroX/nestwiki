@@ -254,6 +254,7 @@ export function PageEditor() {
             <PageTagsPanel
               pageId={page.id}
               canManageTags={canOnPage(page, 'page.manage_tags')}
+              canCreateTags={hasGlobal('tag.create')}
               canDeleteTags={hasGlobal('tag.delete')}
             />
           </div>
