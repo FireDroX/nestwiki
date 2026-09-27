@@ -15,6 +15,7 @@ import { useDocumentTitle } from '#hooks/useDocumentTitle'
 import { usePage } from '#hooks/usePage'
 import { usePageRoom } from '#hooks/usePageRoom'
 import { usePageTags } from '#hooks/usePageTags'
+import { usePermissions } from '#hooks/usePermissions'
 import { getRealtimeSocket } from '#lib/realtime-client'
 
 function PageViewSkeleton() {
@@ -70,7 +71,8 @@ export function PageView() {
   usePageRoom(page?.id)
   const { tags } = usePageTags(page?.id)
   const { user } = useAuth()
-  const canEdit = !!page?.canEdit
+  const { canOnPage } = usePermissions()
+  const canEdit = canOnPage(page, 'page.edit')
   useDocumentTitle(page?.title)
 
   useEffect(() => {

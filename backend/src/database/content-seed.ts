@@ -842,6 +842,13 @@ $$
 ## Version 0.30
 
 <details>
+<summary>0.30.5 — 2026-09-27</summary>
+
+- Le frontend n'utilise plus les rôles \`editor\`/\`reader\` (supprimés côté backend) : les boutons d'action (édition, tags, modération des commentaires, création de page, médiathèque) s'affichent désormais selon les permissions effectives de l'utilisateur, via un nouveau hook \`usePermissions\`. Le panneau d'accès par page, devenu obsolète après la bascule vers le nouveau système de permissions, est retiré en attendant sa refonte.
+
+</details>
+
+<details>
 <summary>0.30.4 — 2026-09-25</summary>
 
 - Nouvelle API d'administration des groupes (\`/admin/groups\`) et des règles d'accès aux pages, accessible aux administrateurs ou à quiconque détient la permission \`user.manage\` : permissions globales et règles d'accès directes pour un utilisateur ou un groupe, et règles d'accès directement depuis une page (\`/pages/:id/access-rules\`). Toute mutation est tracée dans le journal d'audit, et une escalade de droits au-delà de ce que possède l'auteur de la règle est bloquée.

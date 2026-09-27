@@ -12,8 +12,7 @@ export function ProfileSummary({ user }: ProfileSummaryProps) {
 
   const roleLabels: Record<UserRole, string> = {
     [UserRole.Admin]: t('admin.users.roleAdmin'),
-    [UserRole.Editor]: t('admin.users.roleEditor'),
-    [UserRole.Reader]: t('admin.users.roleReader'),
+    [UserRole.Member]: t('admin.users.roleMember'),
   }
 
   return (
@@ -22,6 +21,11 @@ export function ProfileSummary({ user }: ProfileSummaryProps) {
       <p className="truncate text-sm text-muted-foreground">{user.email}</p>
       <div className="flex flex-wrap items-center gap-2 pt-1">
         <Badge variant="secondary">{roleLabels[user.role]}</Badge>
+        {user.groups?.map((group) => (
+          <Badge key={group.id} variant="outline">
+            {group.name}
+          </Badge>
+        ))}
         <span className="text-xs text-muted-foreground">
           {t('profile.memberSince', { date: formatDate(user.createdAt) })}
         </span>

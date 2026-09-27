@@ -16,13 +16,11 @@ import { Avatar, AvatarFallback, AvatarImage } from '#components/ui/avatar'
 import { Button } from '#components/ui/button'
 import { MarkdownRenderer } from '#components/MarkdownRenderer'
 import { CommentForm } from '#components/PageView/CommentForm'
-import { UserRole } from '#api/auth'
 import type { Comment } from '#api/comments'
 import { useAuth } from '#hooks/useAuth'
+import { usePermissions } from '#hooks/usePermissions'
 import { toInitials } from '#utils/initials'
 import { formatRelativeTime } from '#utils/relative-time'
-
-const MODERATOR_ROLES: UserRole[] = [UserRole.Editor, UserRole.Admin]
 
 interface CommentItemProps {
   comment: Comment
@@ -35,11 +33,12 @@ interface CommentItemProps {
 export function CommentItem({ comment, replyCount = 0, onReply, onEdit, onDelete }: CommentItemProps) {
   const { t } = useTranslation()
   const { user } = useAuth()
+  const { hasGlobal } = usePermissions()
   const [isEditing, setIsEditing] = useState(false)
   const [isReplying, setIsReplying] = useState(false)
 
   const isAuthor = user?.id === comment.authorId
-  const isModerator = !!user && MODERATOR_ROLES.includes(user.role)
+  const isModerator = hasGlobal('comment.moderate')
   const canDelete = isAuthor || isModerator
   const isDeleted = !!comment.deletedAt
 
