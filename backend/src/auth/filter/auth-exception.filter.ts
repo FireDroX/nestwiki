@@ -7,7 +7,6 @@ import {
 import type { Response } from 'express';
 import { AccountLockedException } from '../../common/exceptions/auth/account-locked.exception.js';
 import { ErrorResponseDto } from '../../common/dto/error-response.dto.js';
-import { AccountDisabledException } from '../../common/exceptions/auth/account-disabled.exception.js';
 
 @Catch()
 export class AuthExceptionFilter implements ExceptionFilter {
