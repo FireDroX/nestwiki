@@ -407,6 +407,23 @@ describe('UsersService', () => {
         }),
       ).rejects.toBeInstanceOf(InsufficientPermissionException);
     });
+
+    it('blocks a non-admin user.manage holder from demoting another admin', async () => {
+      userRepository.findById.mockResolvedValue(
+        buildUser({ id: 'user-2', role: 'admin' }),
+      );
+
+      await expect(
+        service.adminUpdate(
+          buildActor({ id: 'actor-1', role: 'member' }),
+          'user-2',
+          {
+            role: 'member',
+          },
+        ),
+      ).rejects.toBeInstanceOf(InsufficientPermissionException);
+      expect(userRepository.adminUpdate).not.toHaveBeenCalled();
+    });
   });
 
   describe('setStatus', () => {
@@ -445,6 +462,32 @@ describe('UsersService', () => {
         service.setStatus(buildActor(), 'user-2', false),
       ).rejects.toBeInstanceOf(LastActiveAdminException);
     });
+
+    it('blocks a non-admin user.manage holder from deactivating another admin', async () => {
+      userRepository.findById.mockResolvedValue(
+        buildUser({ id: 'user-2', role: 'admin' }),
+      );
+
+      await expect(
+        service.setStatus(
+          buildActor({ id: 'actor-1', role: 'member' }),
+          'user-2',
+          false,
+        ),
+      ).rejects.toBeInstanceOf(InsufficientPermissionException);
+      expect(userRepository.updateStatus).not.toHaveBeenCalled();
+    });
+
+    it('rejects a non-boolean isActive value', async () => {
+      await expect(
+        service.setStatus(
+          buildActor(),
+          'user-2',
+          undefined as unknown as boolean,
+        ),
+      ).rejects.toBeInstanceOf(ValidationException);
+      expect(userRepository.updateStatus).not.toHaveBeenCalled();
+    });
   });
 
   describe('deleteUser', () => {
@@ -477,6 +520,20 @@ describe('UsersService', () => {
       await expect(
         service.deleteUser(buildActor(), 'user-2'),
       ).rejects.toBeInstanceOf(LastActiveAdminException);
+      expect(userRepository.delete).not.toHaveBeenCalled();
+    });
+
+    it('blocks a non-admin user.manage holder from deleting another admin', async () => {
+      userRepository.findById.mockResolvedValue(
+        buildUser({ id: 'user-2', role: 'admin' }),
+      );
+
+      await expect(
+        service.deleteUser(
+          buildActor({ id: 'actor-1', role: 'member' }),
+          'user-2',
+        ),
+      ).rejects.toBeInstanceOf(InsufficientPermissionException);
       expect(userRepository.delete).not.toHaveBeenCalled();
     });
   });
@@ -549,6 +606,17 @@ describe('UsersService', () => {
       await expect(
         service.setGroups(buildActor(), 'user-1', ['missing-group']),
       ).rejects.toThrow();
+      expect(groupsRepository.setGroupsForUser).not.toHaveBeenCalled();
+    });
+
+    it('rejects a non-array groupIds value', async () => {
+      await expect(
+        service.setGroups(
+          buildActor(),
+          'user-1',
+          undefined as unknown as string[],
+        ),
+      ).rejects.toBeInstanceOf(ValidationException);
       expect(groupsRepository.setGroupsForUser).not.toHaveBeenCalled();
     });
   });

@@ -179,6 +179,7 @@ export class UsersService {
   async deleteUser(admin: AuthenticatedUser, id: string): Promise<void> {
     UsersService.assertNotSelf(admin.id, id);
     const user = await this.findById(id);
+    UsersService.assertActorIsAdminToActOnAdmin(admin, user);
     await this.assertNotRemovingLastActiveAdmin(user);
 
     await this.userRepository.delete(id);
@@ -334,6 +335,7 @@ export class UsersService {
       this.validateRole(dto.role);
       UsersService.assertActorCanSetRole(actor, dto.role);
       if (dto.role !== target.role) {
+        UsersService.assertActorIsAdminToActOnAdmin(actor, target);
         if (dto.role !== 'admin') {
           UsersService.assertNotSelf(actor.id, id);
         }
@@ -365,9 +367,13 @@ export class UsersService {
     id: string,
     isActive: boolean,
   ): Promise<User> {
+    if (typeof isActive !== 'boolean') {
+      throw new ValidationException('isActive must be a boolean');
+    }
     const target = await this.findById(id);
     if (!isActive) {
       UsersService.assertNotSelf(actor.id, id);
+      UsersService.assertActorIsAdminToActOnAdmin(actor, target);
       await this.assertNotRemovingLastActiveAdmin(target);
     }
 
@@ -414,6 +420,9 @@ export class UsersService {
     id: string,
     groupIds: string[],
   ): Promise<void> {
+    if (!Array.isArray(groupIds)) {
+      throw new ValidationException('groupIds must be an array of strings');
+    }
     await this.findById(id);
     if (groupIds.length > 0) {
       await this.assertGroupsExist(groupIds);
@@ -456,6 +465,15 @@ export class UsersService {
     role: UserRole,
   ): void {
     if (role === 'admin' && actor.role !== 'admin') {
+      throw new InsufficientPermissionException();
+    }
+  }
+
+  private static assertActorIsAdminToActOnAdmin(
+    actor: AuthenticatedUser,
+    target: User,
+  ): void {
+    if (target.role === 'admin' && actor.role !== 'admin') {
       throw new InsufficientPermissionException();
     }
   }
