@@ -32,6 +32,7 @@ function buildUser(overrides: Partial<User> = {}): User {
     failedLoginAttempts: 0,
     lockedUntil: null,
     isActive: true,
+    passwordChangedAt: null,
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,
@@ -112,6 +113,7 @@ describe('AccessRulesService', () => {
       findMemberIds: vi.fn(),
       findGroupIdsForUser: vi.fn(),
       setMembers: vi.fn(),
+      setGroupsForUser: vi.fn(),
     };
     subjectPermissionsRepository = {
       findForUser: vi.fn().mockResolvedValue([]),

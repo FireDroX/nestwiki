@@ -359,7 +359,14 @@
       "searchPlaceholder": "Rechercher...",
       "actions": {
         "user.role.update": "Changement de rôle",
-        "user.delete": "Suppression d'utilisateur"
+        "user.delete": "Suppression d'utilisateur",
+        "user.create": "Création d'utilisateur",
+        "user.update": "Modification d'utilisateur",
+        "user.status.update": "Activation/désactivation",
+        "user.password.reset": "Réinitialisation de mot de passe",
+        "user.unlock": "Déverrouillage de compte",
+        "user.groups.update": "Modification des groupes",
+        "user.permissions.update": "Modification des permissions"
       }
     },
     "activityLog": {

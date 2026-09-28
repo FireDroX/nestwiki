@@ -48,6 +48,29 @@ export interface PermissionExplanation {
   sources: PermissionExplanationSource[];
 }
 
+export type EffectivePermissionOrigin =
+  { type: 'direct' } | { type: 'group'; groupId: string; groupName: string };
+
+export interface EffectiveGlobalPermission {
+  permission: GlobalPermission;
+  origins: EffectivePermissionOrigin[];
+}
+
+export interface EffectiveAccessRule {
+  id: string;
+  pageId: string | null;
+  appliesTo: PageAccessRuleScope;
+  actions: PageAction[];
+  excludedPageIds: string[];
+  origin: EffectivePermissionOrigin;
+}
+
+export interface UserEffectivePermissions {
+  isAdmin: boolean;
+  globalPermissions: EffectiveGlobalPermission[];
+  accessRules: EffectiveAccessRule[];
+}
+
 function ruleCoversChain(
   rule: PageAccessRule,
   excludedPageIds: string[],
@@ -475,5 +498,86 @@ export class PermissionsService {
     );
 
     return { granted: sources.length > 0, sources };
+  }
+
+  async explainUserPermissions(user: User): Promise<UserEffectivePermissions> {
+    if (user.role === 'admin') {
+      return { isAdmin: true, globalPermissions: [], accessRules: [] };
+    }
+
+    const groupIds = await this.groupsRepository.findGroupIdsForUser(user.id);
+    const groups =
+      groupIds.length > 0
+        ? await this.groupsRepository.findByIds(groupIds)
+        : [];
+    const groupNameById = new Map(
+      groups.map((group) => [group.id, group.name]),
+    );
+
+    const [
+      directPermissions,
+      groupPermissionsByGroup,
+      directRules,
+      groupRules,
+    ] = await Promise.all([
+      this.subjectPermissionsRepository.findForUser(user.id),
+      Promise.all(
+        groupIds.map(async (groupId) => ({
+          groupId,
+          permissions:
+            await this.subjectPermissionsRepository.findForGroup(groupId),
+        })),
+      ),
+      this.pageAccessRulesRepository.findByUserId(user.id),
+      this.pageAccessRulesRepository.findByGroupIds(groupIds),
+    ]);
+
+    const originsByPermission = new Map<
+      GlobalPermission,
+      EffectivePermissionOrigin[]
+    >();
+    for (const permission of directPermissions as GlobalPermission[]) {
+      originsByPermission.set(permission, [
+        ...(originsByPermission.get(permission) ?? []),
+        { type: 'direct' },
+      ]);
+    }
+    for (const { groupId, permissions } of groupPermissionsByGroup) {
+      for (const permission of permissions as GlobalPermission[]) {
+        originsByPermission.set(permission, [
+          ...(originsByPermission.get(permission) ?? []),
+          {
+            type: 'group',
+            groupId,
+            groupName: groupNameById.get(groupId) ?? groupId,
+          },
+        ]);
+      }
+    }
+    const globalPermissions: EffectiveGlobalPermission[] = [
+      ...originsByPermission.entries(),
+    ].map(([permission, origins]) => ({ permission, origins }));
+
+    const allRules = [...directRules, ...groupRules];
+    const exclusionsByRule =
+      await this.pageAccessRulesRepository.findExclusionsForRules(
+        allRules.map((rule) => rule.id),
+      );
+    const accessRules: EffectiveAccessRule[] = allRules.map((rule) => ({
+      id: rule.id,
+      pageId: rule.pageId,
+      appliesTo: rule.appliesTo,
+      actions: rule.actions,
+      excludedPageIds: exclusionsByRule.get(rule.id) ?? [],
+      origin: rule.groupId
+        ? {
+            type: 'group',
+            groupId: rule.groupId,
+            groupName: groupNameById.get(rule.groupId) ?? rule.groupId,
+          }
+        : { type: 'direct' },
+    }));
+
+    return { isAdmin: false, globalPermissions, accessRules };
   }
 }

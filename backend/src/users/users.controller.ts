@@ -39,13 +39,11 @@ import { CommentMapper } from '../comments/mapper/comment.mapper.js';
 import { CommentsService } from '../comments/services/comments.service.js';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
 import { RequirePermission } from '../common/decorators/require-permission.decorator.js';
-import { Roles } from '../common/decorators/roles.decorator.js';
 import { ErrorResponseDto } from '../common/dto/error-response.dto.js';
 import { PaginatedResponseDto } from '../common/dto/paginated-response.dto.js';
 import { ResponseDto } from '../common/dto/response.dto.js';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard.js';
 import { PermissionsGuard } from '../common/guards/permissions.guard.js';
-import { RolesGuard } from '../common/guards/roles.guard.js';
 import type { AuthenticatedUser } from '../common/strategies/jwt.strategy.js';
 import { AVATAR_MAX_SIZE_MB } from '../common/variables.global.js';
 import { PagesService } from '../pages/services/pages.service.js';
@@ -55,11 +53,19 @@ import { UpdateAccessRuleDto } from '../permissions/dto/in/update-access-rule.dt
 import type { AccessRuleResponseDto } from '../permissions/dto/out/access-rule-response.dto.js';
 import { AccessRuleMapper } from '../permissions/mapper/access-rule.mapper.js';
 import { AccessRulesService } from '../permissions/services/access-rules.service.js';
-import { PermissionsService } from '../permissions/services/permissions.service.js';
+import {
+  PermissionsService,
+  type UserEffectivePermissions,
+} from '../permissions/services/permissions.service.js';
+import { AdminUpdateUserDto } from './dto/in/admin-update-user.dto.js';
+import { CreateAdminUserDto } from './dto/in/create-admin-user.dto.js';
 import { ListMyActivityQueryDto } from './dto/in/list-my-activity-query.dto.js';
 import { ListUsersQueryDto } from './dto/in/list-users-query.dto.js';
+import { SetUserGroupsDto } from './dto/in/set-user-groups.dto.js';
+import { SetUserStatusDto } from './dto/in/set-user-status.dto.js';
 import { UpdateProfileDto } from './dto/in/update-profile.dto.js';
-import { UpdateRoleDto } from './dto/in/update-role.dto.js';
+import { AdminCreateUserResponseDto } from './dto/out/admin-create-user-response.dto.js';
+import { AdminUserDetailResponseDto } from './dto/out/admin-user-detail-response.dto.js';
 import { UserResponseDto } from './dto/out/user-response.dto.js';
 import { UsersExceptionFilter } from './filter/users-exception.filter.js';
 import { UserMapper } from './mapper/user.mapper.js';
@@ -227,11 +233,15 @@ export class UsersController {
 @ApiTags('Admin — Users')
 @ApiBearerAuth()
 @Controller('admin/users')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('admin')
+@UseGuards(JwtAuthGuard, PermissionsGuard)
+@RequirePermission('user.manage')
 @UseFilters(UsersExceptionFilter)
 export class AdminUsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly accessRulesService: AccessRulesService,
+    private readonly permissionsService: PermissionsService,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: 'Lister les utilisateurs' })
@@ -241,45 +251,163 @@ export class AdminUsersController {
     type: ErrorResponseDto,
   })
   @ApiForbiddenResponse({
-    description: 'Rôle admin requis.',
+    description: 'Permission user.manage requise.',
     type: ErrorResponseDto,
   })
   async listUsers(
     @Query() query: ListUsersQueryDto,
   ): Promise<ResponseDto<PaginatedResponseDto<UserResponseDto>>> {
-    const { items, total, page, limit } =
-      await this.usersService.findAllPaginated(query);
-    return UserMapper.toPaginatedResponse(items, total, page, limit);
+    const page = await this.usersService.findAllFilteredPaginated(query);
+    return UserMapper.toAdminPaginatedResponse(page);
   }
 
-  @Patch(':id/role')
-  @ApiOperation({ summary: "Modifier le rôle d'un utilisateur" })
-  @ApiParam({ name: 'id', description: "Identifiant de l'utilisateur" })
-  @ApiBody({ type: UpdateRoleDto })
-  @ApiOkResponse({ description: 'Rôle mis à jour.' })
+  @Post()
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Créer un utilisateur' })
+  @ApiBody({ type: CreateAdminUserDto })
+  @ApiOkResponse({
+    description:
+      'Utilisateur créé. Si aucun mot de passe fourni, un mot de passe temporaire est renvoyé une seule fois.',
+  })
   @ApiBadRequestResponse({
-    description: 'Rôle invalide.',
+    description: 'Email, nom, rôle ou mot de passe invalide.',
     type: ErrorResponseDto,
   })
-  @ApiUnauthorizedResponse({
-    description: 'Authentification requise.',
+  async createUser(
+    @Body() dto: CreateAdminUserDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ): Promise<ResponseDto<AdminCreateUserResponseDto>> {
+    const result = await this.usersService.createByAdmin(actor, dto);
+    if (dto.permissions && dto.permissions.length > 0) {
+      await this.accessRulesService.setGlobalPermissions(
+        { type: 'user', id: result.user.id },
+        dto.permissions,
+        actor.id,
+      );
+    }
+    return UserMapper.toAdminCreateResponse(result);
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: "Détail d'un utilisateur" })
+  @ApiParam({ name: 'id', description: "Identifiant de l'utilisateur" })
+  @ApiNotFoundResponse({
+    description: "L'utilisateur n'existe pas.",
     type: ErrorResponseDto,
   })
-  @ApiForbiddenResponse({
-    description: 'Rôle admin requis.',
+  async getDetail(
+    @Param('id') id: string,
+  ): Promise<ResponseDto<AdminUserDetailResponseDto>> {
+    const detail = await this.usersService.getAdminDetail(id);
+    return UserMapper.toAdminDetailResponse(detail);
+  }
+
+  @Patch(':id')
+  @ApiOperation({
+    summary: "Modifier les infos ou le rôle d'un utilisateur",
+  })
+  @ApiParam({ name: 'id', description: "Identifiant de l'utilisateur" })
+  @ApiBody({ type: AdminUpdateUserDto })
+  @ApiOkResponse({ description: 'Utilisateur mis à jour.' })
+  @ApiBadRequestResponse({
+    description: 'Email, nom ou rôle invalide.',
     type: ErrorResponseDto,
   })
   @ApiNotFoundResponse({
     description: "L'utilisateur n'existe pas.",
     type: ErrorResponseDto,
   })
-  async updateRole(
-    @CurrentUser() admin: AuthenticatedUser,
+  async updateUser(
     @Param('id') id: string,
-    @Body() dto: UpdateRoleDto,
+    @Body() dto: AdminUpdateUserDto,
+    @CurrentUser() actor: AuthenticatedUser,
   ): Promise<ResponseDto<UserResponseDto>> {
-    const entity = await this.usersService.updateRole(admin.id, id, dto);
+    const entity = await this.usersService.adminUpdate(actor, id, dto);
     return UserMapper.toResponse(entity);
+  }
+
+  @Patch(':id/status')
+  @ApiOperation({ summary: 'Activer ou désactiver un utilisateur' })
+  @ApiParam({ name: 'id', description: "Identifiant de l'utilisateur" })
+  @ApiBody({ type: SetUserStatusDto })
+  @ApiOkResponse({ description: 'Statut mis à jour.' })
+  @ApiNotFoundResponse({
+    description: "L'utilisateur n'existe pas.",
+    type: ErrorResponseDto,
+  })
+  async setStatus(
+    @Param('id') id: string,
+    @Body() dto: SetUserStatusDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ): Promise<ResponseDto<UserResponseDto>> {
+    const entity = await this.usersService.setStatus(actor, id, dto.isActive);
+    return UserMapper.toResponse(entity);
+  }
+
+  @Post(':id/reset-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Réinitialiser le mot de passe' })
+  @ApiParam({ name: 'id', description: "Identifiant de l'utilisateur" })
+  @ApiOkResponse({
+    description: 'Mot de passe temporaire généré, renvoyé une seule fois.',
+  })
+  @ApiNotFoundResponse({
+    description: "L'utilisateur n'existe pas.",
+    type: ErrorResponseDto,
+  })
+  async resetPassword(
+    @Param('id') id: string,
+    @CurrentUser() actor: AuthenticatedUser,
+  ): Promise<ResponseDto<{ temporaryPassword: string }>> {
+    const temporaryPassword = await this.usersService.resetPassword(actor, id);
+    return new ResponseDto({ temporaryPassword });
+  }
+
+  @Post(':id/unlock')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Déverrouiller un compte' })
+  @ApiParam({ name: 'id', description: "Identifiant de l'utilisateur" })
+  @ApiOkResponse({ description: 'Compte déverrouillé.' })
+  @ApiNotFoundResponse({
+    description: "L'utilisateur n'existe pas.",
+    type: ErrorResponseDto,
+  })
+  async unlock(
+    @Param('id') id: string,
+    @CurrentUser() actor: AuthenticatedUser,
+  ): Promise<ResponseDto<UserResponseDto>> {
+    const entity = await this.usersService.unlock(actor, id);
+    return UserMapper.toResponse(entity);
+  }
+
+  @Put(':id/groups')
+  @ApiOperation({ summary: "Remplacer les groupes de l'utilisateur" })
+  @ApiParam({ name: 'id', description: "Identifiant de l'utilisateur" })
+  @ApiBody({ type: SetUserGroupsDto })
+  @ApiOkResponse({ description: 'Groupes mis à jour.' })
+  async setGroups(
+    @Param('id') id: string,
+    @Body() dto: SetUserGroupsDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ): Promise<ResponseDto<AdminUserDetailResponseDto>> {
+    await this.usersService.setGroups(actor, id, dto.groupIds);
+    const detail = await this.usersService.getAdminDetail(id);
+    return UserMapper.toAdminDetailResponse(detail);
+  }
+
+  @Get(':id/effective-permissions')
+  @ApiOperation({
+    summary:
+      "Permissions globales et règles d'accès cumulées de l'utilisateur, avec leur origine",
+  })
+  @ApiParam({ name: 'id', description: "Identifiant de l'utilisateur" })
+  async getEffectivePermissions(
+    @Param('id') id: string,
+  ): Promise<ResponseDto<UserEffectivePermissions>> {
+    const user = await this.usersService.findById(id);
+    const explanation =
+      await this.permissionsService.explainUserPermissions(user);
+    return new ResponseDto(explanation);
   }
 
   @Delete(':id')
@@ -292,7 +420,7 @@ export class AdminUsersController {
     type: ErrorResponseDto,
   })
   @ApiForbiddenResponse({
-    description: 'Rôle admin requis.',
+    description: 'Permission user.manage requise.',
     type: ErrorResponseDto,
   })
   @ApiNotFoundResponse({
@@ -300,21 +428,11 @@ export class AdminUsersController {
     type: ErrorResponseDto,
   })
   async deleteUser(
-    @CurrentUser() admin: AuthenticatedUser,
+    @CurrentUser() actor: AuthenticatedUser,
     @Param('id') id: string,
   ): Promise<void> {
-    await this.usersService.deleteUser(admin.id, id);
+    await this.usersService.deleteUser(actor, id);
   }
-}
-
-@ApiTags('Admin — Users')
-@ApiBearerAuth()
-@Controller('admin/users')
-@UseGuards(JwtAuthGuard, PermissionsGuard)
-@RequirePermission('user.manage')
-@UseFilters(UsersExceptionFilter)
-export class AdminUserAccessController {
-  constructor(private readonly accessRulesService: AccessRulesService) {}
 
   @Put(':id/permissions')
   @HttpCode(HttpStatus.NO_CONTENT)

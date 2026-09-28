@@ -35,7 +35,12 @@ export class UsersExceptionFilter implements ExceptionFilter {
       case 'UserNotFoundException':
       case 'AccessRuleNotFoundException':
       case 'PageNotFoundException':
+      case 'GroupNotFoundException':
         return { statusCode: HttpStatus.NOT_FOUND, error: exception.message };
+      case 'EmailAlreadyExistsException':
+      case 'LastActiveAdminException':
+      case 'SelfActionNotAllowedException':
+        return { statusCode: HttpStatus.CONFLICT, error: exception.message };
       case 'InsufficientPermissionException':
         return { statusCode: HttpStatus.FORBIDDEN, error: exception.message };
       case 'ValidationException':

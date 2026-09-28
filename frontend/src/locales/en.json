@@ -359,7 +359,14 @@
       "searchPlaceholder": "Search...",
       "actions": {
         "user.role.update": "Role change",
-        "user.delete": "User deletion"
+        "user.delete": "User deletion",
+        "user.create": "User created",
+        "user.update": "User updated",
+        "user.status.update": "Activation/deactivation",
+        "user.password.reset": "Password reset",
+        "user.unlock": "Account unlocked",
+        "user.groups.update": "Groups updated",
+        "user.permissions.update": "Permissions updated"
       }
     },
     "activityLog": {

@@ -63,6 +63,16 @@ export class TypeormGroupsRepository implements GroupsRepository {
     );
   }
 
+  async setGroupsForUser(userId: string, groupIds: string[]): Promise<void> {
+    await this.members.delete({ userId });
+    if (groupIds.length === 0) {
+      return;
+    }
+    await this.members.save(
+      groupIds.map((groupId) => this.members.create({ groupId, userId })),
+    );
+  }
+
   findByIds(ids: string[]): Promise<Group[]> {
     if (ids.length === 0) {
       return Promise.resolve([]);

@@ -221,13 +221,22 @@ Table clé/valeur générique pour les réglages globaux (pas par utilisateur). 
 
 ### Users
 
+Toutes les routes `/admin/users` sont accessibles aux administrateurs ou à quiconque détient la permission globale `user.manage` (un admin ne peut ni se rétrograder, ni se désactiver, ni se supprimer lui-même ; le dernier administrateur actif est protégé contre ces trois actions — 409 sinon).
+
 | Méthode | Route                                  | Auth               | Description              |
 | ------- | --------------------------------------- | ------------------- | ------------------------ |
 | GET     | /users/me                              | oui                 | Profil courant, avec `permissions` (globales) et `groups` |
 | PATCH   | /users/me                              | oui                 | Modifier son profil      |
-| GET     | /admin/users                           | admin               | Liste des utilisateurs   |
-| PATCH   | /admin/users/:id/role                  | admin               | Changer un rôle          |
-| DELETE  | /admin/users/:id                       | admin               | Supprimer un utilisateur |
+| GET     | /admin/users                           | admin ou `user.manage` | Liste des utilisateurs — filtres `?search=&role=&groupId=&active=`, pagination ; chaque ligne inclut `groups` et `isActive` |
+| POST    | /admin/users                           | admin ou `user.manage` | Créer un utilisateur — sans `password`, un mot de passe temporaire est généré et renvoyé une seule fois |
+| GET     | /admin/users/:id                       | admin ou `user.manage` | Détail : infos, groupes, permissions directes, dernière connexion, verrouillage |
+| PATCH   | /admin/users/:id                       | admin ou `user.manage` | Modifier `displayName`/`email`/`role` (remplace l'ancien `PATCH /:id/role`) |
+| PATCH   | /admin/users/:id/status                | admin ou `user.manage` | Activer/désactiver le compte |
+| POST    | /admin/users/:id/reset-password        | admin ou `user.manage` | Génère un mot de passe temporaire et invalide les sessions existantes |
+| POST    | /admin/users/:id/unlock                | admin ou `user.manage` | Réinitialise les tentatives de connexion échouées et le verrouillage |
+| PUT     | /admin/users/:id/groups                | admin ou `user.manage` | Remplacer les groupes de l'utilisateur |
+| GET     | /admin/users/:id/effective-permissions | admin ou `user.manage` | Permissions globales + règles d'accès cumulées, avec leur origine (directe ou groupe X) |
+| DELETE  | /admin/users/:id                       | admin ou `user.manage` | Supprimer un utilisateur |
 | PUT     | /admin/users/:id/permissions           | admin ou `user.manage` | Remplacer les permissions globales directes |
 | GET     | /admin/users/:id/access-rules          | admin ou `user.manage` | Règles d'accès directes de l'utilisateur |
 | POST    | /admin/users/:id/access-rules          | admin ou `user.manage` | Créer une règle d'accès directe |

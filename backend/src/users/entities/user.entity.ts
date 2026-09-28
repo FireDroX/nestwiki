@@ -40,6 +40,13 @@ export class User {
   @Column({ type: 'boolean', name: 'is_active', default: true })
   isActive: boolean;
 
+  @Column({
+    type: 'datetime',
+    name: 'password_changed_at',
+    nullable: true,
+  })
+  passwordChangedAt: Date | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

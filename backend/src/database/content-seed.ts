@@ -842,6 +842,13 @@ $$
 ## Version 0.30
 
 <details>
+<summary>0.30.6 — 2026-09-28</summary>
+
+- Gestion complète des utilisateurs côté admin (\`/admin/users\`, accessible aux administrateurs ou à quiconque détient la permission \`user.manage\`) : recherche/filtres (rôle, groupe, statut), création (mot de passe temporaire généré si non fourni), modification des infos/rôle, activation/désactivation, réinitialisation de mot de passe et déverrouillage de compte, remplacement des groupes, et détail des permissions effectives avec leur origine (directe ou via tel groupe). Un compte désactivé ne peut plus se connecter ni rafraîchir sa session, et le dernier administrateur actif est protégé contre la rétrogradation, la désactivation ou la suppression — de même qu'un administrateur ne peut agir ainsi sur son propre compte. Toutes ces actions sont tracées dans le journal d'audit.
+
+</details>
+
+<details>
 <summary>0.30.5 — 2026-09-27</summary>
 
 - Le frontend n'utilise plus les rôles \`editor\`/\`reader\` (supprimés côté backend) : les boutons d'action (édition, tags, modération des commentaires, création de page, médiathèque) s'affichent désormais selon les permissions effectives de l'utilisateur, via un nouveau hook \`usePermissions\`. Le panneau d'accès par page, devenu obsolète après la bascule vers le nouveau système de permissions, est retiré en attendant sa refonte.

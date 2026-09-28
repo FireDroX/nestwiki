@@ -4,6 +4,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { QueryFailedError } from 'typeorm';
 import { UserActivityLogService } from '../../activity/services/user-activity-log.service.js';
+import { AccountDisabledException } from '../../common/exceptions/auth/account-disabled.exception.js';
 import { AccountLockedException } from '../../common/exceptions/auth/account-locked.exception.js';
 import { CompromisedPasswordException } from '../../common/exceptions/auth/compromised-password.exception.js';
 import { EmailAlreadyExistsException } from '../../common/exceptions/auth/email-already-exists.exception.js';
@@ -38,6 +39,7 @@ interface JwtPayload {
   sub: string;
   email: string;
   role: User['role'];
+  iat?: number;
 }
 
 export interface TokenPair {
@@ -139,16 +141,38 @@ export class AuthService {
     });
   }
 
-  refresh(refreshToken: string | undefined): { accessToken: string } {
+  async refresh(
+    refreshToken: string | undefined,
+  ): Promise<{ accessToken: string }> {
     if (!refreshToken) {
       throw new InvalidRefreshTokenException();
     }
 
     const payload = this.verifyRefreshToken(refreshToken);
+    const user = await this.usersService
+      .findById(payload.sub)
+      .catch(() => undefined);
+    if (!user) {
+      throw new InvalidRefreshTokenException();
+    }
+    if (!user.isActive) {
+      throw new AccountDisabledException();
+    }
+    if (
+      user.passwordChangedAt &&
+      payload.iat !== undefined &&
+      user.passwordChangedAt.getTime() > payload.iat * 1000
+    ) {
+      // The password was reset/changed after this refresh token was issued
+      // (e.g. an admin's forced reset-password) — the old session must not
+      // be able to keep minting fresh access tokens.
+      throw new InvalidRefreshTokenException();
+    }
+
     const accessToken = this.generateAccessToken({
-      sub: payload.sub,
-      email: payload.email,
-      role: payload.role,
+      sub: user.id,
+      email: user.email,
+      role: user.role,
     });
 
     return { accessToken };
@@ -158,6 +182,10 @@ export class AuthService {
     const user = await this.usersService.findByEmail(email);
     if (!user) {
       throw new InvalidCredentialsException();
+    }
+
+    if (!user.isActive) {
+      throw new AccountDisabledException();
     }
 
     if (user.lockedUntil && user.lockedUntil.getTime() > Date.now()) {
