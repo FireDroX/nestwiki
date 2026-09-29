@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AdminModule } from '../admin/admin.module.js';
 import { MediaModule } from '../media/media.module.js';
 import { PagesModule } from '../pages/pages.module.js';
+import { PermissionsModule } from '../permissions/permissions.module.js';
 import { SearchModule } from '../search/search.module.js';
 import { TagsModule } from '../tags/tags.module.js';
 import { UsersModule } from '../users/users.module.js';
@@ -50,6 +51,7 @@ import { OAuthFlowService } from './services/oauth-flow.service.js';
     MediaModule,
     SearchModule,
     AdminModule,
+    PermissionsModule,
   ],
   controllers: [
     McpController,

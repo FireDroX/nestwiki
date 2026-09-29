@@ -1,17 +1,19 @@
 import { z } from 'zod';
 import { PagesService } from '../../pages/services/pages.service.js';
 import { PAGE_VISIBILITIES } from '../../pages/entities/page.entity.js';
+import { UsersService } from '../../users/services/users.service.js';
 import {
   defineMcpTool,
   McpToolDefinition,
 } from '../registry/mcp-tools.registry.js';
-import { asFullAccessUser } from './full-access-user.util.js';
+import { resolveMcpUser, toAuthenticatedUser } from './mcp-actor.util.js';
 
 const PAGES_READ_SCOPE = 'pages:read';
 const PAGES_WRITE_SCOPE = 'pages:write';
 
 export function buildPagesTools(
   pagesService: PagesService,
+  usersService: UsersService,
 ): McpToolDefinition[] {
   return [
     defineMcpTool({
@@ -80,10 +82,10 @@ export function buildPagesTools(
       requiredScopes: [PAGES_READ_SCOPE],
       handler: async (input, ctx) => {
         const segments = input.slug.split('/').filter(Boolean);
-        const { page, version } = await pagesService.findByPath(
-          segments,
-          asFullAccessUser(ctx),
+        const user = toAuthenticatedUser(
+          await resolveMcpUser(usersService, ctx),
         );
+        const { page, version } = await pagesService.findByPath(segments, user);
         return {
           id: page.id,
           slug: page.slug,
@@ -100,7 +102,9 @@ export function buildPagesTools(
       inputSchema: { parentId: z.string().optional() },
       requiredScopes: [PAGES_READ_SCOPE],
       handler: async (input, ctx) => {
-        const user = asFullAccessUser(ctx);
+        const user = toAuthenticatedUser(
+          await resolveMcpUser(usersService, ctx),
+        );
         if (!input.parentId) {
           return pagesService.getTree(user);
         }

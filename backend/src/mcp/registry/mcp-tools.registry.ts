@@ -2,6 +2,9 @@ import { Injectable, OnModuleInit } from '@nestjs/common';
 import type { z, ZodRawShape } from 'zod';
 import { MediaService } from '../../media/services/media.service.js';
 import { PagesService } from '../../pages/services/pages.service.js';
+import { AccessRulesService } from '../../permissions/services/access-rules.service.js';
+import { GroupsService } from '../../permissions/services/groups.service.js';
+import { PermissionsService } from '../../permissions/services/permissions.service.js';
 import { SearchService } from '../../search/services/search.service.js';
 import { TagsService } from '../../tags/services/tags.service.js';
 import { UsersService } from '../../users/services/users.service.js';
@@ -77,15 +80,31 @@ export class McpToolsBootstrapService implements OnModuleInit {
     private readonly usersService: UsersService,
     private readonly mediaService: MediaService,
     private readonly searchService: SearchService,
+    private readonly permissionsService: PermissionsService,
+    private readonly accessRulesService: AccessRulesService,
+    private readonly groupsService: GroupsService,
   ) {}
 
   onModuleInit(): void {
     this.registry.register(
-      ...buildPagesTools(this.pagesService),
-      ...buildTagsTools(this.tagsService),
-      ...buildUsersTools(this.usersService),
-      ...buildMediaTools(this.mediaService),
-      ...buildSearchTools(this.searchService),
+      ...buildPagesTools(this.pagesService, this.usersService),
+      ...buildTagsTools(
+        this.tagsService,
+        this.usersService,
+        this.permissionsService,
+      ),
+      ...buildUsersTools(
+        this.usersService,
+        this.permissionsService,
+        this.accessRulesService,
+        this.groupsService,
+      ),
+      ...buildMediaTools(
+        this.mediaService,
+        this.usersService,
+        this.permissionsService,
+      ),
+      ...buildSearchTools(this.searchService, this.usersService),
     );
   }
 }

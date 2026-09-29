@@ -1,16 +1,26 @@
 import { z } from 'zod';
 import { TagNotFoundException } from '../../common/exceptions/tags/tag-not-found.exception.js';
 import { TagsService } from '../../tags/services/tags.service.js';
+import { PermissionsService } from '../../permissions/services/permissions.service.js';
+import { UsersService } from '../../users/services/users.service.js';
 import {
   defineMcpTool,
   McpToolDefinition,
 } from '../registry/mcp-tools.registry.js';
-import { asFullAccessUser } from './full-access-user.util.js';
+import {
+  requireGlobalPermission,
+  resolveMcpUser,
+  toAuthenticatedUser,
+} from './mcp-actor.util.js';
 
 const TAGS_READ_SCOPE = 'tags:read';
 const TAGS_WRITE_SCOPE = 'tags:write';
 
-export function buildTagsTools(tagsService: TagsService): McpToolDefinition[] {
+export function buildTagsTools(
+  tagsService: TagsService,
+  usersService: UsersService,
+  permissionsService: PermissionsService,
+): McpToolDefinition[] {
   return [
     defineMcpTool({
       name: 'wiki_create_tag',
@@ -23,7 +33,9 @@ export function buildTagsTools(tagsService: TagsService): McpToolDefinition[] {
           .optional(),
       },
       requiredScopes: [TAGS_WRITE_SCOPE],
-      handler: async (input) => {
+      handler: async (input, ctx) => {
+        const user = await resolveMcpUser(usersService, ctx);
+        await requireGlobalPermission(permissionsService, user, 'tag.create');
         const tag = await tagsService.createTag({
           name: input.name,
           color: input.color,
@@ -51,12 +63,11 @@ export function buildTagsTools(tagsService: TagsService): McpToolDefinition[] {
       inputSchema: { pageId: z.string(), tagId: z.string() },
       requiredScopes: [TAGS_WRITE_SCOPE],
       handler: async (input, ctx) => {
+        const user = toAuthenticatedUser(
+          await resolveMcpUser(usersService, ctx),
+        );
         try {
-          await tagsService.tagPage(
-            input.pageId,
-            input.tagId,
-            asFullAccessUser(ctx),
-          );
+          await tagsService.tagPage(input.pageId, input.tagId, user);
         } catch (error) {
           if (error instanceof TagNotFoundException) {
             throw new Error(
@@ -75,11 +86,10 @@ export function buildTagsTools(tagsService: TagsService): McpToolDefinition[] {
       inputSchema: { pageId: z.string(), tagId: z.string() },
       requiredScopes: [TAGS_WRITE_SCOPE],
       handler: async (input, ctx) => {
-        await tagsService.untagPage(
-          input.pageId,
-          input.tagId,
-          asFullAccessUser(ctx),
+        const user = toAuthenticatedUser(
+          await resolveMcpUser(usersService, ctx),
         );
+        await tagsService.untagPage(input.pageId, input.tagId, user);
         return { success: true };
       },
     }),
@@ -88,7 +98,9 @@ export function buildTagsTools(tagsService: TagsService): McpToolDefinition[] {
       description: 'Supprimer un tag (cascade sur les pages liées)',
       inputSchema: { tagId: z.string() },
       requiredScopes: [TAGS_WRITE_SCOPE],
-      handler: async (input) => {
+      handler: async (input, ctx) => {
+        const user = await resolveMcpUser(usersService, ctx);
+        await requireGlobalPermission(permissionsService, user, 'tag.delete');
         await tagsService.deleteTag(input.tagId);
         return { success: true };
       },

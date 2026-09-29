@@ -842,6 +842,13 @@ $$
 ## Version 0.30
 
 <details>
+<summary>0.30.7 — 2026-09-29</summary>
+
+- Le serveur MCP applique désormais les permissions réelles de l'utilisateur propriétaire de la clé API ou du token OAuth, au lieu de lui accorder un accès complet : une clé API sans la permission requise reçoit une erreur explicite (ex. \`wiki_update_page\` sans \`page.edit\`, \`wiki_create_tag\` sans \`tag.create\`, les outils \`wiki_*\` réservés à \`user.manage\`), et les résultats de \`wiki_list_pages\`/\`wiki_search\`/\`wiki_get_page\` sont filtrés selon ce que l'utilisateur peut lire. Une clé API ou un token OAuth appartenant à un compte désactivé est rejeté. Nouveaux outils MCP réservés à \`user.manage\` : \`wiki_list_groups\`, \`wiki_set_user_groups\`, \`wiki_grant_access\`, \`wiki_set_permissions\`.
+
+</details>
+
+<details>
 <summary>0.30.6 — 2026-09-28</summary>
 
 - Gestion complète des utilisateurs côté admin (\`/admin/users\`, accessible aux administrateurs ou à quiconque détient la permission \`user.manage\`) : recherche/filtres (rôle, groupe, statut), création (mot de passe temporaire généré si non fourni), modification des infos/rôle, activation/désactivation, réinitialisation de mot de passe et déverrouillage de compte, remplacement des groupes, et détail des permissions effectives avec leur origine (directe ou via tel groupe). Un compte désactivé ne peut plus se connecter ni rafraîchir sa session, et le dernier administrateur actif est protégé contre la rétrogradation, la désactivation ou la suppression — de même qu'un administrateur ne peut agir ainsi sur son propre compte. Toutes ces actions sont tracées dans le journal d'audit.

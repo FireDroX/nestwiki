@@ -4,11 +4,17 @@ import {
   MediaService,
   UploadedMediaFile,
 } from '../../media/services/media.service.js';
+import { PermissionsService } from '../../permissions/services/permissions.service.js';
+import { UsersService } from '../../users/services/users.service.js';
 import {
   defineMcpTool,
   McpToolDefinition,
 } from '../registry/mcp-tools.registry.js';
-import { asFullAccessUser } from './full-access-user.util.js';
+import {
+  requireGlobalPermission,
+  resolveMcpUser,
+  toAuthenticatedUser,
+} from './mcp-actor.util.js';
 
 const MEDIA_READ_SCOPE = 'media:read';
 const MEDIA_WRITE_SCOPE = 'media:write';
@@ -23,6 +29,8 @@ function decodeBase64OrThrow(content: string): Buffer {
 
 export function buildMediaTools(
   mediaService: MediaService,
+  usersService: UsersService,
+  permissionsService: PermissionsService,
 ): McpToolDefinition[] {
   return [
     defineMcpTool({
@@ -36,6 +44,9 @@ export function buildMediaTools(
       },
       requiredScopes: [MEDIA_WRITE_SCOPE],
       handler: async (input, ctx) => {
+        const user = await resolveMcpUser(usersService, ctx);
+        await requireGlobalPermission(permissionsService, user, 'media.upload');
+
         const buffer = decodeBase64OrThrow(input.contentBase64);
         const file: UploadedMediaFile = {
           originalname: input.filename,
@@ -59,10 +70,10 @@ export function buildMediaTools(
       inputSchema: { attachmentId: z.string() },
       requiredScopes: [MEDIA_READ_SCOPE],
       handler: async (input, ctx) => {
-        return mediaService.getPresignedUrl(
-          input.attachmentId,
-          asFullAccessUser(ctx),
+        const user = toAuthenticatedUser(
+          await resolveMcpUser(usersService, ctx),
         );
+        return mediaService.getPresignedUrl(input.attachmentId, user);
       },
     }),
   ];
