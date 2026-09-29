@@ -10,7 +10,9 @@ import { UserNotFoundException } from '../../common/exceptions/users/user-not-fo
 import { ValidationException } from '../../common/exceptions/validation.exception.js';
 import type { AuthenticatedUser } from '../../common/strategies/jwt.strategy.js';
 import type { GroupsRepository } from '../../permissions/persistence/groups.repository.js';
+import type { PageAccessRulesRepository } from '../../permissions/persistence/page-access-rules.repository.js';
 import type { SubjectPermissionsRepository } from '../../permissions/persistence/subject-permissions.repository.js';
+import { PermissionsService } from '../../permissions/services/permissions.service.js';
 import type { StorageService } from '../../storage/services/storage.service.js';
 import { CreateAdminUserDto } from '../dto/in/create-admin-user.dto.js';
 import { UpdateProfileDto } from '../dto/in/update-profile.dto.js';
@@ -62,6 +64,21 @@ describe('UsersService', () => {
   let subjectPermissionsRepository: {
     [K in keyof SubjectPermissionsRepository]: Mock<
       SubjectPermissionsRepository[K]
+    >;
+  };
+  let pageAccessRulesRepository: {
+    [K in keyof PageAccessRulesRepository]: Mock<PageAccessRulesRepository[K]>;
+  };
+  let permissionsService: {
+    hasGlobal: Mock<PermissionsService['hasGlobal']>;
+    hasUnrestrictedPageAccess: Mock<
+      PermissionsService['hasUnrestrictedPageAccess']
+    >;
+    hasUnrestrictedActionOnSubtree: Mock<
+      PermissionsService['hasUnrestrictedActionOnSubtree']
+    >;
+    getEffectivePageActions: Mock<
+      PermissionsService['getEffectivePageActions']
     >;
   };
 
@@ -117,6 +134,24 @@ describe('UsersService', () => {
       setForUser: vi.fn(),
       setForGroup: vi.fn(),
     };
+    pageAccessRulesRepository = {
+      findByUserId: vi.fn().mockResolvedValue([]),
+      findByGroupIds: vi.fn().mockResolvedValue([]),
+      findByPageIdsOrWholeWiki: vi.fn().mockResolvedValue([]),
+      findById: vi.fn(),
+      create: vi.fn(),
+      updateActions: vi.fn(),
+      delete: vi.fn(),
+      findExclusions: vi.fn(),
+      setExclusions: vi.fn(),
+      findExclusionsForRules: vi.fn().mockResolvedValue(new Map()),
+    };
+    permissionsService = {
+      hasGlobal: vi.fn().mockResolvedValue(true),
+      hasUnrestrictedPageAccess: vi.fn().mockResolvedValue(true),
+      hasUnrestrictedActionOnSubtree: vi.fn().mockResolvedValue(true),
+      getEffectivePageActions: vi.fn().mockResolvedValue([]),
+    };
 
     const module = await Test.createTestingModule({
       providers: [
@@ -131,6 +166,11 @@ describe('UsersService', () => {
           provide: 'SubjectPermissionsRepository',
           useValue: subjectPermissionsRepository,
         },
+        {
+          provide: 'PageAccessRulesRepository',
+          useValue: pageAccessRulesRepository,
+        },
+        { provide: PermissionsService, useValue: permissionsService },
       ],
     }).compile();
 
@@ -424,6 +464,21 @@ describe('UsersService', () => {
       ).rejects.toBeInstanceOf(InsufficientPermissionException);
       expect(userRepository.adminUpdate).not.toHaveBeenCalled();
     });
+
+    it('blocks a non-admin user.manage holder from editing another admin (no role change)', async () => {
+      userRepository.findById.mockResolvedValue(
+        buildUser({ id: 'user-2', role: 'admin' }),
+      );
+
+      await expect(
+        service.adminUpdate(
+          buildActor({ id: 'actor-1', role: 'member' }),
+          'user-2',
+          { email: 'attacker@example.com' },
+        ),
+      ).rejects.toBeInstanceOf(InsufficientPermissionException);
+      expect(userRepository.adminUpdate).not.toHaveBeenCalled();
+    });
   });
 
   describe('setStatus', () => {
@@ -556,6 +611,20 @@ describe('UsersService', () => {
         expect.objectContaining({ action: 'user.password.reset' }),
       );
     });
+
+    it("blocks a non-admin user.manage holder from resetting another admin's password", async () => {
+      userRepository.findById.mockResolvedValue(
+        buildUser({ id: 'user-2', role: 'admin' }),
+      );
+
+      await expect(
+        service.resetPassword(
+          buildActor({ id: 'actor-1', role: 'member' }),
+          'user-2',
+        ),
+      ).rejects.toBeInstanceOf(InsufficientPermissionException);
+      expect(userRepository.updatePassword).not.toHaveBeenCalled();
+    });
   });
 
   describe('unlock', () => {
@@ -573,6 +642,17 @@ describe('UsersService', () => {
       expect(adminAuditLogService.record).toHaveBeenCalledWith(
         expect.objectContaining({ action: 'user.unlock' }),
       );
+    });
+
+    it('blocks a non-admin user.manage holder from unlocking another admin', async () => {
+      userRepository.findById.mockResolvedValue(
+        buildUser({ id: 'user-2', role: 'admin' }),
+      );
+
+      await expect(
+        service.unlock(buildActor({ id: 'actor-1', role: 'member' }), 'user-2'),
+      ).rejects.toBeInstanceOf(InsufficientPermissionException);
+      expect(userRepository.resetFailedLoginAttempts).not.toHaveBeenCalled();
     });
   });
 
@@ -607,6 +687,83 @@ describe('UsersService', () => {
         service.setGroups(buildActor(), 'user-1', ['missing-group']),
       ).rejects.toThrow();
       expect(groupsRepository.setGroupsForUser).not.toHaveBeenCalled();
+    });
+
+    it('blocks a non-admin user.manage holder from adding a group that grants a permission they lack', async () => {
+      userRepository.findById.mockResolvedValue(buildUser());
+      groupsRepository.findByIds.mockResolvedValue([
+        {
+          id: 'group-1',
+          name: 'Group',
+          description: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ]);
+      subjectPermissionsRepository.findForGroup.mockResolvedValue([
+        'user.manage',
+      ]);
+      permissionsService.hasGlobal.mockResolvedValue(false);
+
+      await expect(
+        service.setGroups(
+          buildActor({ id: 'actor-1', role: 'member' }),
+          'user-1',
+          ['group-1'],
+        ),
+      ).rejects.toBeInstanceOf(InsufficientPermissionException);
+      expect(groupsRepository.setGroupsForUser).not.toHaveBeenCalled();
+    });
+
+    it('adds a group when the actor already holds everything it grants', async () => {
+      userRepository.findById.mockResolvedValue(buildUser());
+      groupsRepository.findByIds.mockResolvedValue([
+        {
+          id: 'group-1',
+          name: 'Group',
+          description: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ]);
+      subjectPermissionsRepository.findForGroup.mockResolvedValue([
+        'tag.create',
+      ]);
+      permissionsService.hasGlobal.mockResolvedValue(true);
+
+      await service.setGroups(buildActor(), 'user-1', ['group-1']);
+
+      expect(groupsRepository.setGroupsForUser).toHaveBeenCalledWith('user-1', [
+        'group-1',
+      ]);
+    });
+
+    it('skips the escalation check for a group the target already belongs to', async () => {
+      userRepository.findById.mockResolvedValue(buildUser());
+      groupsRepository.findGroupIdsForUser.mockResolvedValue(['group-1']);
+      groupsRepository.findByIds.mockResolvedValue([
+        {
+          id: 'group-1',
+          name: 'Group',
+          description: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ]);
+      subjectPermissionsRepository.findForGroup.mockResolvedValue([
+        'user.manage',
+      ]);
+      permissionsService.hasGlobal.mockResolvedValue(false);
+
+      await service.setGroups(
+        buildActor({ id: 'actor-1', role: 'member' }),
+        'user-1',
+        ['group-1'],
+      );
+
+      expect(groupsRepository.setGroupsForUser).toHaveBeenCalledWith('user-1', [
+        'group-1',
+      ]);
     });
 
     it('rejects a non-array groupIds value', async () => {
