@@ -9,7 +9,8 @@
     "next": "Next",
     "pageOf": "Page {{page}} / {{total}}",
     "loading": "Loading...",
-    "close": "Close"
+    "close": "Close",
+    "save": "Save"
   },
   "auth": {
     "appTagline": "Your team's knowledge base",
@@ -229,6 +230,7 @@
   },
   "admin": {
     "usersTab": "Users",
+    "groupsTab": "Groups",
     "settingsTab": "Settings",
     "mcpKeysTab": "MCP API keys",
     "mcpAuditTab": "MCP log",
@@ -272,6 +274,53 @@
         "purgeSuccess_other": "{{count}} comments purged.",
         "purgeFailed": "Failed to purge comments."
       }
+    },
+    "groups": {
+      "createButton": "New group",
+      "createTitle": "Create a group",
+      "createDescription": "You'll be able to add members, permissions and page access once the group is created.",
+      "nameLabel": "Name",
+      "descriptionLabel": "Description",
+      "createSubmit": "Create",
+      "created": "Group created.",
+      "createFailed": "Failed to create the group.",
+      "columnName": "Name",
+      "columnMembers": "Members",
+      "columnRules": "Rules",
+      "renameSr": "Edit {{name}}",
+      "renameTitle": "Edit group",
+      "renamed": "Group updated.",
+      "renameFailed": "Failed to update the group.",
+      "deleteSr": "Delete {{name}}",
+      "deleteConfirmTitle": "Delete this group?",
+      "deleteConfirmDescription": "{{name}} will be permanently deleted, along with its {{memberCount}} member(s) and {{ruleCount}} access rule(s). This action is irreversible.",
+      "deleted": "Group deleted.",
+      "deleteFailed": "Failed to delete the group.",
+      "empty": "No groups yet.",
+      "loadError": "Failed to load groups.",
+      "backToList": "Back to groups",
+      "tabMembers": "Members",
+      "tabPermissions": "Global permissions",
+      "tabAccess": "Page access",
+      "addMembers": "Add members",
+      "addMembersTitle": "Add members",
+      "searchUsersPlaceholder": "Search for a user...",
+      "noUserFound": "No user found.",
+      "noMembers": "No members yet.",
+      "removeMemberSr": "Remove {{name}}",
+      "memberAdded": "Member added.",
+      "memberAddFailed": "Failed to add the member.",
+      "memberRemoved": "Member removed.",
+      "memberRemoveFailed": "Failed to remove the member.",
+      "permissionCategories": {
+        "pages": "Pages",
+        "tags": "Tags",
+        "media": "Media",
+        "comments": "Comments",
+        "users": "Users"
+      },
+      "permissionsSaved": "Permissions saved.",
+      "permissionsSaveFailed": "Failed to save permissions."
     },
     "settings": {
       "localeLabel": "Interface language",
@@ -366,7 +415,15 @@
         "user.password.reset": "Password reset",
         "user.unlock": "Account unlocked",
         "user.groups.update": "Groups updated",
-        "user.permissions.update": "Permissions updated"
+        "user.permissions.update": "Permissions updated",
+        "group.create": "Group created",
+        "group.update": "Group updated",
+        "group.delete": "Group deleted",
+        "group.members.update": "Group members updated",
+        "group.permissions.update": "Group permissions updated",
+        "access_rule.create": "Access rule created",
+        "access_rule.update": "Access rule updated",
+        "access_rule.delete": "Access rule deleted"
       }
     },
     "activityLog": {
@@ -416,6 +473,19 @@
       "comment.moderate": "Moderate comments",
       "user.manage": "Manage users and groups"
     }
+  },
+  "pageAccessTree": {
+    "searchPlaceholder": "Search for a page...",
+    "wholeWiki": "The whole wiki",
+    "noMatch": "No page matches.",
+    "loadError": "Failed to load the access tree.",
+    "actionFailed": "Failed to update access.",
+    "toggleExpand": "Expand/collapse {{title}}",
+    "privatePage": "Private page",
+    "actionsCount_one": "{{count}} action",
+    "actionsCount_other": "{{count}} actions",
+    "actionsLabel": "Granted actions",
+    "pageOnlyScope": "This page only"
   },
   "tags": {
     "title": "Tags",

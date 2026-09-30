@@ -13,6 +13,7 @@ export class PageTreeMapper {
         id: page.id,
         slug: page.slug,
         title: page.title,
+        visibility: page.visibility,
         canCreateChild: (actionsByPageId.get(page.id) ?? []).includes(
           'page.create_child',
         ),

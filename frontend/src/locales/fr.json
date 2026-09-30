@@ -9,7 +9,8 @@
     "next": "Suivant",
     "pageOf": "Page {{page}} / {{total}}",
     "loading": "Chargement...",
-    "close": "Fermer"
+    "close": "Fermer",
+    "save": "Enregistrer"
   },
   "auth": {
     "appTagline": "La base de connaissance de l'équipe",
@@ -229,6 +230,7 @@
   },
   "admin": {
     "usersTab": "Utilisateurs",
+    "groupsTab": "Groupes",
     "settingsTab": "Paramètres",
     "mcpKeysTab": "Clés API MCP",
     "mcpAuditTab": "Journal MCP",
@@ -272,6 +274,53 @@
         "purgeSuccess_other": "{{count}} commentaires purgés.",
         "purgeFailed": "Échec de la purge des commentaires."
       }
+    },
+    "groups": {
+      "createButton": "Nouveau groupe",
+      "createTitle": "Créer un groupe",
+      "createDescription": "Vous pourrez ajouter des membres, des permissions et des accès une fois le groupe créé.",
+      "nameLabel": "Nom",
+      "descriptionLabel": "Description",
+      "createSubmit": "Créer",
+      "created": "Groupe créé.",
+      "createFailed": "Échec de la création du groupe.",
+      "columnName": "Nom",
+      "columnMembers": "Membres",
+      "columnRules": "Règles",
+      "renameSr": "Modifier {{name}}",
+      "renameTitle": "Modifier le groupe",
+      "renamed": "Groupe mis à jour.",
+      "renameFailed": "Échec de la mise à jour du groupe.",
+      "deleteSr": "Supprimer {{name}}",
+      "deleteConfirmTitle": "Supprimer ce groupe ?",
+      "deleteConfirmDescription": "{{name}} sera définitivement supprimé, ainsi que ses {{memberCount}} membre(s) et ses {{ruleCount}} règle(s) d'accès. Cette action est irréversible.",
+      "deleted": "Groupe supprimé.",
+      "deleteFailed": "Échec de la suppression du groupe.",
+      "empty": "Aucun groupe pour le moment.",
+      "loadError": "Échec du chargement des groupes.",
+      "backToList": "Retour aux groupes",
+      "tabMembers": "Membres",
+      "tabPermissions": "Permissions globales",
+      "tabAccess": "Accès aux pages",
+      "addMembers": "Ajouter des membres",
+      "addMembersTitle": "Ajouter des membres",
+      "searchUsersPlaceholder": "Rechercher un utilisateur...",
+      "noUserFound": "Aucun utilisateur trouvé.",
+      "noMembers": "Aucun membre pour le moment.",
+      "removeMemberSr": "Retirer {{name}}",
+      "memberAdded": "Membre ajouté.",
+      "memberAddFailed": "Échec de l'ajout du membre.",
+      "memberRemoved": "Membre retiré.",
+      "memberRemoveFailed": "Échec du retrait du membre.",
+      "permissionCategories": {
+        "pages": "Pages",
+        "tags": "Tags",
+        "media": "Médias",
+        "comments": "Commentaires",
+        "users": "Utilisateurs"
+      },
+      "permissionsSaved": "Permissions enregistrées.",
+      "permissionsSaveFailed": "Échec de l'enregistrement des permissions."
     },
     "settings": {
       "localeLabel": "Langue de l'interface",
@@ -366,7 +415,15 @@
         "user.password.reset": "Réinitialisation de mot de passe",
         "user.unlock": "Déverrouillage de compte",
         "user.groups.update": "Modification des groupes",
-        "user.permissions.update": "Modification des permissions"
+        "user.permissions.update": "Modification des permissions",
+        "group.create": "Création de groupe",
+        "group.update": "Modification de groupe",
+        "group.delete": "Suppression de groupe",
+        "group.members.update": "Modification des membres du groupe",
+        "group.permissions.update": "Modification des permissions du groupe",
+        "access_rule.create": "Création de règle d'accès",
+        "access_rule.update": "Modification de règle d'accès",
+        "access_rule.delete": "Suppression de règle d'accès"
       }
     },
     "activityLog": {
@@ -416,6 +473,19 @@
       "comment.moderate": "Modérer les commentaires",
       "user.manage": "Gérer les utilisateurs et les groupes"
     }
+  },
+  "pageAccessTree": {
+    "searchPlaceholder": "Rechercher une page...",
+    "wholeWiki": "Tout le wiki",
+    "noMatch": "Aucune page ne correspond.",
+    "loadError": "Échec du chargement de l'arborescence des accès.",
+    "actionFailed": "Échec de la mise à jour de l'accès.",
+    "toggleExpand": "Déplier/replier {{title}}",
+    "privatePage": "Page privée",
+    "actionsCount_one": "{{count}} action",
+    "actionsCount_other": "{{count}} actions",
+    "actionsLabel": "Actions accordées",
+    "pageOnlyScope": "Cette page uniquement"
   },
   "tags": {
     "title": "Tags",
