@@ -289,6 +289,16 @@ export class UsersService {
 
     if (dto.groupIds && dto.groupIds.length > 0) {
       await this.assertGroupsExist(dto.groupIds);
+      const actorEntity = await this.findById(actor.id);
+      for (const groupId of dto.groupIds) {
+        await assertActorCanGrantGroupMembership(
+          this.permissionsService,
+          this.subjectPermissionsRepository,
+          this.pageAccessRulesRepository,
+          actorEntity,
+          groupId,
+        );
+      }
     }
 
     const temporaryPassword = dto.password
@@ -377,9 +387,9 @@ export class UsersService {
       throw new ValidationException('isActive must be a boolean');
     }
     const target = await this.findById(id);
+    UsersService.assertActorIsAdminToActOnAdmin(actor, target);
     if (!isActive) {
       UsersService.assertNotSelf(actor.id, id);
-      UsersService.assertActorIsAdminToActOnAdmin(actor, target);
       await this.assertNotRemovingLastActiveAdmin(target);
     }
 
