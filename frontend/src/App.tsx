@@ -13,6 +13,7 @@ import { AdminMcpAudit } from '#pages/AdminMcpAudit'
 import { AdminMcpKeys } from '#pages/AdminMcpKeys'
 import { AdminOAuthClients } from '#pages/AdminOAuthClients'
 import { AdminSettings } from '#pages/AdminSettings'
+import { AdminUserDetail } from '#pages/AdminUserDetail'
 import { AdminUsers } from '#pages/AdminUsers'
 import { Home } from '#pages/Home'
 import { Login } from '#pages/Login'
@@ -53,7 +54,6 @@ export function App() {
             <Route path="/profile" element={<Profile />} />
           </Route>
           <Route element={<ProtectedRoute roles={[UserRole.Admin]} />}>
-            <Route path="/admin/users" element={<AdminUsers />} />
             <Route path="/admin/settings" element={<AdminSettings />} />
             <Route path="/admin/mcp/api-keys" element={<AdminMcpKeys />} />
             <Route path="/admin/mcp/oauth-clients" element={<AdminOAuthClients />} />
@@ -62,6 +62,8 @@ export function App() {
             <Route path="/admin/activity-log" element={<AdminActivityLog />} />
           </Route>
           <Route element={<ProtectedRoute permission="user.manage" />}>
+            <Route path="/admin/users" element={<AdminUsers />} />
+            <Route path="/admin/users/:id" element={<AdminUserDetail />} />
             <Route path="/admin/groups" element={<AdminGroups />} />
             <Route path="/admin/groups/:id" element={<AdminGroupDetail />} />
           </Route>

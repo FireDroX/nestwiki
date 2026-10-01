@@ -3,6 +3,7 @@ import { Search } from 'lucide-react'
 import { toast } from 'sonner'
 import { useTranslation } from 'react-i18next'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '#components/ui/input-group'
+import { Badge } from '#components/ui/badge'
 import { Checkbox } from '#components/ui/checkbox'
 import {
   type AccessRule,
@@ -19,22 +20,29 @@ import { filterTree } from '#utils/page-tree'
 import {
   buildChainIndex,
   coverageForNode,
+  coveringRulesForChain,
   findExcludingAncestorRule,
   nearestCoveringSubtreeRule,
   ownRuleForNode,
+  type AccessRuleLike,
 } from '#utils/access-rule-coverage'
 import { extractErrorMessage } from '#lib/api-errors'
 import { ActionsMenu } from '#components/PageAccessTreeSelector/ActionsMenu'
 import { PageAccessTreeNode } from '#components/PageAccessTreeSelector/PageAccessTreeNode'
 
+export interface InheritedAccessRule extends AccessRuleLike {
+  groupName: string
+}
+
 interface PageAccessTreeSelectorProps {
   subject: AccessRuleSubject
   readOnly?: boolean
+  inheritedRules?: InheritedAccessRule[]
 }
 
 type Status = 'loading' | 'ready' | 'error'
 
-export function PageAccessTreeSelector({ subject, readOnly = false }: PageAccessTreeSelectorProps) {
+export function PageAccessTreeSelector({ subject, readOnly = false, inheritedRules = [] }: PageAccessTreeSelectorProps) {
   const { t } = useTranslation()
   const { tree, status: treeStatus } = usePageTree()
   const [rules, setRules] = useState<AccessRule[]>([])
@@ -197,6 +205,18 @@ export function PageAccessTreeSelector({ subject, readOnly = false }: PageAccess
 
   const coverage = (node: PageTreeNode) => coverageForNode(node, chainIndex, rules)
 
+  function inheritedGroupNames(node: PageTreeNode): string[] {
+    if (inheritedRules.length === 0) return []
+    const chainIds = chainIndex.get(node.id) ?? [node.id]
+    const names = coveringRulesForChain(inheritedRules, chainIds).map((rule) => rule.groupName)
+    return [...new Set(names)]
+  }
+
+  const wholeWikiInheritedGroupNames =
+    inheritedRules.length > 0
+      ? [...new Set(inheritedRules.filter((rule) => rule.pageId === null).map((rule) => rule.groupName))]
+      : []
+
   if (status === 'loading' || treeStatus === 'loading') {
     return <p className="text-sm text-muted-foreground">{t('common.loading')}</p>
   }
@@ -232,6 +252,11 @@ export function PageAccessTreeSelector({ subject, readOnly = false }: PageAccess
             onActionsChange={handleWholeWikiActionsChange}
           />
         )}
+        {wholeWikiInheritedGroupNames.map((groupName) => (
+          <Badge key={groupName} variant="outline" title={t('pageAccessTree.inheritedFromGroup', { groupName })}>
+            {groupName}
+          </Badge>
+        ))}
       </div>
 
       {isFiltering && visibleTree.length === 0 && (
@@ -246,6 +271,7 @@ export function PageAccessTreeSelector({ subject, readOnly = false }: PageAccess
             depth={0}
             coverage={coverage}
             rules={rules}
+            inheritedGroupNames={inheritedGroupNames}
             isExpanded={isExpanded}
             onToggleExpand={toggleExpanded}
             onToggleNode={handleToggleNode}

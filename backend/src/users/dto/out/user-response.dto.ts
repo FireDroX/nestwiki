@@ -14,4 +14,5 @@ export interface UserResponseDto {
   permissions?: GlobalPermission[];
   groups?: { id: string; name: string }[];
   isActive?: boolean;
+  lockedUntil?: Date | null;
 }
