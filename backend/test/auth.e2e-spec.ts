@@ -49,7 +49,7 @@ describe('Auth (e2e)', () => {
     expect(dataOf<UserProfile>(registerResponse)).toMatchObject({
       email,
       displayName: 'Alice',
-      role: 'reader',
+      role: 'member',
     });
 
     const loginResponse = await agent.post('/api/auth/login').send({
@@ -75,7 +75,7 @@ describe('Auth (e2e)', () => {
     expect(profile).toMatchObject({
       email,
       displayName: 'Alice',
-      role: 'reader',
+      role: 'member',
     });
     expect(profile.passwordHash).toBeUndefined();
   });

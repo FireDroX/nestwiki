@@ -18,6 +18,8 @@ import {
   UUID_REGEX,
 } from '../../common/variables.global.js';
 import { PagesService } from '../../pages/services/pages.service.js';
+import { PermissionsService } from '../../permissions/services/permissions.service.js';
+import { UsersService } from '../../users/services/users.service.js';
 import type { StorageService } from '../../storage/services/storage.service.js';
 import { ListMediaDto } from '../dto/in/list-media.dto.js';
 import { UploadMediaDto } from '../dto/in/upload-media.dto.js';
@@ -41,6 +43,8 @@ export class MediaService {
     @Inject('MediaBucket')
     private readonly bucket: string,
     private readonly pagesService: PagesService,
+    private readonly permissionsService: PermissionsService,
+    private readonly usersService: UsersService,
     private readonly userActivityLogService: UserActivityLogService,
   ) {}
 
@@ -130,7 +134,14 @@ export class MediaService {
     const page = MediaService.parsePage(query.page);
     const limit = MediaService.parseLimit(query.limit);
     const type = MediaService.parseType(query.type);
-    const restrictToPublic = !MediaService.hasFullAccess(currentUser);
+    const user = await this.usersService
+      .findById(currentUser.id)
+      .catch(() => undefined);
+    const restrictToPublic =
+      !(await this.permissionsService.hasUnrestrictedPageAccess(
+        user,
+        'page.read',
+      ));
 
     const { items, total } = await this.attachmentsRepository.findLibrary({
       search: query.search?.trim() || undefined,
@@ -243,9 +254,5 @@ export class MediaService {
 
   private static parseType(raw?: string): 'image' | 'file' | undefined {
     return raw === 'image' || raw === 'file' ? raw : undefined;
-  }
-
-  private static hasFullAccess(currentUser?: AuthenticatedUser): boolean {
-    return currentUser?.role === 'admin' || currentUser?.role === 'editor';
   }
 }

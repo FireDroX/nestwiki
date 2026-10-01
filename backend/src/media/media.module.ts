@@ -1,9 +1,11 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ActivityModule } from '../activity/activity.module.js';
 import { PagesModule } from '../pages/pages.module.js';
+import { PermissionsModule } from '../permissions/permissions.module.js';
 import { StorageModule } from '../storage/storage.module.js';
+import { UsersModule } from '../users/users.module.js';
 import { Attachment } from './entities/attachment.entity.js';
 import { MediaController } from './media.controller.js';
 import { TypeormAttachmentsRepository } from './persistence/typeorm.attachment.repository.js';
@@ -15,6 +17,8 @@ import { MediaService } from './services/media.service.js';
     StorageModule,
     PagesModule,
     ActivityModule,
+    PermissionsModule,
+    forwardRef(() => UsersModule),
   ],
   controllers: [MediaController],
   providers: [

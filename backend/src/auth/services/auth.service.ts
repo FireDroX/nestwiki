@@ -86,7 +86,7 @@ export class AuthService {
         email: dto.email,
         passwordHash,
         displayName: dto.displayName,
-        role: 'reader',
+        role: 'member',
       });
     } catch (error) {
       if (AuthService.isDuplicateEmailError(error)) {

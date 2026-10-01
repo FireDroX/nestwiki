@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { DataSource } from 'typeorm';
@@ -22,6 +23,72 @@ interface VersionsPage {
   total: number;
 }
 
+const EDITORS_GROUP_NAME = 'Éditeurs';
+const EDITORS_GLOBAL_PERMISSIONS = [
+  'page.create_root',
+  'tag.create',
+  'tag.delete',
+  'media.upload',
+  'media.delete',
+  'comment.moderate',
+];
+const EDITORS_WHOLE_WIKI_ACTIONS = [
+  'page.read',
+  'page.edit',
+  'page.create_child',
+  'page.delete',
+  'page.move',
+  'page.manage_visibility',
+  'page.manage_tags',
+  'page.restore_version',
+];
+
+async function joinEditorsGroup(
+  dataSource: DataSource,
+  userId: string,
+): Promise<void> {
+  const existing = await dataSource.query<{ id: string }[]>(
+    'SELECT `id` FROM `groups` WHERE `name` = ?',
+    [EDITORS_GROUP_NAME],
+  );
+  let groupId = existing[0]?.id;
+  if (!groupId) {
+    groupId = randomUUID();
+    await dataSource.query(
+      'INSERT INTO `groups` (`id`, `name`) VALUES (?, ?)',
+      [groupId, EDITORS_GROUP_NAME],
+    );
+  }
+
+  for (const permission of EDITORS_GLOBAL_PERMISSIONS) {
+    await dataSource.query(
+      'INSERT IGNORE INTO `group_permissions` (`group_id`, `permission`) VALUES (?, ?)',
+      [groupId, permission],
+    );
+  }
+
+  const wholeWikiRules = await dataSource.query<{ id: string }[]>(
+    'SELECT `id` FROM `page_access_rules` WHERE `group_id` = ? AND `page_id` IS NULL',
+    [groupId],
+  );
+  if (wholeWikiRules.length === 0) {
+    await dataSource.query(
+      "INSERT INTO `page_access_rules` (`id`, `group_id`, `page_id`, `applies_to`, `actions`, `granted_by_id`) VALUES (?, ?, NULL, 'subtree', ?, ?)",
+      [
+        randomUUID(),
+        groupId,
+        JSON.stringify(EDITORS_WHOLE_WIKI_ACTIONS),
+        userId,
+      ],
+    );
+  }
+
+  await dataSource.query(
+    'INSERT IGNORE INTO `group_members` (`group_id`, `user_id`) VALUES (?, ?)',
+    [groupId, userId],
+  );
+}
+
 async function registerEditor(
   app: INestApplication,
   dataSource: DataSource,
@@ -37,14 +104,13 @@ async function registerEditor(
     turnstileToken: 'stubbed',
   });
 
-  // Registration always creates a 'reader'; promote directly in the DB
-  // then re-login so the fresh JWT payload carries the 'editor' role
-  // (the role is baked into the token at issuance, not looked up per
-  // request).
-  await dataSource.query('UPDATE `users` SET `role` = ? WHERE `email` = ?', [
-    'editor',
-    email,
-  ]);
+  const [user] = await dataSource.query<{ id: string; role: string }[]>(
+    'SELECT `id`, `role` FROM `users` WHERE `email` = ?',
+    [email],
+  );
+  expect(user.role).toBe('member');
+  await joinEditorsGroup(dataSource, user.id);
+
   await agent.post('/api/auth/login').send({
     email,
     password,
@@ -123,7 +189,7 @@ describe('Pages (e2e)', () => {
     );
   });
 
-  it('rejects page creation from a reader with 403', async () => {
+  it('rejects root page creation from a plain member with 403', async () => {
     const agent = request.agent(app.getHttpServer() as HttpServer);
     await agent.post('/api/auth/register').send({
       email: 'reader@example.com',

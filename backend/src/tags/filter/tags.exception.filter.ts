@@ -39,6 +39,9 @@ export class TagsExceptionFilter implements ExceptionFilter {
       case 'PageTagNotFoundException':
       case 'PageNotFoundException':
         return { statusCode: HttpStatus.NOT_FOUND, error: exception.message };
+      case 'InsufficientPagePermissionException':
+      case 'InsufficientPermissionException':
+        return { statusCode: HttpStatus.FORBIDDEN, error: exception.message };
       case 'ValidationException':
         return { statusCode: HttpStatus.BAD_REQUEST, error: exception.message };
       default:

@@ -2,6 +2,8 @@ import { Inject, Injectable } from '@nestjs/common';
 import { ValidationException } from '../../common/exceptions/validation.exception.js';
 import { DEFAULT_LIMIT, DEFAULT_PAGE } from '../../common/variables.global.js';
 import type { AuthenticatedUser } from '../../common/strategies/jwt.strategy.js';
+import { PermissionsService } from '../../permissions/services/permissions.service.js';
+import { UsersService } from '../../users/services/users.service.js';
 import { SearchQueryDto } from '../dto/in/search-query.dto.js';
 import type {
   SearchMatch,
@@ -22,6 +24,8 @@ export class SearchService {
   constructor(
     @Inject('SearchRepository')
     private readonly searchRepository: SearchRepository,
+    private readonly permissionsService: PermissionsService,
+    private readonly usersService: UsersService,
   ) {}
 
   async search(
@@ -31,7 +35,14 @@ export class SearchService {
     const q = SearchService.validateQuery(query.q);
     const page = SearchService.parsePage(query.page);
     const limit = SearchService.parseLimit(query.limit);
-    const restrictToPublic = !SearchService.hasFullAccess(currentUser);
+    const user = currentUser
+      ? await this.usersService.findById(currentUser.id).catch(() => undefined)
+      : undefined;
+    const restrictToPublic =
+      !(await this.permissionsService.hasUnrestrictedPageAccess(
+        user,
+        'page.read',
+      ));
 
     const { items, total } = await this.searchRepository.search(
       q,
@@ -41,10 +52,6 @@ export class SearchService {
     );
 
     return { items, total, q };
-  }
-
-  private static hasFullAccess(currentUser?: AuthenticatedUser): boolean {
-    return currentUser?.role === 'admin' || currentUser?.role === 'editor';
   }
 
   private static validateQuery(raw?: string): string {

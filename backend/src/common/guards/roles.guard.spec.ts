@@ -31,10 +31,10 @@ describe('RolesGuard', () => {
   it('allows the request when the user role is in the required roles', () => {
     vi.spyOn(reflector, 'getAllAndOverride').mockReturnValue([
       'admin',
-      'editor',
+      'member',
     ]);
 
-    expect(guard.canActivate(buildContext({ id: 'u1', role: 'editor' }))).toBe(
+    expect(guard.canActivate(buildContext({ id: 'u1', role: 'member' }))).toBe(
       true,
     );
   });
@@ -43,7 +43,7 @@ describe('RolesGuard', () => {
     vi.spyOn(reflector, 'getAllAndOverride').mockReturnValue(['admin']);
 
     expect(() =>
-      guard.canActivate(buildContext({ id: 'u1', role: 'reader' })),
+      guard.canActivate(buildContext({ id: 'u1', role: 'member' })),
     ).toThrow(ForbiddenException);
   });
 

@@ -842,6 +842,13 @@ $$
 ## Version 0.30
 
 <details>
+<summary>0.30.2 — 2026-09-25</summary>
+
+- Les contrôles d'accès existants (pages, tags, médias, commentaires, recherche) utilisent désormais le nouveau système de permissions granulaires. Le rôle \`editor\` est supprimé : les anciens éditeurs conservent leurs droits via un groupe créé automatiquement, les anciens lecteurs ayant un droit d'édition explicite le conservent sur la page concernée et sa sous-arborescence.
+
+</details>
+
+<details>
 <summary>0.30.1 — 2026-09-24</summary>
 
 - Service central de résolution des permissions (\`PermissionsService\`) : calcule les droits effectifs d'un utilisateur (directs et via ses groupes) sur une page ou globalement — travail préparatoire, pas encore branché sur les contrôles d'accès existants.

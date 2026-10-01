@@ -5,6 +5,7 @@ import { AdminAuditLogService } from '../../admin/services/admin-audit-log.servi
 import { UserActivityLogService } from '../../activity/services/user-activity-log.service.js';
 import type { AuthenticatedUser } from '../../common/strategies/jwt.strategy.js';
 import { PagesService } from '../../pages/services/pages.service.js';
+import { PermissionsService } from '../../permissions/services/permissions.service.js';
 import { UsersService } from '../../users/services/users.service.js';
 import { CreateCommentDto } from '../dto/in/create-comment.dto.js';
 import { UpdateCommentDto } from '../dto/in/update-comment.dto.js';
@@ -13,10 +14,10 @@ import { COMMENT_CHANGED_EVENT } from '../events/comment-changed.event.js';
 import type { CommentsRepository } from '../persistence/comment.repository.js';
 import { CommentsService } from './comments.service.js';
 
-const editor: AuthenticatedUser = {
+const author: AuthenticatedUser = {
   id: 'user-1',
   email: 'e@x.com',
-  role: 'editor',
+  role: 'member',
 };
 
 function buildComment(overrides: Partial<Comment> = {}): Comment {
@@ -62,6 +63,10 @@ describe('CommentsService', () => {
         { provide: 'CommentsRepository', useValue: commentsRepository },
         { provide: PagesService, useValue: {} },
         { provide: UsersService, useValue: { findById: vi.fn() } },
+        {
+          provide: PermissionsService,
+          useValue: { hasGlobal: vi.fn().mockResolvedValue(true) },
+        },
         { provide: AdminAuditLogService, useValue: { record: vi.fn() } },
         {
           provide: UserActivityLogService,
@@ -78,7 +83,7 @@ describe('CommentsService', () => {
     commentsRepository.create.mockResolvedValue(buildComment());
     const dto: CreateCommentDto = { content: 'hello' };
 
-    await service.createComment('page-1', dto, editor);
+    await service.createComment('page-1', dto, author);
 
     expect(eventEmitter.emit).toHaveBeenCalledWith(COMMENT_CHANGED_EVENT, {
       pageId: 'page-1',
@@ -94,7 +99,7 @@ describe('CommentsService', () => {
     });
     const dto: UpdateCommentDto = { content: 'edited' };
 
-    await service.updateComment('comment-1', dto, editor);
+    await service.updateComment('comment-1', dto, author);
 
     expect(eventEmitter.emit).toHaveBeenCalledWith(COMMENT_CHANGED_EVENT, {
       pageId: 'page-1',
@@ -106,7 +111,7 @@ describe('CommentsService', () => {
     commentsRepository.findById.mockResolvedValue(comment);
     commentsRepository.softDelete.mockResolvedValue(comment);
 
-    await service.deleteComment('comment-1', editor);
+    await service.deleteComment('comment-1', author);
 
     expect(eventEmitter.emit).toHaveBeenCalledWith(COMMENT_CHANGED_EVENT, {
       pageId: 'page-1',

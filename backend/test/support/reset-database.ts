@@ -8,7 +8,6 @@ const E2E_TABLES = [
   'group_members',
   'groups',
   'page_versions',
-  'page_permissions',
   'pages',
   'users',
 ];

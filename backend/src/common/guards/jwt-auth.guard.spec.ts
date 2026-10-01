@@ -6,7 +6,7 @@ describe('JwtAuthGuard', () => {
   const guard = new JwtAuthGuard();
 
   it('returns the user when authentication succeeds', () => {
-    const user = { id: 'u1', email: 'user@example.com', role: 'reader' };
+    const user = { id: 'u1', email: 'user@example.com', role: 'member' };
 
     expect(guard.handleRequest(null, user)).toBe(user);
   });
@@ -24,7 +24,7 @@ describe('JwtAuthGuard', () => {
   });
 
   it('throws UnauthorizedException on an absent/invalid token even if a user is somehow present', () => {
-    const user = { id: 'u1', email: 'user@example.com', role: 'reader' };
+    const user = { id: 'u1', email: 'user@example.com', role: 'member' };
 
     expect(() => guard.handleRequest(new Error('jwt expired'), user)).toThrow(
       UnauthorizedException,

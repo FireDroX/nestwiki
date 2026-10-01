@@ -74,8 +74,12 @@ export function buildTagsTools(tagsService: TagsService): McpToolDefinition[] {
       description: "Retirer un tag d'une page",
       inputSchema: { pageId: z.string(), tagId: z.string() },
       requiredScopes: [TAGS_WRITE_SCOPE],
-      handler: async (input) => {
-        await tagsService.untagPage(input.pageId, input.tagId);
+      handler: async (input, ctx) => {
+        await tagsService.untagPage(
+          input.pageId,
+          input.tagId,
+          asFullAccessUser(ctx),
+        );
         return { success: true };
       },
     }),

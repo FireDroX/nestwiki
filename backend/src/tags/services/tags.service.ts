@@ -1,5 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { AuthenticatedUser } from '../../common/strategies/jwt.strategy.js';
+import { InsufficientPagePermissionException } from '../../common/exceptions/pages/insufficient-page-permission.exception.js';
+import { PermissionsService } from '../../permissions/services/permissions.service.js';
+import { UsersService } from '../../users/services/users.service.js';
 import { PageTagAlreadyExistsException } from '../../common/exceptions/tags/page-tag-already-exists.exception.js';
 import { PageTagNotFoundException } from '../../common/exceptions/tags/page-tag-not-found.exception.js';
 import { TagAlreadyExistsException } from '../../common/exceptions/tags/tag-already-exists.exception.js';
@@ -21,6 +24,8 @@ export class TagsService {
   constructor(
     @Inject('TagsRepository') private readonly tagRepository: TagRepository,
     private readonly pagesService: PagesService,
+    private readonly permissionsService: PermissionsService,
+    private readonly usersService: UsersService,
   ) {}
 
   async createTag(dto: CreateTagDto): Promise<Tag> {
@@ -53,6 +58,7 @@ export class TagsService {
     currentUser?: AuthenticatedUser,
   ): Promise<PageTag> {
     await this.pagesService.getByIdOrFail(pageId, currentUser);
+    await this.assertCanManageTags(pageId, currentUser);
 
     const tag = await this.tagRepository.findById(tagId);
     if (!tag) {
@@ -67,7 +73,13 @@ export class TagsService {
     return this.tagRepository.createPageTag(pageId, tagId);
   }
 
-  async untagPage(pageId: string, tagId: string): Promise<void> {
+  async untagPage(
+    pageId: string,
+    tagId: string,
+    currentUser?: AuthenticatedUser,
+  ): Promise<void> {
+    await this.pagesService.getByIdOrFail(pageId, currentUser);
+    await this.assertCanManageTags(pageId, currentUser);
     const existing = await this.tagRepository.findPageTag(pageId, tagId);
     if (!existing) {
       throw new PageTagNotFoundException();
@@ -81,6 +93,20 @@ export class TagsService {
   ): Promise<Tag[]> {
     await this.pagesService.getByIdOrFail(pageId, currentUser);
     return this.tagRepository.findTagsByPageId(pageId);
+  }
+
+  private async assertCanManageTags(
+    pageId: string,
+    currentUser?: AuthenticatedUser,
+  ): Promise<void> {
+    const user = currentUser
+      ? await this.usersService.findById(currentUser.id).catch(() => undefined)
+      : undefined;
+    if (
+      !(await this.permissionsService.can(user, 'page.manage_tags', pageId))
+    ) {
+      throw new InsufficientPagePermissionException();
+    }
   }
 
   private validateName(name: string): void {

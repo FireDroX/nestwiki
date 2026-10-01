@@ -46,6 +46,8 @@ export class MediaExceptionFilter implements ExceptionFilter {
       case 'AttachmentNotFoundException':
         return { statusCode: HttpStatus.NOT_FOUND, error: exception.message };
       case 'PageAccessForbiddenException':
+      case 'InsufficientPagePermissionException':
+      case 'InsufficientPermissionException':
         return { statusCode: HttpStatus.FORBIDDEN, error: exception.message };
       case 'AttachmentInUseException':
         return { statusCode: HttpStatus.CONFLICT, error: exception.message };

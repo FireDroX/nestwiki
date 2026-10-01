@@ -25,11 +25,11 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
-import { Roles } from '../common/decorators/roles.decorator.js';
+import { RequirePermission } from '../common/decorators/require-permission.decorator.js';
 import { ErrorResponseDto } from '../common/dto/error-response.dto.js';
 import { ResponseDto } from '../common/dto/response.dto.js';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard.js';
-import { RolesGuard } from '../common/guards/roles.guard.js';
+import { PermissionsGuard } from '../common/guards/permissions.guard.js';
 import { CreateTagDto } from './dto/in/create-tag.dto.js';
 import { TagResponseDto, TagSummaryDto } from './dto/out/tag-response.dto.js';
 import { TagsExceptionFilter } from './filter/tags.exception.filter.js';
@@ -43,8 +43,8 @@ export class TagsController {
   constructor(private readonly tagsService: TagsService) {}
 
   @Post()
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('editor', 'admin')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermission('tag.create')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Créer un tag' })
   @ApiBody({ type: CreateTagDto })
@@ -81,8 +81,8 @@ export class TagsController {
   }
 
   @Delete(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermission('tag.delete')
   @ApiBearerAuth()
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Supprimer un tag (cascade sur les pages liées)' })

@@ -24,20 +24,44 @@ import { PAGE_TREE_CHANGED_EVENT } from '../events/page-tree-changed.event.js';
 import { PAGE_VERSION_CREATED_EVENT } from '../events/page-version-created.event.js';
 import type { PageFollowRepository } from '../persistence/page-follow.repository.js';
 import type { PagesRepository } from '../persistence/page.repository.js';
+import { PermissionsService } from '../../permissions/services/permissions.service.js';
+import { User } from '../../users/entities/user.entity.js';
+import { UsersService } from '../../users/services/users.service.js';
 import { PageMergeService } from './page-merge.service.js';
-import { PagePermissionsService } from './page-permissions.service.js';
 import { PagesService } from './pages.service.js';
 
-const reader: AuthenticatedUser = {
+const member: AuthenticatedUser = {
   id: 'r1',
   email: 'r@x.com',
-  role: 'reader',
+  role: 'member',
 };
-const editor: AuthenticatedUser = {
+const pageEditor: AuthenticatedUser = {
   id: 'e1',
   email: 'e@x.com',
-  role: 'editor',
+  role: 'member',
 };
+const admin: AuthenticatedUser = {
+  id: 'a1',
+  email: 'a@x.com',
+  role: 'admin',
+};
+
+function buildUser(overrides: Partial<User> = {}): User {
+  return {
+    id: 'user-1',
+    email: 'user@example.com',
+    displayName: 'User',
+    passwordHash: 'hash',
+    role: 'member',
+    avatarUrl: null,
+    failedLoginAttempts: 0,
+    lockedUntil: null,
+    isActive: true,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    ...overrides,
+  };
+}
 
 function buildPage(overrides: Partial<Page> = {}): Page {
   return {
@@ -78,9 +102,12 @@ describe('PagesService', () => {
   let pageFollowRepository: {
     [K in keyof PageFollowRepository]: Mock<PageFollowRepository[K]>;
   };
-  let pagePermissionsService: {
-    canEdit: Mock<(userId: string, pageId: string) => Promise<boolean>>;
+  let permissionsService: {
+    can: Mock<PermissionsService['can']>;
+    hasGlobal: Mock<PermissionsService['hasGlobal']>;
+    filterReadable: Mock<PermissionsService['filterReadable']>;
   };
+  let usersService: { findById: Mock<UsersService['findById']> };
   let pageMergeService: { merge: ReturnType<typeof vi.fn> };
   let eventEmitter: { emit: ReturnType<typeof vi.fn> };
   let userActivityLogService: { record: ReturnType<typeof vi.fn> };
@@ -109,7 +136,24 @@ describe('PagesService', () => {
       findFollowedPageIds: vi.fn(),
       isFollowing: vi.fn().mockResolvedValue(false),
     };
-    pagePermissionsService = { canEdit: vi.fn().mockResolvedValue(true) };
+    permissionsService = {
+      can: vi.fn().mockResolvedValue(true),
+      hasGlobal: vi.fn().mockResolvedValue(true),
+      filterReadable: vi
+        .fn()
+        .mockImplementation((_user: User | undefined, pages: Page[]) =>
+          Promise.resolve(pages),
+        ),
+    };
+    usersService = {
+      findById: vi
+        .fn()
+        .mockImplementation((id: string) =>
+          Promise.resolve(
+            buildUser({ id, role: id === admin.id ? 'admin' : 'member' }),
+          ),
+        ),
+    };
     pageMergeService = {
       merge: vi.fn().mockImplementation((base: string, mine: string) => ({
         conflict: false,
@@ -124,7 +168,8 @@ describe('PagesService', () => {
         PagesService,
         { provide: 'PagesRepository', useValue: pagesRepository },
         { provide: 'PageFollowsRepository', useValue: pageFollowRepository },
-        { provide: PagePermissionsService, useValue: pagePermissionsService },
+        { provide: PermissionsService, useValue: permissionsService },
+        { provide: UsersService, useValue: usersService },
         { provide: PageMergeService, useValue: pageMergeService },
         { provide: EventEmitter2, useValue: eventEmitter },
         { provide: UserActivityLogService, useValue: userActivityLogService },
@@ -175,11 +220,16 @@ describe('PagesService', () => {
 
     it('throws InsufficientPagePermissionException when the user cannot edit', async () => {
       pagesRepository.findById.mockResolvedValue(buildPage());
-      pagePermissionsService.canEdit.mockResolvedValue(false);
+      permissionsService.can.mockResolvedValue(false);
 
       await expect(
         service.updatePage('page-1', {}, 'user-2'),
       ).rejects.toBeInstanceOf(InsufficientPagePermissionException);
+      expect(permissionsService.can).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'user-2' }),
+        'page.edit',
+        'page-1',
+      );
       expect(pagesRepository.updateWithNewVersion).not.toHaveBeenCalled();
     });
 
@@ -362,6 +412,75 @@ describe('PagesService', () => {
     });
   });
 
+  describe('createNewVersionFromContent', () => {
+    it('creates a new version from the given content when the user can restore', async () => {
+      const page = buildPage();
+      const newVersion = buildVersion({
+        id: 'version-2',
+        content: 'restored content',
+      });
+      pagesRepository.findById.mockResolvedValue(page);
+      pagesRepository.updateWithNewVersion.mockResolvedValue({
+        page: { ...page, currentVersionId: 'version-2' },
+        version: newVersion,
+      });
+
+      const result = await service.createNewVersionFromContent(
+        'page-1',
+        'restored content',
+        'user-1',
+        'Restored from version version-0',
+      );
+
+      expect(permissionsService.can).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'user-1' }),
+        'page.restore_version',
+        'page-1',
+      );
+      expect(pagesRepository.updateWithNewVersion).toHaveBeenCalledWith({
+        page,
+        title: page.title,
+        content: 'restored content',
+        changeSummary: 'Restored from version version-0',
+        authorId: 'user-1',
+      });
+      expect(result.version.id).toBe('version-2');
+    });
+
+    it('throws PageNotFoundException when the page does not exist', async () => {
+      pagesRepository.findById.mockResolvedValue(null);
+
+      await expect(
+        service.createNewVersionFromContent(
+          'missing',
+          'content',
+          'user-1',
+          null,
+        ),
+      ).rejects.toBeInstanceOf(PageNotFoundException);
+    });
+
+    it('throws InsufficientPagePermissionException when the user lacks page.restore_version', async () => {
+      pagesRepository.findById.mockResolvedValue(buildPage());
+      permissionsService.can.mockResolvedValue(false);
+
+      await expect(
+        service.createNewVersionFromContent(
+          'page-1',
+          'content',
+          'user-2',
+          null,
+        ),
+      ).rejects.toBeInstanceOf(InsufficientPagePermissionException);
+      expect(permissionsService.can).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'user-2' }),
+        'page.restore_version',
+        'page-1',
+      );
+      expect(pagesRepository.updateWithNewVersion).not.toHaveBeenCalled();
+    });
+  });
+
   describe('mergePreview', () => {
     it('returns a clean merge without persisting anything', async () => {
       const page = buildPage({ currentVersionId: 'version-2' });
@@ -426,7 +545,7 @@ describe('PagesService', () => {
         (base: string, mine: string, theirs: string) =>
           new PageMergeService().merge(base, mine, theirs),
       );
-      pagePermissionsService.canEdit.mockResolvedValue(false);
+      permissionsService.can.mockResolvedValue(false);
 
       await expect(
         service.mergePreview('page-1', 'version-1', 'content', 'user-1'),
@@ -535,6 +654,80 @@ describe('PagesService', () => {
 
       expect(eventEmitter.emit).toHaveBeenCalledWith(PAGE_TREE_CHANGED_EVENT);
     });
+
+    it('throws ParentPageNotFoundException, not a permission error, when newParentId does not exist', async () => {
+      const page = buildPage({ id: pageId, parentId: null });
+      const dto: MovePageDto = { newParentId: otherId };
+
+      pagesRepository.findById.mockImplementation((id: string) =>
+        Promise.resolve(id === pageId ? page : null),
+      );
+      pagesRepository.findVersionById.mockResolvedValue(buildVersion());
+      permissionsService.can.mockImplementation((_user, _action, id) =>
+        Promise.resolve(id === pageId),
+      );
+
+      await expect(
+        service.movePage(pageId, dto, 'user-1'),
+      ).rejects.toBeInstanceOf(ParentPageNotFoundException);
+      expect(permissionsService.can).not.toHaveBeenCalledWith(
+        expect.anything(),
+        'page.create_child',
+        otherId,
+      );
+      expect(pagesRepository.updateParent).not.toHaveBeenCalled();
+    });
+
+    it('throws InsufficientPagePermissionException when the user cannot move the page', async () => {
+      pagesRepository.findById.mockResolvedValue(
+        buildPage({ id: pageId, parentId: null }),
+      );
+      permissionsService.can.mockImplementation((_user, action) =>
+        Promise.resolve(action !== 'page.move'),
+      );
+
+      await expect(
+        service.movePage(pageId, { newParentId: null }, 'user-1'),
+      ).rejects.toBeInstanceOf(InsufficientPagePermissionException);
+      expect(pagesRepository.updateParent).not.toHaveBeenCalled();
+    });
+
+    it('throws InsufficientPagePermissionException when the user cannot create a child under the destination', async () => {
+      const page = buildPage({ id: pageId, parentId: null });
+      const target = buildPage({ id: otherId, parentId: null });
+
+      pagesRepository.findById.mockImplementation((id: string) => {
+        if (id === pageId) return Promise.resolve(page);
+        if (id === otherId) return Promise.resolve(target);
+        return Promise.resolve(null);
+      });
+      pagesRepository.findVersionById.mockResolvedValue(buildVersion());
+      permissionsService.can.mockImplementation((_user, action) =>
+        Promise.resolve(action !== 'page.create_child'),
+      );
+
+      await expect(
+        service.movePage(pageId, { newParentId: otherId }, 'user-1'),
+      ).rejects.toBeInstanceOf(InsufficientPagePermissionException);
+      expect(pagesRepository.updateParent).not.toHaveBeenCalled();
+    });
+
+    it('requires the page.create_root global permission to move a page to the root', async () => {
+      pagesRepository.findById.mockResolvedValue(
+        buildPage({ id: pageId, parentId: otherId }),
+      );
+      pagesRepository.findVersionById.mockResolvedValue(buildVersion());
+      permissionsService.hasGlobal.mockResolvedValue(false);
+
+      await expect(
+        service.movePage(pageId, { newParentId: null }, 'user-1'),
+      ).rejects.toBeInstanceOf(InsufficientPagePermissionException);
+      expect(permissionsService.hasGlobal).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'user-1' }),
+        'page.create_root',
+      );
+      expect(pagesRepository.updateParent).not.toHaveBeenCalled();
+    });
   });
 
   describe('createPage', () => {
@@ -589,6 +782,34 @@ describe('PagesService', () => {
       );
     });
 
+    it('throws InsufficientPagePermissionException when creating a root page without page.create_root', async () => {
+      permissionsService.hasGlobal.mockResolvedValue(false);
+
+      await expect(service.createPage(dto, 'user-1')).rejects.toBeInstanceOf(
+        InsufficientPagePermissionException,
+      );
+      expect(permissionsService.hasGlobal).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'user-1' }),
+        'page.create_root',
+      );
+      expect(pagesRepository.createWithFirstVersion).not.toHaveBeenCalled();
+    });
+
+    it('throws InsufficientPagePermissionException when creating a child without page.create_child on the parent', async () => {
+      pagesRepository.findById.mockResolvedValue(buildPage({ id: 'parent-1' }));
+      permissionsService.can.mockResolvedValue(false);
+
+      await expect(
+        service.createPage({ ...dto, parentId: 'parent-1' }, 'user-1'),
+      ).rejects.toBeInstanceOf(InsufficientPagePermissionException);
+      expect(permissionsService.can).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'user-1' }),
+        'page.create_child',
+        'parent-1',
+      );
+      expect(pagesRepository.createWithFirstVersion).not.toHaveBeenCalled();
+    });
+
     it('emits PAGE_TREE_CHANGED_EVENT after creating a page', async () => {
       pagesRepository.findBySlugAndParent.mockResolvedValue(null);
       pagesRepository.createWithFirstVersion.mockResolvedValue({
@@ -603,42 +824,42 @@ describe('PagesService', () => {
   });
 
   describe('getTree', () => {
-    it('returns every page for an admin/editor', async () => {
+    it('returns every page when every page is readable', async () => {
       const pages = [buildPage({ id: 'p1', visibility: 'private' })];
       pagesRepository.findAll.mockResolvedValue(pages);
 
-      const tree = await service.getTree(editor);
+      const tree = await service.getTree(admin);
 
       expect(tree).toHaveLength(1);
     });
 
-    it('filters out private pages for a reader without an explicit grant', async () => {
-      pagePermissionsService.canEdit.mockResolvedValue(false);
-      const pages = [
-        buildPage({ id: 'p1', visibility: 'private' }),
-        buildPage({ id: 'p2', visibility: 'public' }),
-      ];
-      pagesRepository.findAll.mockResolvedValue(pages);
+    it('builds the tree only from the pages PermissionsService deems readable for the full user record', async () => {
+      const privatePage = buildPage({ id: 'p1', visibility: 'private' });
+      const publicPage = buildPage({ id: 'p2', visibility: 'public' });
+      pagesRepository.findAll.mockResolvedValue([privatePage, publicPage]);
+      permissionsService.filterReadable.mockResolvedValue([publicPage]);
 
-      const tree = await service.getTree(reader);
+      const tree = await service.getTree(member);
 
-      expect(tree).toHaveLength(1);
-      expect(tree[0].id).toBe('p2');
-    });
-
-    it('includes a private page for a reader with an explicit permission grant', async () => {
-      pagePermissionsService.canEdit.mockImplementation((_userId, pageId) =>
-        Promise.resolve(pageId === 'p1'),
+      expect(usersService.findById).toHaveBeenCalledWith(member.id);
+      expect(permissionsService.filterReadable).toHaveBeenCalledWith(
+        expect.objectContaining({ id: member.id, role: 'member' }),
+        [privatePage, publicPage],
       );
-      const pages = [
-        buildPage({ id: 'p1', visibility: 'private' }),
-        buildPage({ id: 'p2', visibility: 'private' }),
-      ];
+      expect(tree.map((node) => node.id)).toEqual(['p2']);
+    });
+
+    it('filters as an anonymous visitor without looking up a user', async () => {
+      const pages = [buildPage({ id: 'p1', visibility: 'public' })];
       pagesRepository.findAll.mockResolvedValue(pages);
 
-      const tree = await service.getTree(reader);
+      await service.getTree(undefined);
 
-      expect(tree.map((node) => node.id)).toEqual(['p1']);
+      expect(usersService.findById).not.toHaveBeenCalled();
+      expect(permissionsService.filterReadable).toHaveBeenCalledWith(
+        undefined,
+        pages,
+      );
     });
   });
 
@@ -667,36 +888,43 @@ describe('PagesService', () => {
       );
       pagesRepository.findVersionById.mockResolvedValue(version);
 
-      const result = await service.findByPath(['docs', 'guide'], editor);
+      const result = await service.findByPath(['docs', 'guide'], member);
 
       expect(result.page).toBe(child);
       expect(result.version).toBe(version);
     });
 
     it('throws PageNotFoundException for an empty path', async () => {
-      await expect(service.findByPath([], editor)).rejects.toBeInstanceOf(
+      await expect(service.findByPath([], member)).rejects.toBeInstanceOf(
         PageNotFoundException,
       );
     });
 
     it('throws PageAccessForbiddenException for a private page and no permission', async () => {
       const page = buildPage({ visibility: 'private' });
-      pagePermissionsService.canEdit.mockResolvedValue(false);
+      permissionsService.can.mockResolvedValue(false);
       pagesRepository.findBySlugAndParent.mockResolvedValue(page);
 
       await expect(
-        service.findByPath(['secret'], reader),
+        service.findByPath(['secret'], member),
       ).rejects.toBeInstanceOf(PageAccessForbiddenException);
+      expect(permissionsService.can).toHaveBeenCalledWith(
+        expect.objectContaining({ id: member.id }),
+        'page.read',
+        page.id,
+      );
     });
 
-    it('allows a private page for a reader with an explicit permission grant', async () => {
+    it('allows a private page for a member whose access rule grants page.read', async () => {
       const page = buildPage({ visibility: 'private' });
       const version = buildVersion({ id: page.currentVersionId! });
-      pagePermissionsService.canEdit.mockResolvedValue(true);
+      permissionsService.can.mockImplementation((_user, action) =>
+        Promise.resolve(action === 'page.read'),
+      );
       pagesRepository.findBySlugAndParent.mockResolvedValue(page);
       pagesRepository.findVersionById.mockResolvedValue(version);
 
-      const result = await service.findByPath(['secret'], reader);
+      const result = await service.findByPath(['secret'], member);
 
       expect(result.page).toBe(page);
     });
@@ -707,7 +935,7 @@ describe('PagesService', () => {
       pagesRepository.findBySlugAndParent.mockResolvedValue(page);
       pagesRepository.findVersionById.mockResolvedValue(version);
 
-      const result = await service.findByPath(['home'], editor);
+      const result = await service.findByPath(['home'], member);
 
       expect(pagesRepository.incrementViewCount).toHaveBeenCalledWith(page.id);
       expect(result.page.viewCount).toBe(5);
@@ -720,16 +948,16 @@ describe('PagesService', () => {
       pagesRepository.findVersionById.mockResolvedValue(version);
       pageFollowRepository.isFollowing.mockResolvedValue(true);
 
-      const result = await service.findByPath(['home'], editor);
+      const result = await service.findByPath(['home'], member);
 
       expect(pageFollowRepository.isFollowing).toHaveBeenCalledWith(
-        editor.id,
+        member.id,
         page.id,
       );
       expect(result.isFollowed).toBe(true);
     });
 
-    it('reports isFollowed as false for an anonymous reader', async () => {
+    it('reports isFollowed as false for an anonymous visitor', async () => {
       const page = buildPage({ visibility: 'public' });
       const version = buildVersion({ id: page.currentVersionId! });
       pagesRepository.findBySlugAndParent.mockResolvedValue(page);
@@ -741,45 +969,49 @@ describe('PagesService', () => {
       expect(result.isFollowed).toBe(false);
     });
 
-    it('reports canEdit as true for an editor', async () => {
+    it('reports canEdit as true for a member whose access rule grants page.edit', async () => {
       const page = buildPage({ visibility: 'public' });
       const version = buildVersion({ id: page.currentVersionId! });
-      pagePermissionsService.canEdit.mockResolvedValue(true);
+      permissionsService.can.mockResolvedValue(true);
       pagesRepository.findBySlugAndParent.mockResolvedValue(page);
       pagesRepository.findVersionById.mockResolvedValue(version);
 
-      const result = await service.findByPath(['home'], editor);
+      const result = await service.findByPath(['home'], pageEditor);
 
-      expect(pagePermissionsService.canEdit).toHaveBeenCalledWith(
-        editor.id,
+      expect(permissionsService.can).toHaveBeenCalledWith(
+        expect.objectContaining({ id: pageEditor.id }),
+        'page.edit',
         page.id,
       );
       expect(result.canEdit).toBe(true);
     });
 
-    it('reports canEdit as false for a reader without a permission grant', async () => {
+    it('reports canEdit as false for a member without a page.edit grant', async () => {
       const page = buildPage({ visibility: 'public' });
       const version = buildVersion({ id: page.currentVersionId! });
-      pagePermissionsService.canEdit.mockResolvedValue(false);
+      permissionsService.can.mockImplementation((_user, action) =>
+        Promise.resolve(action === 'page.read'),
+      );
       pagesRepository.findBySlugAndParent.mockResolvedValue(page);
       pagesRepository.findVersionById.mockResolvedValue(version);
 
-      const result = await service.findByPath(['home'], reader);
+      const result = await service.findByPath(['home'], member);
 
       expect(result.canEdit).toBe(false);
     });
 
-    it('reports canEdit as true for a reader with a permission grant inherited from a parent page', async () => {
+    it('asks PermissionsService about the leaf page itself so a rule on an ancestor can grant canEdit', async () => {
       const page = buildPage({ visibility: 'public', parentId: 'parent-1' });
       const version = buildVersion({ id: page.currentVersionId! });
-      pagePermissionsService.canEdit.mockResolvedValue(true);
+      permissionsService.can.mockResolvedValue(true);
       pagesRepository.findBySlugAndParent.mockResolvedValue(page);
       pagesRepository.findVersionById.mockResolvedValue(version);
 
-      const result = await service.findByPath(['docs', 'home'], reader);
+      const result = await service.findByPath(['docs', 'home'], member);
 
-      expect(pagePermissionsService.canEdit).toHaveBeenCalledWith(
-        reader.id,
+      expect(permissionsService.can).toHaveBeenCalledWith(
+        expect.objectContaining({ id: member.id }),
+        'page.edit',
         page.id,
       );
       expect(result.canEdit).toBe(true);
@@ -788,12 +1020,20 @@ describe('PagesService', () => {
     it('reports canEdit as false for an anonymous visitor', async () => {
       const page = buildPage({ visibility: 'public' });
       const version = buildVersion({ id: page.currentVersionId! });
+      permissionsService.can.mockImplementation((user, action) =>
+        Promise.resolve(action === 'page.read' || user !== undefined),
+      );
       pagesRepository.findBySlugAndParent.mockResolvedValue(page);
       pagesRepository.findVersionById.mockResolvedValue(version);
 
       const result = await service.findByPath(['home'], undefined);
 
-      expect(pagePermissionsService.canEdit).not.toHaveBeenCalled();
+      expect(usersService.findById).not.toHaveBeenCalled();
+      expect(permissionsService.can).toHaveBeenCalledWith(
+        undefined,
+        'page.edit',
+        page.id,
+      );
       expect(result.canEdit).toBe(false);
     });
   });
@@ -811,20 +1051,21 @@ describe('PagesService', () => {
   });
 
   describe('listChildren / getByIdOrFail', () => {
-    it('lists visible children: public always, private only with a grant', async () => {
+    it('lists only the children PermissionsService deems readable', async () => {
       const parent = buildPage({ id: 'parent-1', visibility: 'public' });
+      const c1 = buildPage({ id: 'c1', visibility: 'public' });
+      const c2 = buildPage({ id: 'c2', visibility: 'private' });
+      const c3 = buildPage({ id: 'c3', visibility: 'private' });
       pagesRepository.findById.mockResolvedValue(parent);
-      pagePermissionsService.canEdit.mockImplementation((_userId, pageId) =>
-        Promise.resolve(pageId === 'c2'),
+      pagesRepository.findChildren.mockResolvedValue([c1, c2, c3]);
+      permissionsService.filterReadable.mockResolvedValue([c1, c2]);
+
+      const children = await service.listChildren('parent-1', member);
+
+      expect(permissionsService.filterReadable).toHaveBeenCalledWith(
+        expect.objectContaining({ id: member.id }),
+        [c1, c2, c3],
       );
-      pagesRepository.findChildren.mockResolvedValue([
-        buildPage({ id: 'c1', visibility: 'public' }),
-        buildPage({ id: 'c2', visibility: 'private' }),
-        buildPage({ id: 'c3', visibility: 'private' }),
-      ]);
-
-      const children = await service.listChildren('parent-1', reader);
-
       expect(children.map((c) => c.id)).toEqual(['c1', 'c2']);
     });
 
@@ -832,7 +1073,7 @@ describe('PagesService', () => {
       pagesRepository.findById.mockResolvedValue(null);
 
       await expect(
-        service.listChildren('missing', reader),
+        service.listChildren('missing', member),
       ).rejects.toBeInstanceOf(PageNotFoundException);
     });
   });
@@ -867,6 +1108,24 @@ describe('PagesService', () => {
 
       expect(pagesRepository.softDelete).toHaveBeenCalledWith('child');
       expect(pagesRepository.softDelete).toHaveBeenCalledWith('parent');
+    });
+
+    it('refuses a cascade delete when the user cannot delete one of the descendants', async () => {
+      const parent = buildPage({ id: 'parent' });
+      const child = buildPage({ id: 'child', parentId: 'parent' });
+
+      pagesRepository.findById.mockResolvedValue(parent);
+      pagesRepository.findChildren.mockImplementation((id: string) =>
+        Promise.resolve(id === 'parent' ? [child] : []),
+      );
+      permissionsService.can.mockImplementation((_user, _action, id) =>
+        Promise.resolve(id !== 'child'),
+      );
+
+      await expect(
+        service.deletePage('parent', { cascade: 'true' }, 'user-1'),
+      ).rejects.toBeInstanceOf(InsufficientPagePermissionException);
+      expect(pagesRepository.softDelete).not.toHaveBeenCalled();
     });
 
     it('soft-deletes a leaf page without cascade', async () => {
@@ -974,7 +1233,7 @@ describe('PagesService', () => {
 
     it('throws InsufficientPagePermissionException when the user cannot edit', async () => {
       pagesRepository.findById.mockResolvedValue(buildPage());
-      pagePermissionsService.canEdit.mockResolvedValue(false);
+      permissionsService.can.mockResolvedValue(false);
 
       await expect(
         service.setCommentsEnabled(
@@ -1002,45 +1261,52 @@ describe('PagesService', () => {
       const page = buildPage();
       pagesRepository.findById.mockResolvedValue(page);
 
-      await service.followPage(page.id, reader);
+      await service.followPage(page.id, member);
 
       expect(pageFollowRepository.follow).toHaveBeenCalledWith(
-        reader.id,
+        member.id,
         page.id,
       );
     });
 
-    it('lets an editor follow a private page', async () => {
+    it('lets an admin follow a private page', async () => {
       const page = buildPage({ visibility: 'private' });
       pagesRepository.findById.mockResolvedValue(page);
 
-      await service.followPage(page.id, editor);
+      await service.followPage(page.id, admin);
 
+      expect(permissionsService.can).toHaveBeenCalledWith(
+        expect.objectContaining({ id: admin.id, role: 'admin' }),
+        'page.read',
+        page.id,
+      );
       expect(pageFollowRepository.follow).toHaveBeenCalledWith(
-        editor.id,
+        admin.id,
         page.id,
       );
     });
 
-    it('lets a reader with a grant follow a private page', async () => {
+    it('lets a member whose access rule grants page.read follow a private page', async () => {
       const page = buildPage({ visibility: 'private' });
       pagesRepository.findById.mockResolvedValue(page);
-      pagePermissionsService.canEdit.mockResolvedValue(true);
+      permissionsService.can.mockImplementation((_user, action) =>
+        Promise.resolve(action === 'page.read'),
+      );
 
-      await service.followPage(page.id, reader);
+      await service.followPage(page.id, member);
 
       expect(pageFollowRepository.follow).toHaveBeenCalledWith(
-        reader.id,
+        member.id,
         page.id,
       );
     });
 
-    it('rejects a reader without a grant on a private page', async () => {
+    it('rejects a member without a grant on a private page', async () => {
       const page = buildPage({ visibility: 'private' });
       pagesRepository.findById.mockResolvedValue(page);
-      pagePermissionsService.canEdit.mockResolvedValue(false);
+      permissionsService.can.mockResolvedValue(false);
 
-      await expect(service.followPage(page.id, reader)).rejects.toBeInstanceOf(
+      await expect(service.followPage(page.id, member)).rejects.toBeInstanceOf(
         PageAccessForbiddenException,
       );
       expect(pageFollowRepository.follow).not.toHaveBeenCalled();
@@ -1050,7 +1316,7 @@ describe('PagesService', () => {
       pagesRepository.findById.mockResolvedValue(null);
 
       await expect(
-        service.followPage('missing', reader),
+        service.followPage('missing', member),
       ).rejects.toBeInstanceOf(PageNotFoundException);
       expect(pageFollowRepository.follow).not.toHaveBeenCalled();
     });
@@ -1090,7 +1356,7 @@ describe('PagesService', () => {
         Promise.resolve(id === 'v1' ? olderVersion : newerVersion),
       );
 
-      const result = await service.getFollowedPages(reader);
+      const result = await service.getFollowedPages(member);
 
       expect(result).toEqual([
         { page: newer, lastActivityAt: newerVersion.createdAt },
@@ -1101,7 +1367,7 @@ describe('PagesService', () => {
     it('returns an empty list when nothing is followed', async () => {
       pageFollowRepository.findFollowedPageIds.mockResolvedValue([]);
 
-      const result = await service.getFollowedPages(reader);
+      const result = await service.getFollowedPages(member);
 
       expect(result).toEqual([]);
     });
@@ -1121,9 +1387,11 @@ describe('PagesService', () => {
         Promise.resolve(id === 'page-1' ? publicPage : privatePage),
       );
       pagesRepository.findVersionById.mockResolvedValue(buildVersion());
-      pagePermissionsService.canEdit.mockResolvedValue(false);
+      permissionsService.can.mockImplementation((_user, action, pageId) =>
+        Promise.resolve(action === 'page.read' && pageId === 'page-1'),
+      );
 
-      const result = await service.getFollowedPages(reader);
+      const result = await service.getFollowedPages(member);
 
       expect(result.map((entry) => entry.page.id)).toEqual(['page-1']);
     });

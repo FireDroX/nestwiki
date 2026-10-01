@@ -225,6 +225,29 @@ export class PermissionsService {
     return [...actions];
   }
 
+  async hasUnrestrictedPageAccess(
+    user: User | undefined,
+    action: PageAction,
+  ): Promise<boolean> {
+    if (!user) {
+      return false;
+    }
+    if (user.role === 'admin') {
+      return true;
+    }
+    if (!user.isActive) {
+      return false;
+    }
+    const context = await this.loadUserContext(user);
+    return context.rules.some(
+      ({ rule, excludedPageIds }) =>
+        rule.appliesTo === 'subtree' &&
+        rule.pageId === null &&
+        rule.actions.includes(action) &&
+        excludedPageIds.length === 0,
+    );
+  }
+
   async filterReadable(user: User | undefined, pages: Page[]): Promise<Page[]> {
     if (pages.length === 0) {
       return [];

@@ -30,7 +30,6 @@ import {
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
-import { Roles } from '../common/decorators/roles.decorator.js';
 import { ErrorResponseDto } from '../common/dto/error-response.dto.js';
 import { PaginatedResponseDto } from '../common/dto/paginated-response.dto.js';
 import { ResponseDto } from '../common/dto/response.dto.js';
@@ -39,7 +38,6 @@ import { PageNotFoundException } from '../common/exceptions/pages/page-not-found
 import { VersionNotFoundException } from '../common/exceptions/pages/version-not-found.exception.js';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard.js';
 import { OptionalJwtAuthGuard } from '../common/guards/optional-jwt-auth.guard.js';
-import { RolesGuard } from '../common/guards/roles.guard.js';
 import type { AuthenticatedUser } from '../common/strategies/jwt.strategy.js';
 import { CreateCommentDto } from '../comments/dto/in/create-comment.dto.js';
 import { CommentResponseDto } from '../comments/dto/out/comment-response.dto.js';
@@ -60,21 +58,17 @@ import { VersionsService } from '../versions/services/versions.service.js';
 import { ChangeVisibilityDto } from './dto/in/change-visibility.dto.js';
 import { CreatePageDto } from './dto/in/create-page.dto.js';
 import { DeletePageQueryDto } from './dto/in/delete-page-query.dto.js';
-import { GrantPermissionDto } from './dto/in/grant-permission.dto.js';
 import { MergePreviewDto } from './dto/in/merge-preview.dto.js';
 import { MovePageDto } from './dto/in/move-page.dto.js';
 import { SetCommentsEnabledDto } from './dto/in/set-comments-enabled.dto.js';
 import { UpdatePageDto } from './dto/in/update-page.dto.js';
 import { PageDetailResponseDto } from './dto/out/page-detail-response.dto.js';
 import { PageMergePreviewResponseDto } from './dto/out/page-merge-preview-response.dto.js';
-import { PagePermissionResponseDto } from './dto/out/page-permission-response.dto.js';
 import { PageResponseDto } from './dto/out/page-response.dto.js';
 import { PageTreeNodeDto } from './dto/out/page-tree-node.dto.js';
 import { PageUpdateResponseDto } from './dto/out/page-update-response.dto.js';
 import { PagesExceptionFilter } from './filter/pages-exception.filter.js';
-import { PagePermissionMapper } from './mapper/page-permission.mapper.js';
 import { PageMapper } from './mapper/page.mapper.js';
-import { PagePermissionsService } from './services/page-permissions.service.js';
 import { PagesService } from './services/pages.service.js';
 
 const COMMENT_CREATE_THROTTLE_LIMIT = 10;
@@ -87,14 +81,12 @@ export class PagesController {
   constructor(
     private readonly pagesService: PagesService,
     private readonly versionsService: VersionsService,
-    private readonly pagePermissionsService: PagePermissionsService,
     private readonly commentsService: CommentsService,
     private readonly tagsService: TagsService,
   ) {}
 
   @Post()
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('editor', 'admin')
+  @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Créer une page' })
@@ -489,8 +481,7 @@ export class PagesController {
   }
 
   @Post(':id/versions/:versionId/restore')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('editor', 'admin')
+  @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
@@ -540,102 +531,6 @@ export class PagesController {
       }
       throw error;
     }
-  }
-
-  @Post(':id/permissions')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin')
-  @ApiBearerAuth()
-  @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: "Accorder un droit d'édition sur une page" })
-  @ApiParam({ name: 'id', description: 'Identifiant de la page' })
-  @ApiBody({ type: GrantPermissionDto })
-  @ApiCreatedResponse({ description: 'Droit accordé avec succès.' })
-  @ApiUnauthorizedResponse({
-    description: 'Authentification requise.',
-    type: ErrorResponseDto,
-  })
-  @ApiForbiddenResponse({
-    description: 'Rôle admin requis.',
-    type: ErrorResponseDto,
-  })
-  @ApiNotFoundResponse({
-    description: "La page ou l'utilisateur n'existe pas.",
-    type: ErrorResponseDto,
-  })
-  @ApiConflictResponse({
-    description: 'Un droit existe déjà pour cet utilisateur sur cette page.',
-    type: ErrorResponseDto,
-  })
-  async grantPermission(
-    @Param('id') id: string,
-    @Body() dto: GrantPermissionDto,
-    @CurrentUser() user: AuthenticatedUser,
-  ): Promise<ResponseDto<PagePermissionResponseDto>> {
-    const permission = await this.pagePermissionsService.grant(
-      id,
-      dto.userId,
-      user.id,
-    );
-    return PagePermissionMapper.toResponse(permission);
-  }
-
-  @Get(':id/permissions')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin')
-  @ApiBearerAuth()
-  @ApiOperation({
-    summary: "Lister les droits d'édition accordés explicitement sur une page",
-    description: "N'inclut pas les droits hérités d'une page ancêtre.",
-  })
-  @ApiParam({ name: 'id', description: 'Identifiant de la page' })
-  @ApiOkResponse({ description: 'Liste des droits explicites de la page.' })
-  @ApiUnauthorizedResponse({
-    description: 'Authentification requise.',
-    type: ErrorResponseDto,
-  })
-  @ApiForbiddenResponse({
-    description: 'Rôle admin requis.',
-    type: ErrorResponseDto,
-  })
-  @ApiNotFoundResponse({
-    description: "La page n'existe pas.",
-    type: ErrorResponseDto,
-  })
-  async listPermissions(
-    @Param('id') id: string,
-  ): Promise<ResponseDto<PagePermissionResponseDto[]>> {
-    const permissions = await this.pagePermissionsService.listExplicit(id);
-    return PagePermissionMapper.toListResponse(permissions);
-  }
-
-  @Delete(':id/permissions/:userId')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('admin')
-  @ApiBearerAuth()
-  @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: "Révoquer un droit d'édition sur une page" })
-  @ApiParam({ name: 'id', description: 'Identifiant de la page' })
-  @ApiParam({ name: 'userId', description: "Identifiant de l'utilisateur" })
-  @ApiNoContentResponse({ description: 'Droit révoqué.' })
-  @ApiUnauthorizedResponse({
-    description: 'Authentification requise.',
-    type: ErrorResponseDto,
-  })
-  @ApiForbiddenResponse({
-    description: 'Rôle admin requis.',
-    type: ErrorResponseDto,
-  })
-  @ApiNotFoundResponse({
-    description:
-      "Aucun droit explicite n'existe pour cet utilisateur sur cette page.",
-    type: ErrorResponseDto,
-  })
-  async revokePermission(
-    @Param('id') id: string,
-    @Param('userId') userId: string,
-  ): Promise<void> {
-    await this.pagePermissionsService.revoke(id, userId);
   }
 
   @Get(':id/comments')
@@ -780,8 +675,7 @@ export class PagesController {
   }
 
   @Post(':id/tags')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('editor', 'admin')
+  @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Associer un tag à une page' })
   @ApiParam({ name: 'id', description: 'Identifiant de la page' })
@@ -813,8 +707,7 @@ export class PagesController {
   }
 
   @Delete(':id/tags/:tagId')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('editor', 'admin')
+  @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: "Retirer un tag d'une page" })
@@ -836,8 +729,9 @@ export class PagesController {
   async untagPage(
     @Param('id') id: string,
     @Param('tagId') tagId: string,
+    @CurrentUser() user: AuthenticatedUser,
   ): Promise<void> {
-    await this.tagsService.untagPage(id, tagId);
+    await this.tagsService.untagPage(id, tagId, user);
   }
 
   @Get('*path')

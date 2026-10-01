@@ -15,6 +15,7 @@ import {
   MAX_LIMIT,
 } from '../../common/variables.global.js';
 import { PagesService } from '../../pages/services/pages.service.js';
+import { PermissionsService } from '../../permissions/services/permissions.service.js';
 import { UsersService } from '../../users/services/users.service.js';
 import { CreateCommentDto } from '../dto/in/create-comment.dto.js';
 import { ListUserCommentsQueryDto } from '../dto/in/list-user-comments-query.dto.js';
@@ -43,6 +44,7 @@ export class CommentsService {
     private readonly commentsRepository: CommentsRepository,
     private readonly pagesService: PagesService,
     private readonly usersService: UsersService,
+    private readonly permissionsService: PermissionsService,
     private readonly adminAuditLogService: AdminAuditLogService,
     private readonly userActivityLogService: UserActivityLogService,
     private readonly eventEmitter: EventEmitter2,
@@ -118,8 +120,6 @@ export class CommentsService {
   ): Promise<void> {
     const comment = await this.getByIdOrFail(id);
     const isAuthor = comment.authorId === currentUser.id;
-    const isModerator =
-      currentUser.role === 'editor' || currentUser.role === 'admin';
 
     if (isAuthor) {
       await this.commentsRepository.softDelete(comment);
@@ -127,7 +127,8 @@ export class CommentsService {
       return;
     }
 
-    if (!isModerator) {
+    const user = await this.usersService.findById(currentUser.id);
+    if (!(await this.permissionsService.hasGlobal(user, 'comment.moderate'))) {
       throw new CommentDeleteForbiddenException();
     }
 

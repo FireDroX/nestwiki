@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ActivityModule } from '../activity/activity.module.js';
 import { AdminModule } from '../admin/admin.module.js';
 import { PagesModule } from '../pages/pages.module.js';
+import { PermissionsModule } from '../permissions/permissions.module.js';
 import { UsersModule } from '../users/users.module.js';
 import {
   AdminUserCommentsController,
@@ -19,6 +20,7 @@ import { CommentsService } from './services/comments.service.js';
     forwardRef(() => UsersModule),
     AdminModule,
     ActivityModule,
+    PermissionsModule,
   ],
   controllers: [CommentController, AdminUserCommentsController],
   providers: [

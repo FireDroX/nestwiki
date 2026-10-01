@@ -6,7 +6,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
-export const USER_ROLES = ['admin', 'editor', 'reader'] as const;
+export const USER_ROLES = ['admin', 'member'] as const;
 export type UserRole = (typeof USER_ROLES)[number];
 
 @Entity('users')
@@ -28,7 +28,7 @@ export class User {
   @Column({ type: 'varchar', length: 500, name: 'avatar_url', nullable: true })
   avatarUrl: string | null;
 
-  @Column({ type: 'enum', enum: USER_ROLES, default: 'reader' })
+  @Column({ type: 'enum', enum: USER_ROLES, default: 'member' })
   role: UserRole;
 
   @Column({ type: 'int', name: 'failed_login_attempts', default: 0 })

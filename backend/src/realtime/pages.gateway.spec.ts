@@ -66,7 +66,7 @@ describe('PagesGateway', () => {
       jwtService.verifyAsync.mockResolvedValue({
         sub: 'user-1',
         email: 'a@b.com',
-        role: 'editor',
+        role: 'member',
       });
 
       await gateway.handleConnection(client as never);
@@ -74,7 +74,7 @@ describe('PagesGateway', () => {
       expect(client.data.user).toEqual({
         id: 'user-1',
         email: 'a@b.com',
-        role: 'editor',
+        role: 'member',
       });
     });
   });
@@ -82,7 +82,7 @@ describe('PagesGateway', () => {
   describe('handleJoin', () => {
     it('rejects a join when the user cannot read the page', async () => {
       const client = buildSocket();
-      client.data.user = { id: 'user-1', email: 'a@b.com', role: 'reader' };
+      client.data.user = { id: 'user-1', email: 'a@b.com', role: 'member' };
       pagesService.getByIdOrFail.mockRejectedValue(
         new PageAccessForbiddenException(),
       );
@@ -97,7 +97,7 @@ describe('PagesGateway', () => {
 
     it('joins the page room when the user can read the page', async () => {
       const client = buildSocket();
-      client.data.user = { id: 'user-1', email: 'a@b.com', role: 'reader' };
+      client.data.user = { id: 'user-1', email: 'a@b.com', role: 'member' };
       pagesService.getByIdOrFail.mockResolvedValue({});
 
       const ack = await gateway.handleJoin(client as never, {

@@ -16,7 +16,7 @@ function buildUser(overrides: Partial<User> = {}): User {
     passwordHash: 'hash',
     displayName: 'User One',
     avatarUrl: null,
-    role: 'reader',
+    role: 'member',
     failedLoginAttempts: 0,
     lockedUntil: null,
     isActive: true,
@@ -911,6 +911,107 @@ describe('PermissionsService', () => {
           groupName: null,
         },
       ]);
+    });
+  });
+
+  describe('hasUnrestrictedPageAccess', () => {
+    it('returns false for an anonymous user', async () => {
+      expect(
+        await service.hasUnrestrictedPageAccess(undefined, 'page.read'),
+      ).toBe(false);
+    });
+
+    it('returns true for an admin', async () => {
+      const admin = buildUser({ role: 'admin' });
+      expect(await service.hasUnrestrictedPageAccess(admin, 'page.read')).toBe(
+        true,
+      );
+    });
+
+    it('returns false for an inactive non-admin user', async () => {
+      const inactiveMember = buildUser({ isActive: false });
+      expect(
+        await service.hasUnrestrictedPageAccess(inactiveMember, 'page.read'),
+      ).toBe(false);
+    });
+
+    it('returns true when the user has a whole-wiki subtree rule granting the action', async () => {
+      const member = buildUser();
+      pageAccessRulesRepository.findByUserId.mockResolvedValue([
+        buildRule({
+          userId: member.id,
+          pageId: null,
+          appliesTo: 'subtree',
+          actions: ['page.read'],
+        }),
+      ]);
+      expect(await service.hasUnrestrictedPageAccess(member, 'page.read')).toBe(
+        true,
+      );
+    });
+
+    it('returns true when the whole-wiki rule is granted via a group', async () => {
+      const member = buildUser();
+      groupsRepository.findGroupIdsForUser.mockResolvedValue(['group-a']);
+      pageAccessRulesRepository.findByGroupIds.mockResolvedValue([
+        buildRule({
+          groupId: 'group-a',
+          pageId: null,
+          appliesTo: 'subtree',
+          actions: ['page.read'],
+        }),
+      ]);
+      expect(await service.hasUnrestrictedPageAccess(member, 'page.read')).toBe(
+        true,
+      );
+    });
+
+    it('returns false when the user only has a page-scoped rule, not a whole-wiki one', async () => {
+      const member = buildUser();
+      pageAccessRulesRepository.findByUserId.mockResolvedValue([
+        buildRule({
+          userId: member.id,
+          pageId: 'p1',
+          appliesTo: 'page',
+          actions: ['page.read'],
+        }),
+      ]);
+      expect(await service.hasUnrestrictedPageAccess(member, 'page.read')).toBe(
+        false,
+      );
+    });
+
+    it('returns false when the user has a whole-wiki rule for a different action', async () => {
+      const member = buildUser();
+      pageAccessRulesRepository.findByUserId.mockResolvedValue([
+        buildRule({
+          userId: member.id,
+          pageId: null,
+          appliesTo: 'subtree',
+          actions: ['page.edit'],
+        }),
+      ]);
+      expect(await service.hasUnrestrictedPageAccess(member, 'page.read')).toBe(
+        false,
+      );
+    });
+
+    it('returns false when the whole-wiki rule has an exclusion, even though it grants the action', async () => {
+      const member = buildUser();
+      pageAccessRulesRepository.findByUserId.mockResolvedValue([
+        buildRule({
+          userId: member.id,
+          pageId: null,
+          appliesTo: 'subtree',
+          actions: ['page.read'],
+        }),
+      ]);
+      pageAccessRulesRepository.findExclusionsForRules.mockResolvedValue(
+        new Map([['rule-1', ['private-page']]]),
+      );
+      expect(await service.hasUnrestrictedPageAccess(member, 'page.read')).toBe(
+        false,
+      );
     });
   });
 });

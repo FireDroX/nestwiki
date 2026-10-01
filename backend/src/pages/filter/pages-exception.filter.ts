@@ -36,7 +36,6 @@ export class PagesExceptionFilter implements ExceptionFilter {
       case 'PageNotFoundException':
       case 'VersionNotFoundException':
       case 'UserNotFoundException':
-      case 'PermissionNotFoundException':
       case 'CommentNotFoundException':
       case 'TagNotFoundException':
       case 'PageTagNotFoundException':
@@ -44,11 +43,11 @@ export class PagesExceptionFilter implements ExceptionFilter {
       case 'SlugAlreadyExistsException':
       case 'CircularReferenceException':
       case 'PageHasChildrenException':
-      case 'PermissionAlreadyExistsException':
       case 'PageTagAlreadyExistsException':
         return { statusCode: HttpStatus.CONFLICT, error: exception.message };
       case 'PageAccessForbiddenException':
       case 'InsufficientPagePermissionException':
+      case 'InsufficientPermissionException':
       case 'CommentsDisabledException':
         return { statusCode: HttpStatus.FORBIDDEN, error: exception.message };
       case 'ValidationException':

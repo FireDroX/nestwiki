@@ -9,7 +9,7 @@ import { StatsService } from './stats.service.js';
 const user: AuthenticatedUser = {
   id: 'user-1',
   email: 'u@x.com',
-  role: 'reader',
+  role: 'member',
 };
 
 function buildPage(overrides: Partial<Page> = {}): Page {

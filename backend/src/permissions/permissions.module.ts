@@ -1,5 +1,7 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { PermissionsGuard } from '../common/guards/permissions.guard.js';
+import { UsersModule } from '../users/users.module.js';
 import { GroupMember } from './entities/group-member.entity.js';
 import { GroupPermission } from './entities/group-permission.entity.js';
 import { Group } from './entities/group.entity.js';
@@ -22,6 +24,7 @@ import { PermissionsService } from './services/permissions.service.js';
       PageAccessRule,
       PageAccessExclusion,
     ]),
+    forwardRef(() => UsersModule),
   ],
   providers: [
     { provide: 'GroupsRepository', useClass: TypeormGroupsRepository },
@@ -38,6 +41,7 @@ import { PermissionsService } from './services/permissions.service.js';
       useClass: TypeormPageHierarchyRepository,
     },
     PermissionsService,
+    PermissionsGuard,
   ],
   exports: [
     'GroupsRepository',
@@ -45,6 +49,7 @@ import { PermissionsService } from './services/permissions.service.js';
     'PageAccessRulesRepository',
     'PageHierarchyRepository',
     PermissionsService,
+    PermissionsGuard,
   ],
 })
 export class PermissionsModule {}

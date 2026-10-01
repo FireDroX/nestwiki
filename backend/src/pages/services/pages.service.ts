@@ -12,6 +12,7 @@ import { ParentPageNotFoundException } from '../../common/exceptions/pages/paren
 import { SlugAlreadyExistsException } from '../../common/exceptions/pages/slug-already-exists.exception.js';
 import { VersionNotFoundException } from '../../common/exceptions/pages/version-not-found.exception.js';
 import { ValidationException } from '../../common/exceptions/validation.exception.js';
+import type { PageAction } from '../../common/permissions.js';
 import {
   CHANGE_SUMMARY_MAX_LENGTH,
   SLUG_MAX_LENGTH,
@@ -43,8 +44,10 @@ import {
 import { PageTreeMapper } from '../mapper/page-tree.mapper.js';
 import type { PageFollowRepository } from '../persistence/page-follow.repository.js';
 import type { PagesRepository } from '../persistence/page.repository.js';
+import { PermissionsService } from '../../permissions/services/permissions.service.js';
+import type { User } from '../../users/entities/user.entity.js';
+import { UsersService } from '../../users/services/users.service.js';
 import { PageMergeService } from './page-merge.service.js';
-import { PagePermissionsService } from './page-permissions.service.js';
 
 const MYSQL_DUPLICATE_ENTRY_CODE = 'ER_DUP_ENTRY';
 
@@ -55,11 +58,25 @@ export class PagesService {
     private readonly pagesRepository: PagesRepository,
     @Inject('PageFollowsRepository')
     private readonly pageFollowRepository: PageFollowRepository,
-    private readonly pagePermissionsService: PagePermissionsService,
+    private readonly permissionsService: PermissionsService,
+    private readonly usersService: UsersService,
     private readonly pageMergeService: PageMergeService,
     private readonly eventEmitter: EventEmitter2,
     private readonly userActivityLogService: UserActivityLogService,
   ) {}
+
+  private async resolveFullUser(
+    currentUser?: AuthenticatedUser,
+  ): Promise<User | undefined> {
+    if (!currentUser) {
+      return undefined;
+    }
+    try {
+      return await this.usersService.findById(currentUser.id);
+    } catch {
+      return undefined;
+    }
+  }
 
   async createPage(
     dto: CreatePageDto,
@@ -68,11 +85,25 @@ export class PagesService {
     this.validateCreatePage(dto);
 
     const parentId = dto.parentId ?? null;
+    const user = await this.usersService.findById(createdById);
     if (parentId !== null) {
       const parent = await this.pagesRepository.findById(parentId);
       if (!parent) {
         throw new ParentPageNotFoundException();
       }
+      if (
+        !(await this.permissionsService.can(
+          user,
+          'page.create_child',
+          parentId,
+        ))
+      ) {
+        throw new InsufficientPagePermissionException();
+      }
+    } else if (
+      !(await this.permissionsService.hasGlobal(user, 'page.create_root'))
+    ) {
+      throw new InsufficientPagePermissionException();
     }
 
     const existing = await this.pagesRepository.findBySlugAndParent(
@@ -154,9 +185,11 @@ export class PagesService {
       ? await this.pageFollowRepository.isFollowing(currentUser.id, page.id)
       : false;
 
-    const canEdit = currentUser
-      ? await this.pagePermissionsService.canEdit(currentUser.id, page.id)
-      : false;
+    const canEdit = await this.permissionsService.can(
+      await this.resolveFullUser(currentUser),
+      'page.edit',
+      page.id,
+    );
 
     return { page, version, isFollowed, canEdit };
   }
@@ -256,6 +289,8 @@ export class PagesService {
       throw new PageNotFoundException();
     }
 
+    await this.assertCan('page.restore_version', pageId, authorId);
+
     const result = await this.pagesRepository.updateWithNewVersion({
       page,
       title: page.title,
@@ -295,7 +330,7 @@ export class PagesService {
       throw new PageNotFoundException();
     }
 
-    await this.assertCanEdit(id, authorId);
+    await this.assertCan('page.edit', id, authorId);
 
     const currentVersion = await this.pagesRepository.findVersionById(
       page.currentVersionId,
@@ -380,7 +415,7 @@ export class PagesService {
       throw new PageNotFoundException();
     }
 
-    await this.assertCanEdit(pageId, userId);
+    await this.assertCan('page.edit', pageId, userId);
 
     const baseVersion =
       await this.pagesRepository.findVersionById(baseVersionId);
@@ -420,7 +455,7 @@ export class PagesService {
       throw new PageNotFoundException();
     }
 
-    await this.assertCanEdit(id, userId);
+    await this.assertCan('page.move', id, userId);
 
     const currentVersion = await this.pagesRepository.findVersionById(
       page.currentVersionId,
@@ -443,6 +478,26 @@ export class PagesService {
         }
         currentId = ancestor.parentId;
       }
+    }
+
+    const movingUser = await this.usersService.findById(userId);
+    if (newParentId === null) {
+      if (
+        !(await this.permissionsService.hasGlobal(
+          movingUser,
+          'page.create_root',
+        ))
+      ) {
+        throw new InsufficientPagePermissionException();
+      }
+    } else if (
+      !(await this.permissionsService.can(
+        movingUser,
+        'page.create_child',
+        newParentId,
+      ))
+    ) {
+      throw new InsufficientPagePermissionException();
     }
 
     const existing = await this.pagesRepository.findBySlugAndParent(
@@ -482,7 +537,7 @@ export class PagesService {
       throw new PageNotFoundException();
     }
 
-    await this.assertCanEdit(id, userId);
+    await this.assertCan('page.delete', id, userId);
 
     const cascade = PagesService.parseCascade(query.cascade);
     const children = await this.pagesRepository.findChildren(id);
@@ -492,6 +547,10 @@ export class PagesService {
     }
 
     if (cascade) {
+      const descendantIds = await this.collectDescendantIds(id);
+      for (const descendantId of descendantIds) {
+        await this.assertCan('page.delete', descendantId, userId);
+      }
       await this.deleteRecursive(id);
     } else {
       await this.pagesRepository.softDelete(id);
@@ -518,7 +577,7 @@ export class PagesService {
       throw new PageNotFoundException();
     }
 
-    await this.assertCanEdit(id, userId);
+    await this.assertCan('page.manage_visibility', id, userId);
 
     const version = await this.pagesRepository.findVersionById(
       page.currentVersionId,
@@ -566,7 +625,7 @@ export class PagesService {
       throw new PageNotFoundException();
     }
 
-    await this.assertCanEdit(id, userId);
+    await this.assertCan('page.edit', id, userId);
 
     const version = await this.pagesRepository.findVersionById(
       page.currentVersionId,
@@ -610,11 +669,25 @@ export class PagesService {
     }
   }
 
-  private async assertCanEdit(pageId: string, userId: string): Promise<void> {
-    const canEdit = await this.pagePermissionsService.canEdit(userId, pageId);
-    if (!canEdit) {
+  private async assertCan(
+    action: PageAction,
+    pageId: string,
+    userId: string,
+  ): Promise<void> {
+    const user = await this.usersService.findById(userId);
+    if (!(await this.permissionsService.can(user, action, pageId))) {
       throw new InsufficientPagePermissionException();
     }
+  }
+
+  private async collectDescendantIds(id: string): Promise<string[]> {
+    const children = await this.pagesRepository.findChildren(id);
+    const ids: string[] = [];
+    for (const child of children) {
+      ids.push(child.id);
+      ids.push(...(await this.collectDescendantIds(child.id)));
+    }
+    return ids;
   }
 
   private async deleteRecursive(id: string): Promise<void> {
@@ -637,24 +710,15 @@ export class PagesService {
     );
   }
 
-  private static hasFullAccess(currentUser?: AuthenticatedUser): boolean {
-    return currentUser?.role === 'admin' || currentUser?.role === 'editor';
-  }
-
   private async isAccessible(
     page: Page,
     currentUser?: AuthenticatedUser,
   ): Promise<boolean> {
-    if (page.visibility === 'public') {
-      return true;
-    }
-    if (PagesService.hasFullAccess(currentUser)) {
-      return true;
-    }
-    if (!currentUser) {
-      return false;
-    }
-    return this.pagePermissionsService.canEdit(currentUser.id, page.id);
+    return this.permissionsService.can(
+      await this.resolveFullUser(currentUser),
+      'page.read',
+      page.id,
+    );
   }
 
   private async assertAccessible(
@@ -670,13 +734,10 @@ export class PagesService {
     pages: Page[],
     currentUser?: AuthenticatedUser,
   ): Promise<Page[]> {
-    if (PagesService.hasFullAccess(currentUser)) {
-      return pages;
-    }
-    const accessible = await Promise.all(
-      pages.map((page) => this.isAccessible(page, currentUser)),
+    return this.permissionsService.filterReadable(
+      await this.resolveFullUser(currentUser),
+      pages,
     );
-    return pages.filter((_, index) => accessible[index]);
   }
 
   private validateCreatePage(dto: CreatePageDto): void {
