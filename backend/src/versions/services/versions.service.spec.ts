@@ -15,7 +15,7 @@ function buildUser(overrides: Partial<User> = {}): User {
     displayName: 'User One',
     passwordHash: 'hash',
     role: 'member',
-    avatarUrl: null,
+    avatarExtension: null,
     failedLoginAttempts: 0,
     lockedUntil: null,
     isActive: true,
@@ -172,8 +172,7 @@ describe('VersionsService', () => {
           buildUser({
             id,
             displayName: id === 'user-1' ? 'User One' : 'User Two',
-            avatarUrl:
-              id === 'user-1' ? 'https://example.com/avatar.png' : null,
+            avatarExtension: id === 'user-1' ? 'png' : null,
           }),
         ),
       );
@@ -184,9 +183,9 @@ describe('VersionsService', () => {
         {
           id: 'user-1',
           displayName: 'User One',
-          avatarUrl: 'https://example.com/avatar.png',
+          hasAvatar: true,
         },
-        { id: 'user-2', displayName: 'User Two', avatarUrl: null },
+        { id: 'user-2', displayName: 'User Two', hasAvatar: false },
       ]);
     });
 
@@ -204,7 +203,7 @@ describe('VersionsService', () => {
       const contributors = await service.getContributors('page-1');
 
       expect(contributors).toEqual([
-        { id: 'user-1', displayName: 'User One', avatarUrl: null },
+        { id: 'user-1', displayName: 'User One', hasAvatar: false },
       ]);
     });
 

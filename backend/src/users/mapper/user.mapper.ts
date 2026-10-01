@@ -27,7 +27,7 @@ export class UserMapper {
       email: entity.email,
       displayName: entity.displayName,
       role: entity.role,
-      avatarUrl: entity.avatarUrl,
+      hasAvatar: entity.avatarExtension !== null,
       createdAt: entity.createdAt,
       ...stats,
     };

@@ -4,6 +4,7 @@ import * as bcrypt from 'bcryptjs';
 import { AdminAuditLogService } from '../../admin/services/admin-audit-log.service.js';
 import { UserActivityLogService } from '../../activity/services/user-activity-log.service.js';
 import { PaginatedResponseDto } from '../../common/dto/paginated-response.dto.js';
+import { AvatarNotFoundException } from '../../common/exceptions/users/avatar-not-found.exception.js';
 import { EmailAlreadyExistsException } from '../../common/exceptions/auth/email-already-exists.exception.js';
 import { InsufficientPermissionException } from '../../common/exceptions/insufficient-permission.exception.js';
 import { GroupNotFoundException } from '../../common/exceptions/permissions/group-not-found.exception.js';
@@ -123,13 +124,7 @@ export class UsersService {
       file.buffer,
       file.mimetype,
     );
-    const avatarUrl = await this.storageService.getPresignedUrl(
-      this.avatarBucket,
-      key,
-      MEDIA_PRESIGNED_URL_EXPIRY_SECONDS,
-    );
-
-    const updated = await this.userRepository.update(id, { avatarUrl });
+    const updated = await this.userRepository.updateAvatar(id, extension);
     void this.userActivityLogService.record({
       userId: id,
       action: 'user.avatar_uploaded',
@@ -143,7 +138,7 @@ export class UsersService {
     await this.findById(id);
     await this.deleteExistingAvatarFiles(id);
 
-    const updated = await this.userRepository.update(id, { avatarUrl: null });
+    const updated = await this.userRepository.updateAvatar(id, null);
     void this.userActivityLogService.record({
       userId: id,
       action: 'user.avatar_removed',
@@ -151,6 +146,20 @@ export class UsersService {
       targetId: id,
     });
     return updated;
+  }
+
+  async getAvatarRedirectUrl(id: string): Promise<string> {
+    const user = await this.findById(id);
+    if (!user.avatarExtension) {
+      throw new AvatarNotFoundException();
+    }
+
+    const key = UsersService.avatarKey(id, user.avatarExtension);
+    return this.storageService.getPresignedUrl(
+      this.avatarBucket,
+      key,
+      MEDIA_PRESIGNED_URL_EXPIRY_SECONDS,
+    );
   }
 
   async findAllPaginated(

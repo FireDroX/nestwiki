@@ -16,7 +16,7 @@ export class CommentMapper {
       pageId: comment.pageId,
       authorId: comment.authorId,
       authorDisplayName: author?.displayName ?? null,
-      authorAvatarUrl: author?.avatarUrl ?? null,
+      authorHasAvatar: author?.hasAvatar ?? false,
       parentId: comment.parentId,
       content: comment.content,
       editedAt: comment.editedAt,

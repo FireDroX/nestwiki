@@ -28,12 +28,16 @@ export async function removeAvatar(): Promise<AuthUser> {
   return data.data
 }
 
+export function avatarRawUrl(id: string): string {
+  return `${import.meta.env.VITE_API_URL}/users/${id}/avatar`
+}
+
 export interface AdminUser {
   id: string
   email: string
   displayName: string
   role: UserRole
-  avatarUrl: string | null
+  hasAvatar: boolean
   createdAt: string
   groups?: { id: string; name: string }[]
   isActive?: boolean

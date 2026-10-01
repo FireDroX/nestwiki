@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { Avatar, AvatarFallback, AvatarGroup, AvatarImage } from '#components/ui/avatar'
+import { avatarRawUrl } from '#api/users'
 import { useContributors } from '#hooks/useContributors'
 import { toInitials } from '#utils/initials'
 
@@ -21,7 +22,10 @@ export function ContributorsList({ pageId }: ContributorsListProps) {
       <AvatarGroup>
         {contributors.map((contributor) => (
           <Avatar key={contributor.id} title={contributor.displayName}>
-            <AvatarImage src={contributor.avatarUrl ?? undefined} alt={contributor.displayName} />
+            <AvatarImage
+              src={contributor.hasAvatar ? avatarRawUrl(contributor.id) : undefined}
+              alt={contributor.displayName}
+            />
             <AvatarFallback>{toInitials(contributor.displayName)}</AvatarFallback>
           </Avatar>
         ))}

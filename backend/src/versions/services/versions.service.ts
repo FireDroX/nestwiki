@@ -23,7 +23,7 @@ import type { VersionsRepository } from '../persistence/version.repository.js';
 export interface ContributorInfo {
   id: string;
   displayName: string;
-  avatarUrl: string | null;
+  hasAvatar: boolean;
 }
 
 @Injectable()
@@ -57,7 +57,7 @@ export class VersionsService {
           return {
             id: author.id,
             displayName: author.displayName,
-            avatarUrl: author.avatarUrl,
+            hasAvatar: author.avatarExtension !== null,
           };
         } catch {
           return null;

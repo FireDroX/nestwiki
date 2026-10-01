@@ -53,7 +53,7 @@ function buildUser(overrides: Partial<User> = {}): User {
     displayName: 'User',
     passwordHash: 'hash',
     role: 'member',
-    avatarUrl: null,
+    avatarExtension: null,
     failedLoginAttempts: 0,
     lockedUntil: null,
     isActive: true,

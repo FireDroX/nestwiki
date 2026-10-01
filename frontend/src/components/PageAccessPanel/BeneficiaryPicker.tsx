@@ -10,7 +10,7 @@ import {
   CommandList,
 } from '#components/ui/command'
 import { Avatar, AvatarFallback, AvatarImage } from '#components/ui/avatar'
-import { listUsers, type AdminUser } from '#api/users'
+import { avatarRawUrl, listUsers, type AdminUser } from '#api/users'
 import { listGroups, type GroupSummary } from '#api/groups'
 import { toInitials } from '#utils/initials'
 
@@ -97,7 +97,10 @@ export function BeneficiaryPicker({ onSelect }: BeneficiaryPickerProps) {
                 onSelect={() => onSelect({ type: 'user', id: user.id, name: user.displayName })}
               >
                 <Avatar className="size-5">
-                  <AvatarImage src={user.avatarUrl ?? undefined} alt={user.displayName} />
+                  <AvatarImage
+                    src={user.hasAvatar ? avatarRawUrl(user.id) : undefined}
+                    alt={user.displayName}
+                  />
                   <AvatarFallback className="text-[10px]">{toInitials(user.displayName)}</AvatarFallback>
                 </Avatar>
                 <div className="min-w-0">

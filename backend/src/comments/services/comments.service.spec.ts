@@ -42,7 +42,7 @@ function buildTargetUser(overrides: Partial<User> = {}): User {
     email: 'target@example.com',
     passwordHash: 'hash',
     displayName: 'Target User',
-    avatarUrl: null,
+    avatarExtension: null,
     role: 'member',
     failedLoginAttempts: 0,
     lockedUntil: null,

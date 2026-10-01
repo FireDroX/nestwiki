@@ -54,7 +54,7 @@ export class VersionMapper {
     return {
       id: contributor.id,
       displayName: contributor.displayName,
-      avatarUrl: contributor.avatarUrl,
+      hasAvatar: contributor.hasAvatar,
     };
   }
 

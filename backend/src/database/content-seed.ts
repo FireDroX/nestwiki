@@ -903,6 +903,13 @@ $$
 ## Version 0.30
 
 <details>
+<summary>0.30.14 — 2026-10-01</summary>
+
+- Les photos de profil sont désormais stockées dans Minio comme les images de page, et servies via une URL stable (\`/users/:id/avatar\`) qui redirige vers une URL présignée fraîche à chaque appel — elles ne deviennent plus illisibles après expiration. Correction de 7 alertes Dependabot : \`brace-expansion\` (2 haute sévérité, DoS par récursion non bornée), \`ip-address\` (comparaison incohérente entre familles d'adresses), \`fast-uri\` (normalisation de casse incohérente), \`hono\` (XSS dans le rendu JSX).
+
+</details>
+
+<details>
 <summary>0.30.13 — 2026-10-01</summary>
 
 - Correction d'une erreur \`Data too long for column 'content'\` lors du seed de contenu : la colonne \`page_versions.content\` était en \`TEXT\` (64 Ko max), dépassée par la page "Notes de version" après l'accumulation de ses entrées. Élargie en \`MEDIUMTEXT\` (16 Mo).

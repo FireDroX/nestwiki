@@ -17,6 +17,7 @@ import { Button } from '#components/ui/button'
 import { MarkdownRenderer } from '#components/MarkdownRenderer'
 import { CommentForm } from '#components/PageView/CommentForm'
 import type { Comment } from '#api/comments'
+import { avatarRawUrl } from '#api/users'
 import { useAuth } from '#hooks/useAuth'
 import { usePermissions } from '#hooks/usePermissions'
 import { toInitials } from '#utils/initials'
@@ -73,7 +74,10 @@ export function CommentItem({ comment, replyCount = 0, onReply, onEdit, onDelete
   return (
     <div className="flex gap-3 py-3">
       <Avatar className="size-8 shrink-0">
-        <AvatarImage src={comment.authorAvatarUrl ?? undefined} alt={comment.authorDisplayName ?? ''} />
+        <AvatarImage
+          src={comment.authorHasAvatar ? avatarRawUrl(comment.authorId) : undefined}
+          alt={comment.authorDisplayName ?? ''}
+        />
         <AvatarFallback>{toInitials(comment.authorDisplayName ?? '?')}</AvatarFallback>
       </Avatar>
       <div className="min-w-0 flex-1 space-y-1">

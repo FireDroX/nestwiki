@@ -32,7 +32,7 @@ export interface AuthUser {
   email: string
   displayName: string
   role: UserRole
-  avatarUrl: string | null
+  hasAvatar: boolean
   createdAt: string
   commentsCount?: number
   pagesCreatedCount?: number
