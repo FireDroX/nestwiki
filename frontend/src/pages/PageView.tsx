@@ -10,6 +10,7 @@ import { CommentThread } from '#components/PageView/CommentThread'
 import { ContributorsList } from '#components/PageView/ContributorsList'
 import { FollowButton } from '#components/PageView/FollowButton'
 import { PageTagList } from '#components/PageView/PageTagList'
+import { PageAccessPanel } from '#components/PageAccessPanel/PageAccessPanel'
 import { useAuth } from '#hooks/useAuth'
 import { useDocumentTitle } from '#hooks/useDocumentTitle'
 import { usePage } from '#hooks/usePage'
@@ -73,6 +74,7 @@ export function PageView() {
   const { user } = useAuth()
   const { canOnPage } = usePermissions()
   const canEdit = canOnPage(page, 'page.edit')
+  const canManageAccess = canOnPage(page, 'page.manage_permissions')
   useDocumentTitle(page?.title)
 
   useEffect(() => {
@@ -148,6 +150,7 @@ export function PageView() {
                 </Link>
               </Button>
             )}
+            {canManageAccess && <PageAccessPanel pageId={page.id} availableActions={page.permissions} />}
           </div>
         </div>
         <PageTagList tags={tags} />

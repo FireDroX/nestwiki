@@ -14,7 +14,7 @@ Clone de WikiJS — NestJS / TypeORM / MySQL / React / TypeScript / Tailwind / s
 - Versionner chaque modification (historique + rollback)
 - Uploader et insérer des médias (images, fichiers) dans les pages
 - Rechercher du contenu (full-text)
-- Gérer des utilisateurs et des permissions (admin / éditeur / lecteur)
+- Gérer des utilisateurs, des groupes et des permissions granulaires par page ou globales (admin / membre)
 
 ---
 
@@ -94,9 +94,11 @@ Chaque module vit directement sous `src/` (pas de dossier `modules/` intermédia
 | passwordHash | varchar                     |                   |
 | displayName  | varchar                     |                   |
 | avatarUrl    | varchar nullable            | pointe vers Minio |
-| role         | enum(admin, editor, reader) |                   |
+| role         | enum(admin, member)         | `admin` a accès à tout ; `member` dépend de ses permissions directes et/ou de groupe (voir `UserPermission`/`PageAccessRule` plus bas). Les anciens rôles `editor`/`reader` ont été retirés (EPIC-30), migrés vers des groupes équivalents. |
+| isActive     | boolean, défaut true        | Un compte désactivé ne peut plus se connecter ni rafraîchir sa session |
 | failedLoginAttempts | int                  | reset à 0 sur connexion réussie |
 | lockedUntil  | datetime nullable           | verrouillage temporaire après échecs répétés |
+| passwordChangedAt | datetime nullable      |                   |
 | createdAt    | datetime                    |                   |
 | updatedAt    | datetime                    |                   |
 
@@ -109,7 +111,7 @@ Chaque module vit directement sous `src/` (pas de dossier `modules/` intermédia
 | title            | varchar               | dénormalisé depuis la version courante |
 | parentId         | uuid nullable         | FK → Page (arborescence)               |
 | currentVersionId | uuid nullable         | FK → PageVersion                       |
-| visibility       | enum(public, private) | public = visible de tous ; private = éditeurs+/permissions explicites |
+| visibility       | enum(public, private) | public = visible de tous ; private = admins/détenteurs de `page.read` sur la page (direct ou via groupe) |
 | createdById      | uuid                  | FK → User                              |
 | createdAt        | datetime              |                                        |
 | updatedAt        | datetime              |                                        |
@@ -139,17 +141,46 @@ Chaque module vit directement sous `src/` (pas de dossier `modules/` intermédia
 | uploadedById | uuid          | FK → User          |
 | createdAt    | datetime      |                    |
 
-### PagePermission
+### Group / GroupMember / GroupPermission
 
-| Champ        | Type     | Notes                                                             |
-| ------------ | -------- | ------------------------------------------------------------------ |
-| id           | uuid     | PK                                                                  |
-| pageId       | uuid     | FK → Page                                                           |
-| userId       | uuid     | FK → User                                                           |
-| grantedById  | uuid     | FK → User (admin ayant accordé le droit)                           |
-| createdAt    | datetime |                                                                      |
+Modèle de permissions granulaires (EPIC-30, remplace `PagePermission` et l'ancien rôle `editor`).
 
-Unique sur `(pageId, userId)`. Accorde des droits d'éditeur sur la page **et toute sa sous-arborescence**, sauf override explicite plus bas dans l'arbre — voir EPIC-19. Ne remplace jamais `User.role` : élève seulement un `reader` global en éditeur localement.
+| Champ (Group)   | Type               | Notes             |
+| --------------- | ------------------ | ----------------- |
+| id              | uuid                | PK                |
+| name            | varchar, unique      |                   |
+| description     | varchar nullable     |                   |
+| createdAt       | datetime             |                   |
+| updatedAt       | datetime             |                   |
+
+`GroupMember` (table de jointure) : PK composite `(groupId, userId)`, `createdAt`.
+
+`GroupPermission` (table de jointure) : PK composite `(groupId, permission)` où `permission` est une `GlobalPermission` (ex. `user.manage`, `tag.create`), `createdAt`.
+
+### UserPermission
+
+| Champ        | Type     | Notes                                       |
+| ------------ | -------- | -------------------------------------------- |
+| userId        | uuid     | PK composite — FK → User                     |
+| permission    | varchar  | PK composite — une `GlobalPermission`        |
+| createdAt     | datetime |                                                |
+
+Permissions globales accordées **directement** à un utilisateur, en plus de celles héritées de ses groupes.
+
+### PageAccessRule / PageAccessExclusion
+
+| Champ (PageAccessRule) | Type                    | Notes                                                                 |
+| ------------------------ | ----------------------- | ---------------------------------------------------------------------- |
+| id                        | uuid                     | PK                                                                      |
+| userId                    | uuid nullable            | FK → User — bénéficiaire si la règle cible un utilisateur               |
+| groupId                   | uuid nullable            | FK → Group — bénéficiaire si la règle cible un groupe                   |
+| pageId                    | uuid nullable            | FK → Page ; `null` = toute la wiki                                      |
+| appliesTo                 | enum(page, subtree)      | `page` = cette page seule ; `subtree` = la page et toute sa descendance |
+| actions                   | json (`PageAction[]`)    | ex. `page.read`, `page.edit`, `page.manage_tags`, `page.manage_permissions`… |
+| grantedById               | uuid                     | FK → User (auteur de l'octroi)                                          |
+| createdAt                 | datetime                 |                                                                          |
+
+Exactement un de `userId`/`groupId` est renseigné. `PageAccessExclusion` (PK composite `ruleId` + `pageId`) retire une sous-page précise de la couverture d'une règle `subtree`, sans affecter le reste de l'arbre. Un bénéficiaire ne peut jamais recevoir, via une règle ou une permission de groupe, plus d'actions que celui qui les accorde ne détient lui-même (vérifié à chaque création/modification, voir §5 « Groupes et permissions »).
 
 ### AdminAuditLog
 
@@ -247,14 +278,14 @@ Toutes les routes `/admin/users` sont accessibles aux administrateurs ou à quic
 
 | Méthode | Route              | Auth             | Description               |
 | ------- | ------------------ | ---------------- | ------------------------- |
-| POST    | /pages             | éditeur+         | Créer une page            |
+| POST    | /pages             | `page.create_root` (racine) ou `page.create_child` (sur le parent) | Créer une page |
 | GET     | /pages/tree        | selon visibilité | Arborescence complète     |
 | GET     | /pages/:slug       | selon visibilité | Lire une page             |
-| PATCH   | /pages/:id         | éditeur+         | Éditer (nouvelle version) |
-| POST    | /pages/:id/merge-preview | éditeur+   | Prévisualiser une fusion à 3 voies (base/mine/theirs) sans sauvegarder |
-| PATCH   | /pages/:id/move    | éditeur+         | Déplacer dans l'arbre     |
-| DELETE  | /pages/:id         | éditeur+         | Supprimer                 |
-| PATCH   | /pages/:id/visibility | éditeur+      | Changer la visibilité (cascade aux enfants) |
+| PATCH   | /pages/:id         | `page.edit` sur la page | Éditer (nouvelle version) |
+| POST    | /pages/:id/merge-preview | `page.edit` sur la page | Prévisualiser une fusion à 3 voies (base/mine/theirs) sans sauvegarder |
+| PATCH   | /pages/:id/move    | `page.move` sur la page | Déplacer dans l'arbre     |
+| DELETE  | /pages/:id         | `page.delete` sur la page | Supprimer                 |
+| PATCH   | /pages/:id/visibility | `page.manage_visibility` sur la page | Changer la visibilité (cascade aux enfants) |
 
 ### Groupes et permissions
 
@@ -287,26 +318,26 @@ Voir aussi `/pages/:slug` et `/pages/tree`, qui exposent respectivement `permiss
 | GET     | /pages/:id/versions                    | selon visibilité | Historique            |
 | GET     | /pages/:id/versions/:versionId         | selon visibilité | Une version           |
 | GET     | /pages/:id/versions/diff               | selon visibilité | Diff entre 2 versions |
-| POST    | /pages/:id/versions/:versionId/restore | éditeur+         | Rollback              |
+| POST    | /pages/:id/versions/:versionId/restore | `page.restore_version` sur la page | Rollback |
 
 ### Médias
 
 | Méthode | Route          | Auth             | Description                                                           |
 | ------- | -------------- | ---------------- | ---------------------------------------------------------------------- |
-| POST    | /media/upload  | éditeur+         | Upload vers Minio                                                     |
+| POST    | /media/upload  | `media.upload`   | Upload vers Minio                                                     |
 | POST    | /media         | selon visibilité | Corps `{ pageId }` : médias d'une page. Corps sans `pageId` : médiathèque globale, filtrable (search/type) et paginée (page/limit), authentifié |
 | GET     | /media/:id/url | selon visibilité | URL présignée                                                         |
-| DELETE  | /media/:id     | éditeur+         | Supprimer (409 si le média est encore référencé ailleurs)             |
+| DELETE  | /media/:id     | `media.delete`   | Supprimer (409 si le média est encore référencé ailleurs)             |
 
 ### Tags
 
 | Méthode | Route                  | Auth     | Description                |
 | ------- | ---------------------- | -------- | -------------------------- |
-| POST    | /tags                  | éditeur+ | Créer un tag               |
+| POST    | /tags                  | `tag.create` | Créer un tag               |
 | GET     | /tags                  | non      | Lister les tags            |
-| POST    | /pages/:id/tags        | éditeur+ | Associer un tag à une page |
-| DELETE  | /pages/:id/tags/:tagId | éditeur+ | Retirer un tag d'une page  |
-| DELETE  | /tags/:id              | admin    | Supprimer un tag           |
+| POST    | /pages/:id/tags        | `page.manage_tags` sur la page | Associer un tag à une page |
+| DELETE  | /pages/:id/tags/:tagId | `page.manage_tags` sur la page | Retirer un tag d'une page  |
+| DELETE  | /tags/:id              | `tag.delete` | Supprimer un tag           |
 
 ### Recherche
 

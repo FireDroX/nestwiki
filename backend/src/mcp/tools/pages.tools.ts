@@ -18,7 +18,8 @@ export function buildPagesTools(
   return [
     defineMcpTool({
       name: 'wiki_create_page',
-      description: 'Créer une nouvelle page dans le wiki',
+      description:
+        'Créer une nouvelle page dans le wiki. Le contenu est du Markdown (GFM) pouvant inclure du HTML brut (sera assaini) et des formules LaTeX, uniquement entre $$ ... $$ (le $ simple ne déclenche pas de rendu mathématique)',
       inputSchema: {
         slug: z.string(),
         title: z.string(),
@@ -49,7 +50,7 @@ export function buildPagesTools(
     defineMcpTool({
       name: 'wiki_update_page',
       description:
-        "Modifier le titre, le contenu ou créer une nouvelle version d'une page existante",
+        "Modifier le titre, le contenu ou créer une nouvelle version d'une page existante. Le contenu est du Markdown (GFM) pouvant inclure du HTML brut (sera assaini) et des formules LaTeX, uniquement entre $$ ... $$ (le $ simple ne déclenche pas de rendu mathématique)",
       inputSchema: {
         pageId: z.string(),
         title: z.string().optional(),

@@ -601,6 +601,67 @@ Une fois connecté, le client peut lister les tools disponibles (\`tools/list\`)
 Chaque appel de tool (succès ou échec) est tracé — clé utilisée, tool, entrée/sortie (tronquées), statut, message d'erreur. Consultable, filtrable par clé API, depuis [Administration → Journal d'activité MCP](/admin/mcp/audit-log).`,
       },
       {
+        slug: 'gestion-utilisateurs-groupes-acces',
+        title: 'Gérer les utilisateurs, groupes et accès',
+        tags: ['documentation', 'guide'],
+        content: `<style>
+.callout {
+  display: flex;
+  gap: 0.75rem;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--primary);
+  border-radius: var(--radius);
+  background: var(--card);
+  padding: 0.9rem 1.1rem;
+  margin: 1.1rem 0;
+}
+.callout-icon {
+  font-size: 1.1rem;
+  line-height: 1.4;
+}
+</style>
+
+# Gérer les utilisateurs, groupes et accès
+
+OpenWiki n'a que deux rôles globaux : **admin** (accès à tout, sans exception) et **membre**. Tout le reste — qui peut créer des tags, uploader des médias, modérer les commentaires, gérer les autres utilisateurs, ou lire/éditer telle page précise — est accordé au cas par cas, directement à un utilisateur ou à un groupe.
+
+<div class="callout">
+  <span class="callout-icon">💡</span>
+  <span>Un utilisateur cumule toujours <strong>ses droits propres</strong> et <strong>ceux de tous les groupes dont il est membre</strong>. Retirer un droit accordé par un groupe ne se fait qu'en quittant le groupe ou en modifiant les droits du groupe lui-même.</span>
+</div>
+
+## 1. Permissions globales et permissions par page
+
+Deux familles de droits existent :
+
+- **Permissions globales** — valables sur tout le wiki, indépendamment d'une page précise : \`user.manage\` (gérer les comptes, groupes et leurs accès), \`page.create_root\` (créer une page à la racine), \`tag.create\`/\`tag.delete\`, \`media.upload\`/\`media.delete\`, \`comment.moderate\`.
+- **Permissions par page** — accordées sur une page précise, avec une portée : *cette page uniquement* ou *cette page et toutes ses sous-pages* (avec possibilité d'exclure certaines sous-pages de la couverture). Actions possibles : lire, modifier, créer des sous-pages, supprimer, déplacer, gérer la visibilité, gérer les tags, restaurer une version, et gérer les permissions de la page elle-même.
+
+## 2. Les groupes (\`/admin/groups\`)
+
+Un groupe regroupe des utilisateurs pour leur accorder des droits en une fois (ex. « Éditeurs », « Modérateurs »). Réservé aux admins ou à quiconque détient \`user.manage\`.
+
+Depuis la fiche d'un groupe : onglet **Membres** (ajouter/retirer des utilisateurs), **Permissions globales** (cases à cocher), **Accès aux pages** (arborescence du wiki avec cases à cocher à trois états — cocher une page accorde l'accès à toute sa sous-arborescence, décocher une sous-page l'exclut sans toucher au reste).
+
+## 3. Les utilisateurs (\`/admin/users\`)
+
+Depuis la fiche d'un utilisateur, en plus des infos de base (nom, e-mail, rôle, activation, réinitialisation de mot de passe) : onglet **Groupes** (quels groupes il rejoint), **Permissions globales** (droits directs — ceux hérités d'un groupe apparaissent cochés et grisés avec le nom du groupe), **Accès aux pages** (mêmes règles directes que pour un groupe, avec les pages déjà couvertes par un groupe signalées par un badge), et **Permissions effectives** : la vue en lecture seule de tout ce que l'utilisateur peut faire, avec l'origine de chaque droit (direct, ou via tel groupe).
+
+## 4. Depuis une page : le panneau « Accès »
+
+Pas besoin d'accès admin pour partager une page précise : quiconque détient \`page.manage_permissions\` sur une page voit un bouton **Accès** dans sa vue, qui ouvre un panneau listant qui peut faire quoi sur cette page.
+
+- Les règles **directes** (créées depuis cette page) sont éditables et supprimables ici.
+- Les règles **héritées** d'une page ancêtre ou d'une portée « tout le wiki » sont affichées en lecture seule, avec un lien vers la page d'origine — elles ne se modifient que depuis là où elles ont été créées.
+- Ajouter un accès se fait en une recherche (utilisateur ou groupe), un choix de portée (cette page seule, ou cette page et ses sous-pages) et une sélection d'actions — limitée à ce que vous détenez vous-même sur cette page, pour éviter toute escalade.
+
+## 5. La règle anti-escalade
+
+Quelle que soit l'interface utilisée, une règle simple s'applique partout : **vous ne pouvez jamais accorder à quelqu'un d'autre plus de droits que vous n'en avez vous-même** — ni en lui donnant un accès direct, ni en l'ajoutant à un groupe qui en détient davantage que vous. Toute tentative renvoie une erreur plutôt que de silencieusement échouer ou de réduire la demande.
+
+Toutes ces actions sont tracées dans le [journal d'audit](/admin/audit-log).`,
+      },
+      {
         slug: 'marquages-disponibles',
         title: 'Marquages disponibles',
         tags: ['guide', 'documentation'],
@@ -840,6 +901,13 @@ $$
         content: `# Notes de version
 
 ## Version 0.30
+
+<details>
+<summary>0.30.10 — 2026-10-01</summary>
+
+- Panneau **Accès** sur chaque page (visible avec la permission \`page.manage_permissions\`) : ouvre les règles qui couvrent la page — directes (éditables, actions et suppression) et héritées d'une page ancêtre ou de toute la wiki (lecture seule, avec lien vers l'origine). Ajout d'un accès en une recherche unique proposant utilisateurs et groupes, un choix de portée (cette page seule, ou cette page et ses sous-pages avec exclusion de certaines sous-pages), et une sélection d'actions limitée à ce que vous détenez vous-même sur la page — clôture d'EPIC-30. README, CLAUDE.md et une nouvelle page de documentation ("Gérer les utilisateurs, groupes et accès") décrivent le nouveau modèle de permissions ; plus aucune mention des anciens rôles \`editor\`/\`reader\`.
+
+</details>
 
 <details>
 <summary>0.30.9 — 2026-10-01</summary>
