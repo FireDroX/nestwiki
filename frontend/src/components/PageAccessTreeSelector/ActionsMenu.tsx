@@ -16,9 +16,10 @@ interface ActionsMenuProps {
   disabled: boolean
   onActionsChange: (actions: PageAction[]) => void
   onScopeToggle?: () => void
+  availableActions?: PageAction[]
 }
 
-export function ActionsMenu({ rule, disabled, onActionsChange, onScopeToggle }: ActionsMenuProps) {
+export function ActionsMenu({ rule, disabled, onActionsChange, onScopeToggle, availableActions }: ActionsMenuProps) {
   const { t } = useTranslation()
 
   function toggleAction(action: PageAction, checked: boolean) {
@@ -33,12 +34,13 @@ export function ActionsMenu({ rule, disabled, onActionsChange, onScopeToggle }: 
           {t('pageAccessTree.actionsCount', { count: rule.actions.length })}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
+      <DropdownMenuContent align="end" className="w-64">
         <DropdownMenuLabel>{t('pageAccessTree.actionsLabel')}</DropdownMenuLabel>
         {PAGE_ACTIONS.map((action) => {
           const isReadAction = action === 'page.read'
           const hasWriteAction = rule.actions.some((existing) => existing !== 'page.read')
-          const locked = isReadAction && hasWriteAction
+          const notHeldByActor = !!availableActions && !availableActions.includes(action)
+          const locked = (isReadAction && hasWriteAction) || notHeldByActor
           return (
             <DropdownMenuCheckboxItem
               key={action}
