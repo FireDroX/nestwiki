@@ -903,6 +903,13 @@ $$
 ## Version 0.30
 
 <details>
+<summary>0.30.13 — 2026-10-01</summary>
+
+- Correction d'une erreur \`Data too long for column 'content'\` lors du seed de contenu : la colonne \`page_versions.content\` était en \`TEXT\` (64 Ko max), dépassée par la page "Notes de version" après l'accumulation de ses entrées. Élargie en \`MEDIUMTEXT\` (16 Mo).
+
+</details>
+
+<details>
 <summary>0.30.12 — 2026-10-01</summary>
 
 - Correctifs de fin d'EPIC-30, trouvés en relisant les PR de l'epic : l'audit de suppression d'un commentaire par modération est désormais toujours enregistré (plus seulement pour les admins), la liste/purge des commentaires d'un utilisateur depuis l'admin accepte désormais \`user.manage\` (plus seulement le rôle admin), recherche et médiathèque respectent maintenant les accès accordés page par page ou via un groupe (plus seulement public/admin), un bouton **+** sur chaque page de l'arborescence permet de créer une sous-page directement (si on en a le droit sur cette page précise), et la suppression en cascade d'un sous-arbre fait un seul contrôle de permissions groupé au lieu d'un par page.
