@@ -15,7 +15,7 @@ export class PageVersion {
   @Column({ type: 'uuid', name: 'page_id', length: 36 })
   pageId: string;
 
-  @Column({ type: 'text' })
+  @Column({ type: 'mediumtext' })
   content: string;
 
   @Column({ type: 'varchar', length: 255 })
