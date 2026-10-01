@@ -842,6 +842,13 @@ $$
 ## Version 0.30
 
 <details>
+<summary>0.30.1 — 2026-09-24</summary>
+
+- Service central de résolution des permissions (\`PermissionsService\`) : calcule les droits effectifs d'un utilisateur (directs et via ses groupes) sur une page ou globalement — travail préparatoire, pas encore branché sur les contrôles d'accès existants.
+
+</details>
+
+<details>
 <summary>0.30.0 — 2026-09-24</summary>
 
 - Socle de données du nouveau système de permissions (groupes, permissions globales, règles d'accès aux pages attribuables à un utilisateur ou à un groupe) — travail préparatoire, pas encore actif sur les contrôles d'accès existants.

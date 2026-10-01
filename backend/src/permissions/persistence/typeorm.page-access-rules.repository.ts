@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
+import { PageAction } from '../../common/permissions.js';
 import { PageAccessExclusion } from '../entities/page-access-exclusion.entity.js';
 import { PageAccessRule } from '../entities/page-access-rule.entity.js';
 import {
@@ -36,7 +37,7 @@ export class TypeormPageAccessRulesRepository implements PageAccessRulesReposito
     return this.rules.save(this.rules.create(input));
   }
 
-  async updateActions(id: string, actions: string[]): Promise<void> {
+  async updateActions(id: string, actions: PageAction[]): Promise<void> {
     await this.rules.update(id, { actions });
   }
 
@@ -57,5 +58,24 @@ export class TypeormPageAccessRulesRepository implements PageAccessRulesReposito
     await this.exclusions.save(
       pageIds.map((pageId) => this.exclusions.create({ ruleId, pageId })),
     );
+  }
+
+  async findExclusionsForRules(
+    ruleIds: string[],
+  ): Promise<Map<string, string[]>> {
+    const result = new Map<string, string[]>();
+    if (ruleIds.length === 0) {
+      return result;
+    }
+    const rows = await this.exclusions.findBy({ ruleId: In(ruleIds) });
+    for (const row of rows) {
+      const list = result.get(row.ruleId);
+      if (list) {
+        list.push(row.pageId);
+      } else {
+        result.set(row.ruleId, [row.pageId]);
+      }
+    }
+    return result;
   }
 }

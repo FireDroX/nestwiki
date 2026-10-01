@@ -14,4 +14,5 @@ export interface GroupsRepository {
   findMemberIds(groupId: string): Promise<string[]>;
   findGroupIdsForUser(userId: string): Promise<string[]>;
   setMembers(groupId: string, userIds: string[]): Promise<void>;
+  findByIds(ids: string[]): Promise<Group[]>;
 }

@@ -22,4 +22,5 @@ export interface PageAccessRulesRepository {
   delete(id: string): Promise<void>;
   findExclusions(ruleId: string): Promise<string[]>;
   setExclusions(ruleId: string, pageIds: string[]): Promise<void>;
+  findExclusionsForRules(ruleIds: string[]): Promise<Map<string, string[]>>;
 }

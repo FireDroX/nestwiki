@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { Group } from '../entities/group.entity.js';
 import { GroupMember } from '../entities/group-member.entity.js';
 import { CreateGroupInput, GroupsRepository } from './groups.repository.js';
@@ -52,5 +52,12 @@ export class TypeormGroupsRepository implements GroupsRepository {
     await this.members.save(
       userIds.map((userId) => this.members.create({ groupId, userId })),
     );
+  }
+
+  findByIds(ids: string[]): Promise<Group[]> {
+    if (ids.length === 0) {
+      return Promise.resolve([]);
+    }
+    return this.groups.findBy({ id: In(ids) });
   }
 }
