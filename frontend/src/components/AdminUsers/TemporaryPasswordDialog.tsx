@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Check, Copy } from 'lucide-react'
+import { toast } from 'sonner'
 import { useTranslation } from 'react-i18next'
 import {
   Dialog,
@@ -24,9 +25,13 @@ export function TemporaryPasswordDialog({ password, onClose }: TemporaryPassword
 
   async function handleCopy() {
     if (!password) return
-    await navigator.clipboard.writeText(password)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    try {
+      await navigator.clipboard.writeText(password)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      toast.error(t('admin.users.copyPasswordFailed'))
+    }
   }
 
   return (

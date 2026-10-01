@@ -86,16 +86,16 @@ export function UserPermissionsTab({ user, onUpdated }: UserPermissionsTabProps)
             {category.permissions.map((permission) => {
               const groupNames = groupNamesByPermission.get(permission) ?? []
               const isDirect = selected.has(permission)
-              const inheritedOnly = loaded && groupNames.length > 0 && !isDirect
+              const inherited = loaded && groupNames.length > 0
               return (
                 <label key={permission} className="flex items-center gap-2 text-sm">
                   <Checkbox
-                    checked={isDirect || groupNames.length > 0}
-                    disabled={inheritedOnly}
+                    checked={isDirect || inherited}
+                    disabled={inherited}
                     onCheckedChange={(checked) => toggle(permission, checked === true)}
                   />
                   {t(`permissions.labels.${permission}`)}
-                  {inheritedOnly && (
+                  {inherited && (
                     <span className="text-xs text-muted-foreground">
                       {t('admin.users.inheritedFromGroups', { groups: groupNames.join(', ') })}
                     </span>

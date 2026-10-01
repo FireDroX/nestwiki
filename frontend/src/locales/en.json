@@ -276,6 +276,7 @@
       "temporaryPasswordTitle": "Temporary password",
       "temporaryPasswordDescription": "This password will not be shown again. Copy it before closing this dialog.",
       "copyPassword": "Copy password",
+      "copyPasswordFailed": "Failed to copy the password.",
       "noGroups": "No groups.",
       "addGroups": "Add to a group",
       "addGroupsTitle": "Add to a group",

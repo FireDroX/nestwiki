@@ -13,6 +13,7 @@ import { ConfirmActionButton } from '#components/AdminUsers/ConfirmActionButton'
 import { TemporaryPasswordDialog } from '#components/AdminUsers/TemporaryPasswordDialog'
 import {
   deleteUser,
+  getUserDetail,
   resetUserPassword,
   setUserStatus,
   unlockUser,
@@ -24,10 +25,7 @@ import { useAuth } from '#hooks/useAuth'
 import { extractErrorMessage } from '#lib/api-errors'
 import { createAdminUpdateUserSchema, type AdminUpdateUserFormValues } from '#schemas/admin-user.schema'
 import { intlLocale } from '#utils/relative-time'
-
-function isLocked(user: AdminUserDetail): boolean {
-  return !!user.lockedUntil && new Date(user.lockedUntil).getTime() > Date.now()
-}
+import { isUserLocked } from '#utils/user-status'
 
 interface InfoTabProps {
   user: AdminUserDetail
@@ -42,7 +40,7 @@ export function InfoTab({ user, onUpdated }: InfoTabProps) {
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [temporaryPassword, setTemporaryPassword] = useState<string | null>(null)
   const schema = useMemo(() => createAdminUpdateUserSchema(t), [t])
-  const locked = isLocked(user)
+  const locked = isUserLocked(user)
 
   const {
     control,
@@ -66,8 +64,8 @@ export function InfoTab({ user, onUpdated }: InfoTabProps) {
 
   async function handleToggleStatus() {
     try {
-      const updated = await setUserStatus(user.id, user.isActive === false)
-      onUpdated({ ...user, ...updated })
+      await setUserStatus(user.id, user.isActive === false)
+      onUpdated(await getUserDetail(user.id))
       toast.success(user.isActive === false ? t('admin.users.reactivated') : t('admin.users.deactivated'))
     } catch (error) {
       toast.error(extractErrorMessage(error, t('admin.users.statusChangeFailed')))
@@ -86,8 +84,8 @@ export function InfoTab({ user, onUpdated }: InfoTabProps) {
 
   async function handleUnlock() {
     try {
-      const updated = await unlockUser(user.id)
-      onUpdated({ ...user, ...updated })
+      await unlockUser(user.id)
+      onUpdated(await getUserDetail(user.id))
       toast.success(t('admin.users.unlocked'))
     } catch (error) {
       toast.error(extractErrorMessage(error, t('admin.users.unlockFailed')))

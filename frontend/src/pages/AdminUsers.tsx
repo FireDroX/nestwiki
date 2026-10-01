@@ -40,34 +40,35 @@ export function AdminUsers() {
       .catch(() => setGroups([]))
   }, [reloadToken])
 
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+
+  useEffect(() => {
+    const timeout = setTimeout(() => setDebouncedSearch(filters.search), SEARCH_DEBOUNCE_MS)
+    return () => clearTimeout(timeout)
+  }, [filters.search])
+
   useEffect(() => {
     let cancelled = false
-    const timeout = setTimeout(
-      () => {
-        setStatus('loading')
-        listUsers({ page, limit: PAGE_LIMIT, search: filters.search || undefined, role: filters.role, groupId: filters.groupId, active: filters.active })
-          .then((result) => {
-            if (cancelled) return
-            setUsers(result.items)
-            setTotal(result.total)
-            setStatus('ready')
-          })
-          .catch(() => {
-            if (!cancelled) setStatus('error')
-          })
-      },
-      filters.search ? SEARCH_DEBOUNCE_MS : 0,
-    )
+    setStatus('loading')
+    listUsers({ page, limit: PAGE_LIMIT, search: debouncedSearch || undefined, role: filters.role, groupId: filters.groupId, active: filters.active })
+      .then((result) => {
+        if (cancelled) return
+        setUsers(result.items)
+        setTotal(result.total)
+        setStatus('ready')
+      })
+      .catch(() => {
+        if (!cancelled) setStatus('error')
+      })
     return () => {
       cancelled = true
-      clearTimeout(timeout)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, filters.search, filters.role, filters.groupId, filters.active, reloadToken])
+  }, [page, debouncedSearch, filters.role, filters.groupId, filters.active, reloadToken])
 
   useEffect(() => {
     setPage(1)
-  }, [filters.search, filters.role, filters.groupId, filters.active])
+  }, [debouncedSearch, filters.role, filters.groupId, filters.active])
 
   useEffect(() => {
     setSelectedUserIds([])

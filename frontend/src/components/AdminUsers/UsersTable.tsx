@@ -10,13 +10,10 @@ import { UserRole } from '#api/auth'
 import type { AdminUser } from '#api/users'
 import { toInitials } from '#utils/initials'
 import { intlLocale } from '#utils/relative-time'
+import { isUserLocked } from '#utils/user-status'
 
 function formatJoinDate(createdAt: string): string {
   return new Date(createdAt).toLocaleDateString(intlLocale(), { day: 'numeric', month: 'short', year: 'numeric' })
-}
-
-function isLocked(user: AdminUser): boolean {
-  return !!user.lockedUntil && new Date(user.lockedUntil).getTime() > Date.now()
 }
 
 interface UsersTableProps {
@@ -71,7 +68,7 @@ export function UsersTable({
         {users.map((user) => {
           const isSelf = user.id === currentUserId
           const isPending = pendingUserId === user.id
-          const locked = isLocked(user)
+          const locked = isUserLocked(user)
           return (
             <TableRow key={user.id}>
               <TableCell>

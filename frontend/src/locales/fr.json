@@ -276,6 +276,7 @@
       "temporaryPasswordTitle": "Mot de passe temporaire",
       "temporaryPasswordDescription": "Ce mot de passe ne sera plus affiché. Copiez-le avant de fermer cette fenêtre.",
       "copyPassword": "Copier le mot de passe",
+      "copyPasswordFailed": "Échec de la copie du mot de passe.",
       "noGroups": "Aucun groupe.",
       "addGroups": "Ajouter à un groupe",
       "addGroupsTitle": "Ajouter à un groupe",
