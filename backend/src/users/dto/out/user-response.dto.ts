@@ -13,4 +13,5 @@ export interface UserResponseDto {
   pageEditsCount?: number;
   permissions?: GlobalPermission[];
   groups?: { id: string; name: string }[];
+  isActive?: boolean;
 }

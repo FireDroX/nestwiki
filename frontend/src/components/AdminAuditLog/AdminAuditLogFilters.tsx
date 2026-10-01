@@ -5,7 +5,17 @@ import type { AdminUser } from '#api/users'
 
 const ALL_VALUE = 'all'
 
-export const ADMIN_AUDIT_LOG_ACTIONS = ['user.role.update', 'user.delete'] as const
+export const ADMIN_AUDIT_LOG_ACTIONS = [
+  'user.role.update',
+  'user.delete',
+  'user.create',
+  'user.update',
+  'user.status.update',
+  'user.password.reset',
+  'user.unlock',
+  'user.groups.update',
+  'user.permissions.update',
+] as const
 
 interface AdminAuditLogFiltersProps {
   admins: AdminUser[]

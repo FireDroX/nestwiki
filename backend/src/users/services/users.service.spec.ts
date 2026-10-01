@@ -2,9 +2,17 @@ import { Test } from '@nestjs/testing';
 import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 import { AdminAuditLogService } from '../../admin/services/admin-audit-log.service.js';
 import { UserActivityLogService } from '../../activity/services/user-activity-log.service.js';
+import { EmailAlreadyExistsException } from '../../common/exceptions/auth/email-already-exists.exception.js';
+import { InsufficientPermissionException } from '../../common/exceptions/insufficient-permission.exception.js';
+import { LastActiveAdminException } from '../../common/exceptions/users/last-active-admin.exception.js';
+import { SelfActionNotAllowedException } from '../../common/exceptions/users/self-action-not-allowed.exception.js';
 import { UserNotFoundException } from '../../common/exceptions/users/user-not-found.exception.js';
 import { ValidationException } from '../../common/exceptions/validation.exception.js';
+import type { AuthenticatedUser } from '../../common/strategies/jwt.strategy.js';
+import type { GroupsRepository } from '../../permissions/persistence/groups.repository.js';
+import type { SubjectPermissionsRepository } from '../../permissions/persistence/subject-permissions.repository.js';
 import type { StorageService } from '../../storage/services/storage.service.js';
+import { CreateAdminUserDto } from '../dto/in/create-admin-user.dto.js';
 import { UpdateProfileDto } from '../dto/in/update-profile.dto.js';
 import { User } from '../entities/user.entity.js';
 import type { UserRepository } from '../persistence/user.repository.js';
@@ -21,8 +29,20 @@ function buildUser(overrides: Partial<User> = {}): User {
     failedLoginAttempts: 0,
     lockedUntil: null,
     isActive: true,
+    passwordChangedAt: null,
     createdAt: new Date(),
     updatedAt: new Date(),
+    ...overrides,
+  };
+}
+
+function buildActor(
+  overrides: Partial<AuthenticatedUser> = {},
+): AuthenticatedUser {
+  return {
+    id: 'admin-1',
+    email: 'admin@example.com',
+    role: 'admin',
     ...overrides,
   };
 }
@@ -32,21 +52,36 @@ describe('UsersService', () => {
   let userRepository: { [K in keyof UserRepository]: Mock<UserRepository[K]> };
   let adminAuditLogService: { record: ReturnType<typeof vi.fn> };
   let storageService: { [K in keyof StorageService]: Mock<StorageService[K]> };
-  let userActivityLogService: { record: ReturnType<typeof vi.fn> };
+  let userActivityLogService: {
+    record: ReturnType<typeof vi.fn>;
+    list: ReturnType<typeof vi.fn>;
+  };
+  let groupsRepository: {
+    [K in keyof GroupsRepository]: Mock<GroupsRepository[K]>;
+  };
+  let subjectPermissionsRepository: {
+    [K in keyof SubjectPermissionsRepository]: Mock<
+      SubjectPermissionsRepository[K]
+    >;
+  };
 
   beforeEach(async () => {
     userRepository = {
       findById: vi.fn(),
-      findByEmail: vi.fn(),
+      findByEmail: vi.fn().mockResolvedValue(null),
       create: vi.fn(),
       update: vi.fn(),
+      adminUpdate: vi.fn(),
       findAllPaginated: vi.fn(),
+      findAllFiltered: vi.fn().mockResolvedValue({ items: [], total: 0 }),
       updateRole: vi.fn(),
+      updateStatus: vi.fn(),
       updatePassword: vi.fn(),
       delete: vi.fn(),
       incrementFailedLoginAttempts: vi.fn(),
       lockAccount: vi.fn(),
       resetFailedLoginAttempts: vi.fn(),
+      countActiveAdmins: vi.fn().mockResolvedValue(2),
     };
     adminAuditLogService = { record: vi.fn().mockResolvedValue(undefined) };
     storageService = {
@@ -58,7 +93,30 @@ describe('UsersService', () => {
       delete: vi.fn().mockResolvedValue(undefined),
       exists: vi.fn(),
     };
-    userActivityLogService = { record: vi.fn().mockResolvedValue(undefined) };
+    userActivityLogService = {
+      record: vi.fn().mockResolvedValue(undefined),
+      list: vi.fn().mockResolvedValue({ items: [], total: 0 }),
+    };
+    groupsRepository = {
+      findAll: vi.fn().mockResolvedValue([]),
+      findById: vi.fn(),
+      findByIds: vi.fn().mockResolvedValue([]),
+      findByName: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+      findMemberIds: vi.fn().mockResolvedValue([]),
+      findGroupIdsForUser: vi.fn().mockResolvedValue([]),
+      setMembers: vi.fn(),
+      setGroupsForUser: vi.fn(),
+    };
+    subjectPermissionsRepository = {
+      findForUser: vi.fn().mockResolvedValue([]),
+      findForGroup: vi.fn().mockResolvedValue([]),
+      findForGroups: vi.fn().mockResolvedValue([]),
+      setForUser: vi.fn(),
+      setForGroup: vi.fn(),
+    };
 
     const module = await Test.createTestingModule({
       providers: [
@@ -68,6 +126,11 @@ describe('UsersService', () => {
         { provide: 'StorageService', useValue: storageService },
         { provide: 'AvatarBucket', useValue: 'test-bucket' },
         { provide: UserActivityLogService, useValue: userActivityLogService },
+        { provide: 'GroupsRepository', useValue: groupsRepository },
+        {
+          provide: 'SubjectPermissionsRepository',
+          useValue: subjectPermissionsRepository,
+        },
       ],
     }).compile();
 
@@ -207,6 +270,354 @@ describe('UsersService', () => {
       storageService.delete.mockRejectedValue(new Error('NotFound'));
 
       await expect(service.removeAvatar('user-1')).resolves.toBeDefined();
+    });
+  });
+
+  describe('createByAdmin', () => {
+    const dto: CreateAdminUserDto = {
+      email: 'new@example.com',
+      displayName: 'New User',
+    };
+
+    it('creates a member with a generated temporary password when none is provided', async () => {
+      userRepository.create.mockResolvedValue(buildUser({ email: dto.email }));
+
+      const result = await service.createByAdmin(buildActor(), dto);
+
+      expect(result.temporaryPassword).toMatch(/A1!$/);
+      expect(userRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ email: dto.email, role: 'member' }),
+      );
+      expect(adminAuditLogService.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'user.create' }),
+      );
+    });
+
+    it('does not generate a temporary password when one is provided', async () => {
+      userRepository.create.mockResolvedValue(buildUser({ email: dto.email }));
+
+      const result = await service.createByAdmin(buildActor(), {
+        ...dto,
+        password: 'ProvidedPass1!',
+      });
+
+      expect(result.temporaryPassword).toBeNull();
+    });
+
+    it('rejects a duplicate email with EmailAlreadyExistsException', async () => {
+      userRepository.findByEmail.mockResolvedValue(buildUser());
+
+      await expect(
+        service.createByAdmin(buildActor(), dto),
+      ).rejects.toBeInstanceOf(EmailAlreadyExistsException);
+      expect(userRepository.create).not.toHaveBeenCalled();
+    });
+
+    it('blocks a non-admin actor from creating an admin user', async () => {
+      const actor = buildActor({ role: 'member' });
+
+      await expect(
+        service.createByAdmin(actor, { ...dto, role: 'admin' }),
+      ).rejects.toBeInstanceOf(InsufficientPermissionException);
+      expect(userRepository.create).not.toHaveBeenCalled();
+    });
+
+    it('assigns initial groups after validating they all exist', async () => {
+      userRepository.create.mockResolvedValue(buildUser({ email: dto.email }));
+      groupsRepository.findByIds.mockResolvedValue([
+        {
+          id: 'group-1',
+          name: 'Group',
+          description: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ]);
+
+      await service.createByAdmin(buildActor(), {
+        ...dto,
+        groupIds: ['group-1'],
+      });
+
+      expect(groupsRepository.setGroupsForUser).toHaveBeenCalledWith(
+        expect.any(String),
+        ['group-1'],
+      );
+    });
+  });
+
+  describe('adminUpdate', () => {
+    it('updates displayName/email/role and records a single audit entry', async () => {
+      userRepository.findById.mockResolvedValue(buildUser());
+      userRepository.adminUpdate.mockResolvedValue(
+        buildUser({ displayName: 'Updated' }),
+      );
+
+      const result = await service.adminUpdate(buildActor(), 'user-1', {
+        displayName: 'Updated',
+      });
+
+      expect(result.displayName).toBe('Updated');
+      expect(adminAuditLogService.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'user.update' }),
+      );
+    });
+
+    it('rejects a duplicate email owned by another user', async () => {
+      userRepository.findById.mockResolvedValue(buildUser());
+      userRepository.findByEmail.mockResolvedValue(
+        buildUser({ id: 'user-2', email: 'taken@example.com' }),
+      );
+
+      await expect(
+        service.adminUpdate(buildActor(), 'user-1', {
+          email: 'taken@example.com',
+        }),
+      ).rejects.toBeInstanceOf(EmailAlreadyExistsException);
+    });
+
+    it('blocks an admin from demoting themselves', async () => {
+      const actor = buildActor({ id: 'user-1' });
+      userRepository.findById.mockResolvedValue(
+        buildUser({ id: 'user-1', role: 'admin' }),
+      );
+
+      await expect(
+        service.adminUpdate(actor, 'user-1', { role: 'member' }),
+      ).rejects.toBeInstanceOf(SelfActionNotAllowedException);
+    });
+
+    it('blocks demoting the last active admin', async () => {
+      userRepository.findById.mockResolvedValue(
+        buildUser({ id: 'user-2', role: 'admin' }),
+      );
+      userRepository.countActiveAdmins.mockResolvedValue(1);
+
+      await expect(
+        service.adminUpdate(buildActor(), 'user-2', { role: 'member' }),
+      ).rejects.toBeInstanceOf(LastActiveAdminException);
+    });
+
+    it('blocks a non-admin actor from promoting anyone to admin', async () => {
+      userRepository.findById.mockResolvedValue(buildUser({ id: 'user-2' }));
+
+      await expect(
+        service.adminUpdate(buildActor({ role: 'member' }), 'user-2', {
+          role: 'admin',
+        }),
+      ).rejects.toBeInstanceOf(InsufficientPermissionException);
+    });
+
+    it('blocks a non-admin user.manage holder from demoting another admin', async () => {
+      userRepository.findById.mockResolvedValue(
+        buildUser({ id: 'user-2', role: 'admin' }),
+      );
+
+      await expect(
+        service.adminUpdate(
+          buildActor({ id: 'actor-1', role: 'member' }),
+          'user-2',
+          {
+            role: 'member',
+          },
+        ),
+      ).rejects.toBeInstanceOf(InsufficientPermissionException);
+      expect(userRepository.adminUpdate).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('setStatus', () => {
+    it('deactivates a user and records an audit entry', async () => {
+      userRepository.findById.mockResolvedValue(buildUser({ id: 'user-2' }));
+      userRepository.updateStatus.mockResolvedValue(
+        buildUser({ id: 'user-2', isActive: false }),
+      );
+
+      const result = await service.setStatus(buildActor(), 'user-2', false);
+
+      expect(result.isActive).toBe(false);
+      expect(adminAuditLogService.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'user.status.update' }),
+      );
+    });
+
+    it('blocks an admin from deactivating themselves', async () => {
+      const actor = buildActor({ id: 'user-1' });
+      userRepository.findById.mockResolvedValue(
+        buildUser({ id: 'user-1', role: 'admin' }),
+      );
+
+      await expect(
+        service.setStatus(actor, 'user-1', false),
+      ).rejects.toBeInstanceOf(SelfActionNotAllowedException);
+    });
+
+    it('blocks deactivating the last active admin', async () => {
+      userRepository.findById.mockResolvedValue(
+        buildUser({ id: 'user-2', role: 'admin' }),
+      );
+      userRepository.countActiveAdmins.mockResolvedValue(1);
+
+      await expect(
+        service.setStatus(buildActor(), 'user-2', false),
+      ).rejects.toBeInstanceOf(LastActiveAdminException);
+    });
+
+    it('blocks a non-admin user.manage holder from deactivating another admin', async () => {
+      userRepository.findById.mockResolvedValue(
+        buildUser({ id: 'user-2', role: 'admin' }),
+      );
+
+      await expect(
+        service.setStatus(
+          buildActor({ id: 'actor-1', role: 'member' }),
+          'user-2',
+          false,
+        ),
+      ).rejects.toBeInstanceOf(InsufficientPermissionException);
+      expect(userRepository.updateStatus).not.toHaveBeenCalled();
+    });
+
+    it('rejects a non-boolean isActive value', async () => {
+      await expect(
+        service.setStatus(
+          buildActor(),
+          'user-2',
+          undefined as unknown as boolean,
+        ),
+      ).rejects.toBeInstanceOf(ValidationException);
+      expect(userRepository.updateStatus).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('deleteUser', () => {
+    it('deletes the user and records an audit entry', async () => {
+      userRepository.findById.mockResolvedValue(buildUser({ id: 'user-2' }));
+
+      await service.deleteUser(buildActor(), 'user-2');
+
+      expect(userRepository.delete).toHaveBeenCalledWith('user-2');
+      expect(adminAuditLogService.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'user.delete' }),
+      );
+    });
+
+    it('blocks an admin from deleting themselves', async () => {
+      const actor = buildActor({ id: 'user-1' });
+
+      await expect(service.deleteUser(actor, 'user-1')).rejects.toBeInstanceOf(
+        SelfActionNotAllowedException,
+      );
+      expect(userRepository.delete).not.toHaveBeenCalled();
+    });
+
+    it('blocks deleting the last active admin', async () => {
+      userRepository.findById.mockResolvedValue(
+        buildUser({ id: 'user-2', role: 'admin' }),
+      );
+      userRepository.countActiveAdmins.mockResolvedValue(1);
+
+      await expect(
+        service.deleteUser(buildActor(), 'user-2'),
+      ).rejects.toBeInstanceOf(LastActiveAdminException);
+      expect(userRepository.delete).not.toHaveBeenCalled();
+    });
+
+    it('blocks a non-admin user.manage holder from deleting another admin', async () => {
+      userRepository.findById.mockResolvedValue(
+        buildUser({ id: 'user-2', role: 'admin' }),
+      );
+
+      await expect(
+        service.deleteUser(
+          buildActor({ id: 'actor-1', role: 'member' }),
+          'user-2',
+        ),
+      ).rejects.toBeInstanceOf(InsufficientPermissionException);
+      expect(userRepository.delete).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('resetPassword', () => {
+    it('generates and persists a temporary password, and records an audit entry', async () => {
+      userRepository.findById.mockResolvedValue(buildUser());
+
+      const temporaryPassword = await service.resetPassword(
+        buildActor(),
+        'user-1',
+      );
+
+      expect(temporaryPassword).toMatch(/A1!$/);
+      expect(userRepository.updatePassword).toHaveBeenCalledWith(
+        'user-1',
+        expect.any(String),
+      );
+      expect(adminAuditLogService.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'user.password.reset' }),
+      );
+    });
+  });
+
+  describe('unlock', () => {
+    it('resets failed login attempts and records an audit entry', async () => {
+      userRepository.findById.mockResolvedValue(buildUser());
+      userRepository.resetFailedLoginAttempts.mockResolvedValue(
+        buildUser({ failedLoginAttempts: 0, lockedUntil: null }),
+      );
+
+      await service.unlock(buildActor(), 'user-1');
+
+      expect(userRepository.resetFailedLoginAttempts).toHaveBeenCalledWith(
+        'user-1',
+      );
+      expect(adminAuditLogService.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'user.unlock' }),
+      );
+    });
+  });
+
+  describe('setGroups', () => {
+    it('replaces group membership after validating every group exists', async () => {
+      userRepository.findById.mockResolvedValue(buildUser());
+      groupsRepository.findByIds.mockResolvedValue([
+        {
+          id: 'group-1',
+          name: 'Group',
+          description: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ]);
+
+      await service.setGroups(buildActor(), 'user-1', ['group-1']);
+
+      expect(groupsRepository.setGroupsForUser).toHaveBeenCalledWith('user-1', [
+        'group-1',
+      ]);
+      expect(adminAuditLogService.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'user.groups.update' }),
+      );
+    });
+
+    it('throws GroupNotFoundException when a group id does not exist', async () => {
+      userRepository.findById.mockResolvedValue(buildUser());
+      groupsRepository.findByIds.mockResolvedValue([]);
+
+      await expect(
+        service.setGroups(buildActor(), 'user-1', ['missing-group']),
+      ).rejects.toThrow();
+      expect(groupsRepository.setGroupsForUser).not.toHaveBeenCalled();
+    });
+
+    it('rejects a non-array groupIds value', async () => {
+      await expect(
+        service.setGroups(
+          buildActor(),
+          'user-1',
+          undefined as unknown as string[],
+        ),
+      ).rejects.toBeInstanceOf(ValidationException);
+      expect(groupsRepository.setGroupsForUser).not.toHaveBeenCalled();
     });
   });
 });

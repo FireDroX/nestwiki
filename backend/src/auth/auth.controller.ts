@@ -120,13 +120,13 @@ export class AuthController {
     description: 'Refresh token manquant ou invalide.',
     type: ErrorResponseDto,
   })
-  refresh(
+  async refresh(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
-  ): ResponseDto<null> {
+  ): Promise<ResponseDto<null>> {
     const refreshToken = req.cookies?.[REFRESH_TOKEN_COOKIE] as
       string | undefined;
-    const { accessToken } = this.authService.refresh(refreshToken);
+    const { accessToken } = await this.authService.refresh(refreshToken);
     this.setCookie(
       res,
       ACCESS_TOKEN_COOKIE,

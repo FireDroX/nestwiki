@@ -4,7 +4,11 @@ import { Repository } from 'typeorm';
 import { CreateUserDto } from '../dto/in/create-user.dto.js';
 import { UpdateProfileDto } from '../dto/in/update-profile.dto.js';
 import { User, UserRole } from '../entities/user.entity.js';
-import { UserRepository } from './user.repository.js';
+import {
+  AdminUpdateUserInput,
+  UserListFilters,
+  UserRepository,
+} from './user.repository.js';
 
 @Injectable()
 export class TypeormUserRepository implements UserRepository {
@@ -38,6 +42,22 @@ export class TypeormUserRepository implements UserRepository {
     return (await this.findById(id)) as User;
   }
 
+  async adminUpdate(id: string, data: AdminUpdateUserInput): Promise<User> {
+    const patch: Partial<User> = {};
+    if (data.displayName !== undefined) {
+      patch.displayName = data.displayName;
+    }
+    if (data.email !== undefined) {
+      patch.email = data.email;
+    }
+    if (data.role !== undefined) {
+      patch.role = data.role;
+    }
+
+    await this.repository.update(id, patch);
+    return (await this.findById(id)) as User;
+  }
+
   async findAllPaginated(
     page: number,
     limit: number,
@@ -50,13 +70,56 @@ export class TypeormUserRepository implements UserRepository {
     return { items, total };
   }
 
+  async findAllFiltered(
+    filters: UserListFilters,
+    page: number,
+    limit: number,
+  ): Promise<{ items: User[]; total: number }> {
+    const qb = this.repository.createQueryBuilder('user');
+
+    if (filters.search) {
+      qb.andWhere(
+        '(user.email LIKE :search OR user.displayName LIKE :search)',
+        {
+          search: `%${filters.search}%`,
+        },
+      );
+    }
+    if (filters.role) {
+      qb.andWhere('user.role = :role', { role: filters.role });
+    }
+    if (filters.active !== undefined) {
+      qb.andWhere('user.isActive = :active', { active: filters.active });
+    }
+    if (filters.userIds) {
+      qb.andWhere('user.id IN (:...userIds)', {
+        userIds: filters.userIds.length > 0 ? filters.userIds : [''],
+      });
+    }
+
+    qb.orderBy('user.createdAt', 'ASC')
+      .skip((page - 1) * limit)
+      .take(limit);
+
+    const [items, total] = await qb.getManyAndCount();
+    return { items, total };
+  }
+
   async updateRole(id: string, role: UserRole): Promise<User> {
     await this.repository.update(id, { role });
     return (await this.findById(id)) as User;
   }
 
+  async updateStatus(id: string, isActive: boolean): Promise<User> {
+    await this.repository.update(id, { isActive });
+    return (await this.findById(id)) as User;
+  }
+
   async updatePassword(id: string, passwordHash: string): Promise<User> {
-    await this.repository.update(id, { passwordHash });
+    await this.repository.update(id, {
+      passwordHash,
+      passwordChangedAt: new Date(),
+    });
     return (await this.findById(id)) as User;
   }
 
@@ -80,5 +143,9 @@ export class TypeormUserRepository implements UserRepository {
       lockedUntil: null,
     });
     return (await this.findById(id)) as User;
+  }
+
+  countActiveAdmins(): Promise<number> {
+    return this.repository.count({ where: { role: 'admin', isActive: true } });
   }
 }

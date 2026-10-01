@@ -50,7 +50,7 @@ export async function listUsers(page = 1, limit = 100): Promise<PaginatedUsers> 
 }
 
 export async function updateRole(id: string, role: UserRole): Promise<AdminUser> {
-  const { data } = await apiClient.patch<ResponseDto<AdminUser>>(`/admin/users/${id}/role`, { role })
+  const { data } = await apiClient.patch<ResponseDto<AdminUser>>(`/admin/users/${id}`, { role })
   return data.data
 }
 
