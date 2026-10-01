@@ -503,7 +503,8 @@
         "access_rule.create": "Création de règle d'accès",
         "access_rule.update": "Modification de règle d'accès",
         "access_rule.delete": "Suppression de règle d'accès",
-        "comment.deleted_by_moderator": "Suppression de commentaire (modération)"
+        "comment.deleted_by_moderator": "Suppression de commentaire (modération)",
+        "comment.purged_by_moderator": "Purge des commentaires d'un utilisateur"
       }
     },
     "activityLog": {

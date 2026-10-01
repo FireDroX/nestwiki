@@ -3,9 +3,11 @@ import { Test } from '@nestjs/testing';
 import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 import { AdminAuditLogService } from '../../admin/services/admin-audit-log.service.js';
 import { UserActivityLogService } from '../../activity/services/user-activity-log.service.js';
+import { InsufficientPermissionException } from '../../common/exceptions/insufficient-permission.exception.js';
 import type { AuthenticatedUser } from '../../common/strategies/jwt.strategy.js';
 import { PagesService } from '../../pages/services/pages.service.js';
 import { PermissionsService } from '../../permissions/services/permissions.service.js';
+import { User } from '../../users/entities/user.entity.js';
 import { UsersService } from '../../users/services/users.service.js';
 import { CreateCommentDto } from '../dto/in/create-comment.dto.js';
 import { UpdateCommentDto } from '../dto/in/update-comment.dto.js';
@@ -34,6 +36,24 @@ function buildComment(overrides: Partial<Comment> = {}): Comment {
   };
 }
 
+function buildTargetUser(overrides: Partial<User> = {}): User {
+  return {
+    id: 'target-1',
+    email: 'target@example.com',
+    passwordHash: 'hash',
+    displayName: 'Target User',
+    avatarUrl: null,
+    role: 'member',
+    failedLoginAttempts: 0,
+    lockedUntil: null,
+    isActive: true,
+    passwordChangedAt: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    ...overrides,
+  };
+}
+
 describe('CommentsService', () => {
   let service: CommentsService;
   let commentsRepository: {
@@ -41,6 +61,7 @@ describe('CommentsService', () => {
   };
   let eventEmitter: { emit: ReturnType<typeof vi.fn> };
   let adminAuditLogService: { record: ReturnType<typeof vi.fn> };
+  let usersService: { findById: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
     commentsRepository = {
@@ -58,13 +79,16 @@ describe('CommentsService', () => {
     };
     eventEmitter = { emit: vi.fn() };
     adminAuditLogService = { record: vi.fn() };
+    usersService = {
+      findById: vi.fn().mockResolvedValue(buildTargetUser()),
+    };
 
     const module = await Test.createTestingModule({
       providers: [
         CommentsService,
         { provide: 'CommentsRepository', useValue: commentsRepository },
         { provide: PagesService, useValue: {} },
-        { provide: UsersService, useValue: { findById: vi.fn() } },
+        { provide: UsersService, useValue: usersService },
         {
           provide: PermissionsService,
           useValue: { hasGlobal: vi.fn().mockResolvedValue(true) },
@@ -159,5 +183,53 @@ describe('CommentsService', () => {
         targetId: 'comment-1',
       }),
     );
+  });
+
+  describe('listByUser / purgeByUser admin-target guard', () => {
+    const nonAdminActor: AuthenticatedUser = {
+      id: 'moderator-1',
+      email: 'm@x.com',
+      role: 'member',
+    };
+
+    it('blocks a non-admin user.manage holder from listing an admin target’s comments', async () => {
+      usersService.findById.mockResolvedValue(
+        buildTargetUser({ role: 'admin' }),
+      );
+
+      await expect(
+        service.listByUser('target-1', {}, nonAdminActor),
+      ).rejects.toBeInstanceOf(InsufficientPermissionException);
+      expect(commentsRepository.findAllByAuthorId).not.toHaveBeenCalled();
+    });
+
+    it('blocks a non-admin user.manage holder from purging an admin target’s comments', async () => {
+      usersService.findById.mockResolvedValue(
+        buildTargetUser({ role: 'admin' }),
+      );
+
+      await expect(
+        service.purgeByUser('target-1', {}, nonAdminActor),
+      ).rejects.toBeInstanceOf(InsufficientPermissionException);
+      expect(commentsRepository.deleteMany).not.toHaveBeenCalled();
+    });
+
+    it('allows a non-admin user.manage holder to list/purge a non-admin target’s comments', async () => {
+      usersService.findById.mockResolvedValue(
+        buildTargetUser({ role: 'member' }),
+      );
+      commentsRepository.findAllByAuthorId.mockResolvedValue({
+        items: [],
+        total: 0,
+      });
+      commentsRepository.findAllIdsByAuthorId.mockResolvedValue([]);
+
+      await expect(
+        service.listByUser('target-1', {}, nonAdminActor),
+      ).resolves.toEqual(expect.objectContaining({ items: [], total: 0 }));
+      await expect(
+        service.purgeByUser('target-1', {}, nonAdminActor),
+      ).resolves.toBe(0);
+    });
   });
 });

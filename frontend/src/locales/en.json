@@ -503,7 +503,8 @@
         "access_rule.create": "Access rule created",
         "access_rule.update": "Access rule updated",
         "access_rule.delete": "Access rule deleted",
-        "comment.deleted_by_moderator": "Comment deleted (moderation)"
+        "comment.deleted_by_moderator": "Comment deleted (moderation)",
+        "comment.purged_by_moderator": "User comments purged"
       }
     },
     "activityLog": {

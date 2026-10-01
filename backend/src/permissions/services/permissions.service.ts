@@ -339,14 +339,20 @@ export class PermissionsService {
     if (!user.isActive) {
       return [];
     }
-    if (await this.hasUnrestrictedPageAccess(user, 'page.read')) {
-      return null;
-    }
 
     const context = await this.loadUserContext(user);
     const readRules = context.rules.filter(({ rule }) =>
       rule.actions.includes('page.read'),
     );
+    const hasUnrestrictedWholeWikiRule = readRules.some(
+      ({ rule, excludedPageIds }) =>
+        rule.appliesTo === 'subtree' &&
+        rule.pageId === null &&
+        excludedPageIds.length === 0,
+    );
+    if (hasUnrestrictedWholeWikiRule) {
+      return null;
+    }
 
     const included = new Set<string>();
 
