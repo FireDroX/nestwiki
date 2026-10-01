@@ -1,3 +1,4 @@
+import type { PageAction } from '../../../common/permissions.js';
 import { PageVisibility } from '../../entities/page.entity.js';
 
 export interface PageDetailResponseDto {
@@ -11,5 +12,5 @@ export interface PageDetailResponseDto {
   updatedAt: Date;
   isFollowed: boolean;
   currentVersionId: string;
-  canEdit: boolean;
+  permissions: PageAction[];
 }

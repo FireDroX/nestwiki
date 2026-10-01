@@ -1,3 +1,4 @@
+import type { PageAction } from '../../common/permissions.js';
 import { ResponseDto } from '../../common/dto/response.dto.js';
 import { PageDetailResponseDto } from '../dto/out/page-detail-response.dto.js';
 import { PageMergePreviewResponseDto } from '../dto/out/page-merge-preview-response.dto.js';
@@ -34,7 +35,7 @@ export class PageMapper {
     page: Page,
     version: PageVersion,
     isFollowed: boolean,
-    canEdit: boolean,
+    permissions: PageAction[],
   ): PageDetailResponseDto {
     return {
       id: page.id,
@@ -47,7 +48,7 @@ export class PageMapper {
       updatedAt: page.updatedAt,
       isFollowed,
       currentVersionId: page.currentVersionId!,
-      canEdit,
+      permissions,
     };
   }
 
@@ -55,10 +56,15 @@ export class PageMapper {
     page: Page,
     version: PageVersion,
     isFollowed: boolean,
-    canEdit: boolean,
+    permissions: PageAction[],
   ): ResponseDto<PageDetailResponseDto> {
     return new ResponseDto(
-      PageMapper.toPageDetailResponseDto(page, version, isFollowed, canEdit),
+      PageMapper.toPageDetailResponseDto(
+        page,
+        version,
+        isFollowed,
+        permissions,
+      ),
     );
   }
 

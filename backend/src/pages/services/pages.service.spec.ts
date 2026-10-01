@@ -106,6 +106,12 @@ describe('PagesService', () => {
     can: Mock<PermissionsService['can']>;
     hasGlobal: Mock<PermissionsService['hasGlobal']>;
     filterReadable: Mock<PermissionsService['filterReadable']>;
+    getEffectivePageActions: Mock<
+      PermissionsService['getEffectivePageActions']
+    >;
+    getEffectivePageActionsBulk: Mock<
+      PermissionsService['getEffectivePageActionsBulk']
+    >;
   };
   let usersService: { findById: Mock<UsersService['findById']> };
   let pageMergeService: { merge: ReturnType<typeof vi.fn> };
@@ -143,6 +149,12 @@ describe('PagesService', () => {
         .fn()
         .mockImplementation((_user: User | undefined, pages: Page[]) =>
           Promise.resolve(pages),
+        ),
+      getEffectivePageActions: vi.fn().mockResolvedValue([]),
+      getEffectivePageActionsBulk: vi
+        .fn()
+        .mockImplementation((_user: User | undefined, pageIds: string[]) =>
+          Promise.resolve(new Map(pageIds.map((id) => [id, []]))),
         ),
     };
     usersService = {
@@ -969,72 +981,75 @@ describe('PagesService', () => {
       expect(result.isFollowed).toBe(false);
     });
 
-    it('reports canEdit as true for a member whose access rule grants page.edit', async () => {
+    it('reports permissions from PermissionsService.getEffectivePageActions for the leaf page', async () => {
       const page = buildPage({ visibility: 'public' });
       const version = buildVersion({ id: page.currentVersionId! });
-      permissionsService.can.mockResolvedValue(true);
+      permissionsService.getEffectivePageActions.mockResolvedValue([
+        'page.read',
+        'page.edit',
+      ]);
       pagesRepository.findBySlugAndParent.mockResolvedValue(page);
       pagesRepository.findVersionById.mockResolvedValue(version);
 
       const result = await service.findByPath(['home'], pageEditor);
 
-      expect(permissionsService.can).toHaveBeenCalledWith(
+      expect(permissionsService.getEffectivePageActions).toHaveBeenCalledWith(
         expect.objectContaining({ id: pageEditor.id }),
-        'page.edit',
         page.id,
       );
-      expect(result.canEdit).toBe(true);
+      expect(result.permissions).toEqual(['page.read', 'page.edit']);
     });
 
-    it('reports canEdit as false for a member without a page.edit grant', async () => {
+    it('reports only the actions PermissionsService grants for a member without page.edit', async () => {
       const page = buildPage({ visibility: 'public' });
       const version = buildVersion({ id: page.currentVersionId! });
-      permissionsService.can.mockImplementation((_user, action) =>
-        Promise.resolve(action === 'page.read'),
-      );
+      permissionsService.getEffectivePageActions.mockResolvedValue([
+        'page.read',
+      ]);
       pagesRepository.findBySlugAndParent.mockResolvedValue(page);
       pagesRepository.findVersionById.mockResolvedValue(version);
 
       const result = await service.findByPath(['home'], member);
 
-      expect(result.canEdit).toBe(false);
+      expect(result.permissions).toEqual(['page.read']);
     });
 
-    it('asks PermissionsService about the leaf page itself so a rule on an ancestor can grant canEdit', async () => {
+    it('asks PermissionsService about the leaf page itself so a rule on an ancestor can grant page.edit', async () => {
       const page = buildPage({ visibility: 'public', parentId: 'parent-1' });
       const version = buildVersion({ id: page.currentVersionId! });
-      permissionsService.can.mockResolvedValue(true);
+      permissionsService.getEffectivePageActions.mockResolvedValue([
+        'page.read',
+        'page.edit',
+      ]);
       pagesRepository.findBySlugAndParent.mockResolvedValue(page);
       pagesRepository.findVersionById.mockResolvedValue(version);
 
       const result = await service.findByPath(['docs', 'home'], member);
 
-      expect(permissionsService.can).toHaveBeenCalledWith(
+      expect(permissionsService.getEffectivePageActions).toHaveBeenCalledWith(
         expect.objectContaining({ id: member.id }),
-        'page.edit',
         page.id,
       );
-      expect(result.canEdit).toBe(true);
+      expect(result.permissions).toContain('page.edit');
     });
 
-    it('reports canEdit as false for an anonymous visitor', async () => {
+    it('reports just page.read for an anonymous visitor on a public page', async () => {
       const page = buildPage({ visibility: 'public' });
       const version = buildVersion({ id: page.currentVersionId! });
-      permissionsService.can.mockImplementation((user, action) =>
-        Promise.resolve(action === 'page.read' || user !== undefined),
-      );
+      permissionsService.getEffectivePageActions.mockResolvedValue([
+        'page.read',
+      ]);
       pagesRepository.findBySlugAndParent.mockResolvedValue(page);
       pagesRepository.findVersionById.mockResolvedValue(version);
 
       const result = await service.findByPath(['home'], undefined);
 
       expect(usersService.findById).not.toHaveBeenCalled();
-      expect(permissionsService.can).toHaveBeenCalledWith(
+      expect(permissionsService.getEffectivePageActions).toHaveBeenCalledWith(
         undefined,
-        'page.edit',
         page.id,
       );
-      expect(result.canEdit).toBe(false);
+      expect(result.permissions).toEqual(['page.read']);
     });
   });
 

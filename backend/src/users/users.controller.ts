@@ -46,6 +46,7 @@ import { RolesGuard } from '../common/guards/roles.guard.js';
 import type { AuthenticatedUser } from '../common/strategies/jwt.strategy.js';
 import { AVATAR_MAX_SIZE_MB } from '../common/variables.global.js';
 import { PagesService } from '../pages/services/pages.service.js';
+import { PermissionsService } from '../permissions/services/permissions.service.js';
 import { ListMyActivityQueryDto } from './dto/in/list-my-activity-query.dto.js';
 import { ListUsersQueryDto } from './dto/in/list-users-query.dto.js';
 import { UpdateProfileDto } from './dto/in/update-profile.dto.js';
@@ -64,6 +65,7 @@ export class UsersController {
     private readonly commentsService: CommentsService,
     private readonly pagesService: PagesService,
     private readonly userActivityLogService: UserActivityLogService,
+    private readonly permissionsService: PermissionsService,
   ) {}
 
   @Get('me')
@@ -79,17 +81,25 @@ export class UsersController {
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<ResponseDto<UserResponseDto>> {
     const entity = await this.usersService.findById(user.id);
-    const [commentsCount, pagesCreatedCount, pageEditsCount] =
-      await Promise.all([
-        this.commentsService.countByAuthorId(user.id),
-        this.pagesService.countCreatedByUser(user.id),
-        this.pagesService.countVersionsByAuthor(user.id),
-      ]);
-    return UserMapper.toResponse(entity, {
+    const [
       commentsCount,
       pagesCreatedCount,
       pageEditsCount,
-    });
+      permissions,
+      groups,
+    ] = await Promise.all([
+      this.commentsService.countByAuthorId(user.id),
+      this.pagesService.countCreatedByUser(user.id),
+      this.pagesService.countVersionsByAuthor(user.id),
+      this.permissionsService.getEffectiveGlobalPermissions(entity),
+      this.permissionsService.getGroupsForUser(entity),
+    ]);
+    return UserMapper.toMeResponse(
+      entity,
+      { commentsCount, pagesCreatedCount, pageEditsCount },
+      permissions,
+      groups,
+    );
   }
 
   @Get('me/activity')

@@ -1,3 +1,4 @@
+import type { GlobalPermission } from '../../../common/permissions.js';
 import { UserRole } from '../../entities/user.entity.js';
 
 export interface UserResponseDto {
@@ -10,4 +11,6 @@ export interface UserResponseDto {
   commentsCount?: number;
   pagesCreatedCount?: number;
   pageEditsCount?: number;
+  permissions?: GlobalPermission[];
+  groups?: { id: string; name: string }[];
 }

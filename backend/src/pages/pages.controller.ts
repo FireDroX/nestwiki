@@ -762,8 +762,8 @@ export class PagesController {
     @Param('path') path: string[],
     @CurrentUser() user?: AuthenticatedUser,
   ): Promise<ResponseDto<PageDetailResponseDto>> {
-    const { page, version, isFollowed, canEdit } =
+    const { page, version, isFollowed, permissions } =
       await this.pagesService.findByPath(path, user);
-    return PageMapper.toDetailResponse(page, version, isFollowed, canEdit);
+    return PageMapper.toDetailResponse(page, version, isFollowed, permissions);
   }
 }

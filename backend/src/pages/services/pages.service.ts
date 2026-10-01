@@ -143,8 +143,14 @@ export class PagesService {
   async getTree(currentUser?: AuthenticatedUser): Promise<PageTreeNodeDto[]> {
     const pages = await this.pagesRepository.findAll();
     const visible = await this.filterAccessible(pages, currentUser);
+    const user = await this.resolveFullUser(currentUser);
+    const actionsByPageId =
+      await this.permissionsService.getEffectivePageActionsBulk(
+        user,
+        visible.map((page) => page.id),
+      );
 
-    return PageTreeMapper.buildTree(visible);
+    return PageTreeMapper.buildTree(visible, actionsByPageId);
   }
 
   async findByPath(
@@ -185,13 +191,12 @@ export class PagesService {
       ? await this.pageFollowRepository.isFollowing(currentUser.id, page.id)
       : false;
 
-    const canEdit = await this.permissionsService.can(
+    const permissions = await this.permissionsService.getEffectivePageActions(
       await this.resolveFullUser(currentUser),
-      'page.edit',
       page.id,
     );
 
-    return { page, version, isFollowed, canEdit };
+    return { page, version, isFollowed, permissions };
   }
 
   async getAncestorPath(page: Page): Promise<string> {

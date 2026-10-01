@@ -635,6 +635,107 @@ describe('PermissionsService', () => {
     });
   });
 
+  describe('getEffectivePageActionsBulk', () => {
+    it('returns an empty map for an empty input without querying anything', async () => {
+      const result = await service.getEffectivePageActionsBulk(buildUser(), []);
+      expect(result.size).toBe(0);
+      expect(pageHierarchyRepository.findChains).not.toHaveBeenCalled();
+    });
+
+    it('gives every action for every page to an admin, in a single hierarchy call', async () => {
+      const admin = buildUser({ role: 'admin' });
+      pageHierarchyRepository.findChains.mockResolvedValue(
+        new Map([
+          ['p1', { pageId: 'p1', visibility: 'private', chainIds: ['p1'] }],
+          ['p2', { pageId: 'p2', visibility: 'public', chainIds: ['p2'] }],
+        ]),
+      );
+      const result = await service.getEffectivePageActionsBulk(admin, [
+        'p1',
+        'p2',
+      ]);
+      expect(result.get('p1')).toContain('page.create_child');
+      expect(result.get('p2')).toContain('page.create_child');
+      expect(pageHierarchyRepository.findChains).toHaveBeenCalledTimes(1);
+      expect(groupsRepository.findGroupIdsForUser).not.toHaveBeenCalled();
+    });
+
+    it('maps a missing page to an empty action list', async () => {
+      pageHierarchyRepository.findChains.mockResolvedValue(new Map());
+      const result = await service.getEffectivePageActionsBulk(buildUser(), [
+        'missing',
+      ]);
+      expect(result.get('missing')).toEqual([]);
+    });
+
+    it('gives an active member only the actions their rules cover, loading context once for all pages', async () => {
+      const member = buildUser();
+      pageHierarchyRepository.findChains.mockResolvedValue(
+        new Map([
+          ['p1', { pageId: 'p1', visibility: 'private', chainIds: ['p1'] }],
+          ['p2', { pageId: 'p2', visibility: 'private', chainIds: ['p2'] }],
+        ]),
+      );
+      pageAccessRulesRepository.findByUserId.mockResolvedValue([
+        buildRule({
+          userId: member.id,
+          pageId: 'p1',
+          appliesTo: 'page',
+          actions: ['page.edit'],
+        }),
+      ]);
+      const result = await service.getEffectivePageActionsBulk(member, [
+        'p1',
+        'p2',
+      ]);
+      expect(new Set(result.get('p1'))).toEqual(
+        new Set(['page.read', 'page.edit']),
+      );
+      expect(result.get('p2')).toEqual([]);
+      expect(groupsRepository.findGroupIdsForUser).toHaveBeenCalledTimes(1);
+    });
+
+    it('gives an anonymous caller only page.read on public pages', async () => {
+      pageHierarchyRepository.findChains.mockResolvedValue(
+        new Map([
+          ['p1', { pageId: 'p1', visibility: 'public', chainIds: ['p1'] }],
+          ['p2', { pageId: 'p2', visibility: 'private', chainIds: ['p2'] }],
+        ]),
+      );
+      const result = await service.getEffectivePageActionsBulk(undefined, [
+        'p1',
+        'p2',
+      ]);
+      expect(result.get('p1')).toEqual(['page.read']);
+      expect(result.get('p2')).toEqual([]);
+    });
+  });
+
+  describe('getGroupsForUser', () => {
+    it('returns an empty array without querying groups when the user belongs to none', async () => {
+      const result = await service.getGroupsForUser(buildUser());
+      expect(result).toEqual([]);
+      expect(groupsRepository.findByIds).not.toHaveBeenCalled();
+    });
+
+    it("returns the user's groups by id", async () => {
+      const member = buildUser();
+      groupsRepository.findGroupIdsForUser.mockResolvedValue(['group-a']);
+      groupsRepository.findByIds.mockResolvedValue([
+        {
+          id: 'group-a',
+          name: 'Éditeurs',
+          description: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ]);
+      const result = await service.getGroupsForUser(member);
+      expect(result.map((group) => group.name)).toEqual(['Éditeurs']);
+      expect(groupsRepository.findByIds).toHaveBeenCalledWith(['group-a']);
+    });
+  });
+
   describe('filterReadable', () => {
     it('returns an empty array for an empty input without querying anything', async () => {
       expect(await service.filterReadable(buildUser(), [])).toEqual([]);

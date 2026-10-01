@@ -7,6 +7,7 @@ import {
 } from '../../common/permissions.js';
 import { Page } from '../../pages/entities/page.entity.js';
 import { User } from '../../users/entities/user.entity.js';
+import { Group } from '../entities/group.entity.js';
 import {
   PageAccessRule,
   PageAccessRuleScope,
@@ -223,6 +224,55 @@ export class PermissionsService {
       actions.add(action);
     }
     return [...actions];
+  }
+
+  async getEffectivePageActionsBulk(
+    user: User | undefined,
+    pageIds: string[],
+  ): Promise<Map<string, PageAction[]>> {
+    const result = new Map<string, PageAction[]>();
+    if (pageIds.length === 0) {
+      return result;
+    }
+
+    const chains = await this.pageHierarchyRepository.findChains(pageIds);
+    const isAdmin = user?.role === 'admin';
+    const context =
+      user && user.isActive && !isAdmin
+        ? await this.loadUserContext(user)
+        : null;
+
+    for (const pageId of pageIds) {
+      const chain = chains.get(pageId);
+      if (!chain) {
+        result.set(pageId, []);
+        continue;
+      }
+      if (isAdmin) {
+        result.set(pageId, [...PAGE_ACTIONS]);
+        continue;
+      }
+      const actions = new Set<PageAction>();
+      if (chain.visibility === 'public') {
+        actions.add('page.read');
+      }
+      if (context) {
+        for (const action of actionsFromRules(context.rules, chain)) {
+          actions.add(action);
+        }
+      }
+      result.set(pageId, [...actions]);
+    }
+
+    return result;
+  }
+
+  async getGroupsForUser(user: User): Promise<Group[]> {
+    const groupIds = await this.groupsRepository.findGroupIdsForUser(user.id);
+    if (groupIds.length === 0) {
+      return [];
+    }
+    return this.groupsRepository.findByIds(groupIds);
   }
 
   async hasUnrestrictedPageAccess(

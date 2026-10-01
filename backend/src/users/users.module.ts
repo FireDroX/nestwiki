@@ -5,6 +5,7 @@ import { ActivityModule } from '../activity/activity.module.js';
 import { AdminModule } from '../admin/admin.module.js';
 import { CommentsModule } from '../comments/comments.module.js';
 import { PagesModule } from '../pages/pages.module.js';
+import { PermissionsModule } from '../permissions/permissions.module.js';
 import { StorageModule } from '../storage/storage.module.js';
 import { User } from './entities/user.entity.js';
 import { TypeormUserRepository } from './persistence/typeorm.user.repository.js';
@@ -19,6 +20,7 @@ import { AdminUsersController, UsersController } from './users.controller.js';
     StorageModule,
     forwardRef(() => CommentsModule),
     forwardRef(() => PagesModule),
+    forwardRef(() => PermissionsModule),
   ],
   controllers: [UsersController, AdminUsersController],
   providers: [

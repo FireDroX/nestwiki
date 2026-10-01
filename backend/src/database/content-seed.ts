@@ -842,6 +842,13 @@ $$
 ## Version 0.30
 
 <details>
+<summary>0.30.3 — 2026-09-25</summary>
+
+- Le détail d'une page expose désormais la liste précise des actions autorisées (\`permissions\`) au lieu d'un simple \`canEdit\`, l'arborescence des pages indique pour chaque page si l'utilisateur peut y créer une sous-page, et \`GET /users/me\` renvoie les permissions globales et les groupes de l'utilisateur connecté.
+
+</details>
+
+<details>
 <summary>0.30.2 — 2026-09-25</summary>
 
 - Les contrôles d'accès existants (pages, tags, médias, commentaires, recherche) utilisent désormais le nouveau système de permissions granulaires. Le rôle \`editor\` est supprimé : les anciens éditeurs conservent leurs droits via un groupe créé automatiquement, les anciens lecteurs ayant un droit d'édition explicite le conservent sur la page concernée et sa sous-arborescence.
