@@ -842,6 +842,13 @@ $$
 ## Version 0.30
 
 <details>
+<summary>0.30.8 — 2026-09-29</summary>
+
+- Nouvel écran d'administration \`/admin/groups\` (accessible aux administrateurs ou à quiconque détient la permission \`user.manage\`) : liste des groupes avec nombre de membres/règles, création/renommage/suppression, et fiche par groupe en onglets (membres, permissions globales, accès aux pages). Nouveau composant \`PageAccessTreeSelector\` : arborescence des pages avec cases à cocher tri-state, cocher un nœud couvre toute sa sous-arborescence, décocher une sous-page l'exclut sans toucher au reste, option "cette page uniquement", sélecteur d'actions par règle, et icône de verrou sur les pages privées.
+
+</details>
+
+<details>
 <summary>0.30.7 — 2026-09-29</summary>
 
 - Le serveur MCP applique désormais les permissions réelles de l'utilisateur propriétaire de la clé API ou du token OAuth, au lieu de lui accorder un accès complet : une clé API sans la permission requise reçoit une erreur explicite (ex. \`wiki_update_page\` sans \`page.edit\`, \`wiki_create_tag\` sans \`tag.create\`, les outils \`wiki_*\` réservés à \`user.manage\`), et les résultats de \`wiki_list_pages\`/\`wiki_search\`/\`wiki_get_page\` sont filtrés selon ce que l'utilisateur peut lire. Une clé API ou un token OAuth appartenant à un compte désactivé est rejeté. Nouveaux outils MCP réservés à \`user.manage\` : \`wiki_list_groups\`, \`wiki_set_user_groups\`, \`wiki_grant_access\`, \`wiki_set_permissions\`.

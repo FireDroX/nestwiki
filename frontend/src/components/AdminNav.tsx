@@ -6,6 +6,7 @@ export function AdminNav() {
   const { t } = useTranslation()
   const links = [
     { to: '/admin/users', label: t('admin.usersTab') },
+    { to: '/admin/groups', label: t('admin.groupsTab') },
     { to: '/admin/settings', label: t('admin.settingsTab') },
     { to: '/admin/mcp/api-keys', label: t('admin.mcpKeysTab') },
     { to: '/admin/mcp/oauth-clients', label: t('admin.oauthClientsTab') },

@@ -363,6 +363,9 @@ describe('UsersService', () => {
     });
 
     it('assigns initial groups after validating they all exist', async () => {
+      userRepository.findById.mockResolvedValue(
+        buildUser({ id: 'admin-1', role: 'admin' }),
+      );
       userRepository.create.mockResolvedValue(buildUser({ email: dto.email }));
       groupsRepository.findByIds.mockResolvedValue([
         {
@@ -383,6 +386,33 @@ describe('UsersService', () => {
         expect.any(String),
         ['group-1'],
       );
+    });
+
+    it('blocks a non-admin user.manage holder from assigning a group that grants a permission they lack', async () => {
+      userRepository.findById.mockResolvedValue(
+        buildUser({ id: 'actor-1', role: 'member' }),
+      );
+      groupsRepository.findByIds.mockResolvedValue([
+        {
+          id: 'group-1',
+          name: 'Group',
+          description: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ]);
+      subjectPermissionsRepository.findForGroup.mockResolvedValue([
+        'user.manage',
+      ]);
+      permissionsService.hasGlobal.mockResolvedValue(false);
+
+      await expect(
+        service.createByAdmin(buildActor({ id: 'actor-1', role: 'member' }), {
+          ...dto,
+          groupIds: ['group-1'],
+        }),
+      ).rejects.toBeInstanceOf(InsufficientPermissionException);
+      expect(userRepository.create).not.toHaveBeenCalled();
     });
   });
 
@@ -528,6 +558,21 @@ describe('UsersService', () => {
           buildActor({ id: 'actor-1', role: 'member' }),
           'user-2',
           false,
+        ),
+      ).rejects.toBeInstanceOf(InsufficientPermissionException);
+      expect(userRepository.updateStatus).not.toHaveBeenCalled();
+    });
+
+    it('blocks a non-admin user.manage holder from re-enabling a disabled admin', async () => {
+      userRepository.findById.mockResolvedValue(
+        buildUser({ id: 'user-2', role: 'admin', isActive: false }),
+      );
+
+      await expect(
+        service.setStatus(
+          buildActor({ id: 'actor-1', role: 'member' }),
+          'user-2',
+          true,
         ),
       ).rejects.toBeInstanceOf(InsufficientPermissionException);
       expect(userRepository.updateStatus).not.toHaveBeenCalled();

@@ -10,26 +10,26 @@ const tree: PageTreeNode[] = [
     id: 'doc',
     slug: 'documentation',
     title: 'Documentation',
-    canCreateChild: false,
+    canCreateChild: false, visibility: 'public',
     children: [
       {
         id: 'guide',
         slug: 'guide',
         title: 'Guide',
-        canCreateChild: false,
+        canCreateChild: false, visibility: 'public',
         children: [
           {
             id: 'install',
             slug: 'installation',
             title: 'Installation',
-            canCreateChild: false,
+            canCreateChild: false, visibility: 'public',
             children: [],
           },
         ],
       },
     ],
   },
-  { id: 'faq', slug: 'faq', title: 'FAQ', canCreateChild: false, children: [] },
+  { id: 'faq', slug: 'faq', title: 'FAQ', canCreateChild: false, visibility: 'public', children: [] },
 ]
 
 function renderTree(initialPath: string) {
@@ -80,24 +80,24 @@ const collidingSlugTree: PageTreeNode[] = [
     id: 'esgi',
     slug: 'esgi',
     title: 'ESGI',
-    canCreateChild: false,
+    canCreateChild: false, visibility: 'public',
     children: [
       {
         id: 's1',
         slug: 's1',
         title: 'S1',
-        canCreateChild: false,
+        canCreateChild: false, visibility: 'public',
         children: [
-          { id: 's1-reseau', slug: 'reseau', title: 'Reseau S1', canCreateChild: false, children: [] },
+          { id: 's1-reseau', slug: 'reseau', title: 'Reseau S1', canCreateChild: false, visibility: 'public', children: [] },
         ],
       },
       {
         id: 's2',
         slug: 's2',
         title: 'S2',
-        canCreateChild: false,
+        canCreateChild: false, visibility: 'public',
         children: [
-          { id: 's2-reseau', slug: 'reseau', title: 'Reseau S2', canCreateChild: false, children: [] },
+          { id: 's2-reseau', slug: 'reseau', title: 'Reseau S2', canCreateChild: false, visibility: 'public', children: [] },
         ],
       },
     ],

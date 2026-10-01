@@ -42,9 +42,9 @@ export interface PaginatedUsers {
   limit: number
 }
 
-export async function listUsers(page = 1, limit = 100): Promise<PaginatedUsers> {
+export async function listUsers(page = 1, limit = 100, search?: string): Promise<PaginatedUsers> {
   const { data } = await apiClient.get<ResponseDto<PaginatedUsers>>('/admin/users', {
-    params: { page, limit },
+    params: { page, limit, search },
   })
   return data.data
 }

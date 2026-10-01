@@ -6,6 +6,7 @@ export interface PageTreeNode {
   id: string
   slug: string
   title: string
+  visibility: PageVisibility
   canCreateChild: boolean
   children: PageTreeNode[]
 }

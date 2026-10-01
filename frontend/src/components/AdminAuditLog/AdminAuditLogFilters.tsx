@@ -15,6 +15,14 @@ export const ADMIN_AUDIT_LOG_ACTIONS = [
   'user.unlock',
   'user.groups.update',
   'user.permissions.update',
+  'group.create',
+  'group.update',
+  'group.delete',
+  'group.members.update',
+  'group.permissions.update',
+  'access_rule.create',
+  'access_rule.update',
+  'access_rule.delete',
 ] as const
 
 interface AdminAuditLogFiltersProps {

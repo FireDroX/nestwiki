@@ -7,6 +7,8 @@ import { UserRole } from '#api/auth'
 import { useAuth } from '#hooks/useAuth'
 import { AdminActivityLog } from '#pages/AdminActivityLog'
 import { AdminAuditLog } from '#pages/AdminAuditLog'
+import { AdminGroupDetail } from '#pages/AdminGroupDetail'
+import { AdminGroups } from '#pages/AdminGroups'
 import { AdminMcpAudit } from '#pages/AdminMcpAudit'
 import { AdminMcpKeys } from '#pages/AdminMcpKeys'
 import { AdminOAuthClients } from '#pages/AdminOAuthClients'
@@ -58,6 +60,10 @@ export function App() {
             <Route path="/admin/mcp/audit-log" element={<AdminMcpAudit />} />
             <Route path="/admin/audit-log" element={<AdminAuditLog />} />
             <Route path="/admin/activity-log" element={<AdminActivityLog />} />
+          </Route>
+          <Route element={<ProtectedRoute permission="user.manage" />}>
+            <Route path="/admin/groups" element={<AdminGroups />} />
+            <Route path="/admin/groups/:id" element={<AdminGroupDetail />} />
           </Route>
         </Route>
       </Routes>
