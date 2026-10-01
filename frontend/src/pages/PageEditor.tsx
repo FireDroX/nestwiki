@@ -9,7 +9,6 @@ import { FileUploadButton } from '#components/PageEditor/FileUploadButton'
 import { MarkdownEditor, type MarkdownEditorHandle } from '#components/PageEditor/MarkdownEditor'
 import { MediaLibraryPicker } from '#components/PageEditor/MediaLibraryPicker'
 import { PageMetadataForm } from '#components/PageEditor/PageMetadataForm'
-import { PagePermissionsPanel } from '#components/page-settings/PagePermissionsPanel'
 import { PageTagsPanel } from '#components/page-settings/PageTagsPanel'
 import { Button } from '#components/ui/button'
 import { Field, FieldLabel } from '#components/ui/field'
@@ -23,12 +22,12 @@ import {
   updatePage,
   type PageVisibility,
 } from '#api/pages'
-import { useAuth } from '#hooks/useAuth'
 import { useEditorState } from '#hooks/useEditorState'
 import { useFileUpload } from '#hooks/useFileUpload'
 import { usePage } from '#hooks/usePage'
 import { usePageRealtimeSync } from '#hooks/usePageRealtimeSync'
 import { usePageTree } from '#hooks/usePageTree'
+import { usePermissions } from '#hooks/usePermissions'
 import { extractErrorMessage } from '#lib/api-errors'
 import { findPathToNode } from '#utils/page-tree'
 import { createPageMetadataSchema, type PageMetadataFormValues } from '#schemas/page-metadata.schema'
@@ -51,7 +50,7 @@ export function PageEditor() {
   const { t } = useTranslation()
   const params = useParams()
   const navigate = useNavigate()
-  const { user } = useAuth()
+  const { hasGlobal, canOnPage } = usePermissions()
   const pathSegments = pathFromParam(params['*'])
   const initialReturnPath = `/pages/${pathSegments.join('/')}`
   const { status, page } = usePage(pathSegments)
@@ -204,7 +203,7 @@ export function PageEditor() {
     )
   }
 
-  if (!page.canEdit) {
+  if (!canOnPage(page, 'page.edit')) {
     return (
       <div className="max-w-3xl space-y-4 p-8">
         <h1 className="text-2xl font-semibold">{t('pageEditor.forbiddenTitle')}</h1>
@@ -252,13 +251,13 @@ export function PageEditor() {
             />
           </Field>
           <div className="mt-5">
-            <PageTagsPanel pageId={page.id} canDeleteTags={user?.role === 'admin'} />
+            <PageTagsPanel
+              pageId={page.id}
+              canManageTags={canOnPage(page, 'page.manage_tags')}
+              canCreateTags={hasGlobal('tag.create')}
+              canDeleteTags={hasGlobal('tag.delete')}
+            />
           </div>
-          {user?.role === 'admin' && (
-            <div className="mt-5">
-              <PagePermissionsPanel pageId={page.id} />
-            </div>
-          )}
           {editor.content.includes('<<<<<<<') && (
             <p className="mt-2 text-sm text-destructive">{t('pageEditor.realtimeConflictBanner')}</p>
           )}
@@ -274,10 +273,16 @@ export function PageEditor() {
         onFilesDropped={handleImageUpload}
         toolbarExtra={
           <>
-            <FileUploadButton variant="image" onFilesSelected={handleImageUpload} />
-            <FileUploadButton variant="attachment" onFilesSelected={handleAttachmentUpload} />
+            {hasGlobal('media.upload') && (
+              <>
+                <FileUploadButton variant="image" onFilesSelected={handleImageUpload} />
+                <FileUploadButton variant="attachment" onFilesSelected={handleAttachmentUpload} />
+              </>
+            )}
             <MediaLibraryPicker
               pageId={page.id}
+              canUpload={hasGlobal('media.upload')}
+              canDelete={hasGlobal('media.delete')}
               onInsert={(markdown) => editorRef.current?.insertAtCursor(markdown)}
             />
           </>

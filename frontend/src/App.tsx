@@ -22,8 +22,6 @@ import { PageView } from '#pages/PageView'
 import { Profile } from '#pages/Profile'
 import { SearchResults } from '#pages/SearchResults'
 
-const EDITOR_ROLES = [UserRole.Editor, UserRole.Admin]
-
 export function App() {
   const { status } = useAuth()
 
@@ -38,7 +36,7 @@ export function App() {
         <Route element={<ProtectedRoute />}>
           <Route path="/oauth/consent" element={<OAuthConsent />} />
         </Route>
-        <Route element={<ProtectedRoute roles={EDITOR_ROLES} />}>
+        <Route element={<ProtectedRoute permission="page.create_root" />}>
           <Route path="/new" element={<PageCreate />} />
         </Route>
         <Route element={<ProtectedRoute />}>

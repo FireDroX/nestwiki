@@ -46,10 +46,12 @@ function toMarkdown(item: AttachmentDto): string {
 
 interface MediaLibraryPickerProps {
   pageId?: string
+  canUpload: boolean
+  canDelete: boolean
   onInsert: (markdown: string) => void
 }
 
-export function MediaLibraryPicker({ pageId, onInsert }: MediaLibraryPickerProps) {
+export function MediaLibraryPicker({ pageId, canUpload, canDelete, onInsert }: MediaLibraryPickerProps) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [tab, setTab] = useState<'browse' | 'upload'>('browse')
@@ -123,7 +125,7 @@ export function MediaLibraryPicker({ pageId, onInsert }: MediaLibraryPickerProps
         <Tabs value={tab} onValueChange={(value) => setTab(value as 'browse' | 'upload')}>
           <TabsList>
             <TabsTrigger value="browse">{t('mediaLibrary.browseTab')}</TabsTrigger>
-            <TabsTrigger value="upload">{t('mediaLibrary.uploadTab')}</TabsTrigger>
+            {canUpload && <TabsTrigger value="upload">{t('mediaLibrary.uploadTab')}</TabsTrigger>}
           </TabsList>
           <TabsContent value="browse" className="flex flex-col gap-3">
             <div className="flex gap-2">
@@ -173,35 +175,37 @@ export function MediaLibraryPicker({ pageId, onInsert }: MediaLibraryPickerProps
                       {item.filename}
                     </span>
                   </button>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon-sm"
-                        className="absolute top-1 right-1 opacity-0 focus-visible:opacity-100 group-hover:opacity-100"
-                      >
-                        <Trash2 />
-                        <span className="sr-only">
-                          {t('mediaLibrary.deleteSr', { filename: item.filename })}
-                        </span>
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>{t('mediaLibrary.deleteConfirmTitle')}</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          {t('mediaLibrary.deleteConfirmDescription', { filename: item.filename })}
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
-                        <AlertDialogAction variant="destructive" onClick={() => handleDelete(item)}>
-                          {t('common.delete')}
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                  {canDelete && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          className="absolute top-1 right-1 opacity-0 focus-visible:opacity-100 group-hover:opacity-100"
+                        >
+                          <Trash2 />
+                          <span className="sr-only">
+                            {t('mediaLibrary.deleteSr', { filename: item.filename })}
+                          </span>
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>{t('mediaLibrary.deleteConfirmTitle')}</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            {t('mediaLibrary.deleteConfirmDescription', { filename: item.filename })}
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+                          <AlertDialogAction variant="destructive" onClick={() => handleDelete(item)}>
+                            {t('common.delete')}
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
                 </div>
               ))}
             </div>
@@ -216,9 +220,11 @@ export function MediaLibraryPicker({ pageId, onInsert }: MediaLibraryPickerProps
               </Button>
             )}
           </TabsContent>
-          <TabsContent value="upload">
-            <MediaLibraryUploadTab pageId={pageId} onUploaded={handleUploaded} />
-          </TabsContent>
+          {canUpload && (
+            <TabsContent value="upload">
+              <MediaLibraryUploadTab pageId={pageId} onUploaded={handleUploaded} />
+            </TabsContent>
+          )}
         </Tabs>
       </DialogContent>
     </Dialog>

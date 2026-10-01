@@ -9,6 +9,7 @@ import { VersionDiffView } from '#components/PageHistory/VersionDiffView'
 import { VersionHistoryTable } from '#components/PageHistory/VersionHistoryTable'
 import { useAuth } from '#hooks/useAuth'
 import { usePage } from '#hooks/usePage'
+import { usePermissions } from '#hooks/usePermissions'
 import { useVersions } from '#hooks/useVersions'
 import { formatDateTime } from '#utils/relative-time'
 
@@ -22,12 +23,13 @@ export function PageHistory() {
   const pathSegments = pathFromParam(params['*'])
   const { status, page } = usePage(pathSegments)
   const { user } = useAuth()
+  const { canOnPage } = usePermissions()
   const versions = useVersions(page?.id)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [diffChanges, setDiffChanges] = useState<DiffChange[] | null>(null)
   const [diffStatus, setDiffStatus] = useState<'idle' | 'loading' | 'error'>('idle')
 
-  const canRestore = !!page?.canEdit
+  const canRestore = canOnPage(page, 'page.restore_version')
 
   const selectedVersions = useMemo(
     () =>

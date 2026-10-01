@@ -36,6 +36,8 @@ import { extractErrorMessage } from '#lib/api-errors'
 
 interface PageTagsPanelProps {
   pageId: string
+  canManageTags: boolean
+  canCreateTags: boolean
   canDeleteTags: boolean
 }
 
@@ -43,7 +45,7 @@ type Status = 'loading' | 'ready' | 'error'
 
 const DEFAULT_TAG_COLOR = '#6b7280'
 
-export function PageTagsPanel({ pageId, canDeleteTags }: PageTagsPanelProps) {
+export function PageTagsPanel({ pageId, canManageTags, canCreateTags, canDeleteTags }: PageTagsPanelProps) {
   const { t } = useTranslation()
   const [allTags, setAllTags] = useState<TagSummary[]>([])
   const [pageTags, setPageTags] = useState<TagSummary[]>([])
@@ -171,39 +173,45 @@ export function PageTagsPanel({ pageId, canDeleteTags }: PageTagsPanelProps) {
             style={{ borderColor: tag.color, color: tag.color }}
           >
             {tag.name}
-            <button
-              type="button"
-              onClick={() => handleDetach(tag.id)}
-              disabled={pendingTagId === tag.id}
-              aria-label={t('tags.detachSr', { name: tag.name })}
-              className="hover:opacity-70 disabled:opacity-50"
-            >
-              <X className="size-3" />
-            </button>
+            {canManageTags && (
+              <button
+                type="button"
+                onClick={() => handleDetach(tag.id)}
+                disabled={pendingTagId === tag.id}
+                aria-label={t('tags.detachSr', { name: tag.name })}
+                className="hover:opacity-70 disabled:opacity-50"
+              >
+                <X className="size-3" />
+              </button>
+            )}
           </span>
         ))}
       </div>
 
-      <div className="mt-2 flex gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => setPickerOpen(true)}
-          disabled={status !== 'ready'}
-        >
-          <TagIcon /> {t('tags.addExisting')}
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => setCreateOpen(true)}
-          disabled={status === 'loading'}
-        >
-          <Plus /> {t('tags.createNew')}
-        </Button>
-      </div>
+      {canManageTags && (
+        <div className="mt-2 flex gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setPickerOpen(true)}
+            disabled={status !== 'ready'}
+          >
+            <TagIcon /> {t('tags.addExisting')}
+          </Button>
+          {canCreateTags && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setCreateOpen(true)}
+              disabled={status === 'loading'}
+            >
+              <Plus /> {t('tags.createNew')}
+            </Button>
+          )}
+        </div>
+      )}
 
       <CommandDialog open={pickerOpen} onOpenChange={setPickerOpen} title={t('tags.pickerTitle')}>
         <Command>

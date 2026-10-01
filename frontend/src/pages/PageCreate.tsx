@@ -14,6 +14,7 @@ import { createPage } from '#api/pages'
 import { useEditorState } from '#hooks/useEditorState'
 import { useFileUpload } from '#hooks/useFileUpload'
 import { usePageTree } from '#hooks/usePageTree'
+import { usePermissions } from '#hooks/usePermissions'
 import { extractErrorMessage } from '#lib/api-errors'
 import { findPathToNode } from '#utils/page-tree'
 import { createPageMetadataSchema, type PageMetadataFormValues } from '#schemas/page-metadata.schema'
@@ -22,6 +23,7 @@ export function PageCreate() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { tree, refresh } = usePageTree()
+  const { hasGlobal } = usePermissions()
   const editor = useEditorState()
   const editorRef = useRef<MarkdownEditorHandle>(null)
   const handleImageUpload = useFileUpload(editorRef, undefined)
@@ -92,9 +94,15 @@ export function PageCreate() {
         onFilesDropped={handleImageUpload}
         toolbarExtra={
           <>
-            <FileUploadButton variant="image" onFilesSelected={handleImageUpload} />
-            <FileUploadButton variant="attachment" onFilesSelected={handleAttachmentUpload} />
+            {hasGlobal('media.upload') && (
+              <>
+                <FileUploadButton variant="image" onFilesSelected={handleImageUpload} />
+                <FileUploadButton variant="attachment" onFilesSelected={handleAttachmentUpload} />
+              </>
+            )}
             <MediaLibraryPicker
+              canUpload={hasGlobal('media.upload')}
+              canDelete={hasGlobal('media.delete')}
               onInsert={(markdown) => editorRef.current?.insertAtCursor(markdown)}
             />
           </>

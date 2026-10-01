@@ -2,21 +2,18 @@ import { useState } from 'react'
 import { Link } from 'react-router'
 import { Plus, Search } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { UserRole } from '#api/auth'
 import { Button } from '#components/ui/button'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '#components/ui/input-group'
 import { Sheet, SheetContent, SheetTitle } from '#components/ui/sheet'
 import { PageTree } from '#components/layout/PageTree'
-import { useAuth } from '#hooks/useAuth'
+import { usePermissions } from '#hooks/usePermissions'
 import { cn } from '#lib/utils'
-
-const EDITOR_ROLES: UserRole[] = [UserRole.Editor, UserRole.Admin]
 
 function SidebarNav() {
   const { t } = useTranslation()
   const [filter, setFilter] = useState('')
-  const { user } = useAuth()
-  const canCreate = !!user && EDITOR_ROLES.includes(user.role)
+  const { hasGlobal } = usePermissions()
+  const canCreate = hasGlobal('page.create_root')
 
   return (
     <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">

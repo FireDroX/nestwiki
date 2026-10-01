@@ -1,10 +1,12 @@
 import { apiClient } from '#lib/api-client'
 import type { ResponseDto } from '#api/response-dto'
+import type { PageAction } from '#api/permissions'
 
 export interface PageTreeNode {
   id: string
   slug: string
   title: string
+  canCreateChild: boolean
   children: PageTreeNode[]
 }
 
@@ -26,7 +28,7 @@ export interface PageDetail {
   updatedAt: string
   isFollowed: boolean
   currentVersionId: string
-  canEdit: boolean
+  permissions: PageAction[]
 }
 
 export async function getPageByPath(pathSegments: string[]): Promise<PageDetail> {

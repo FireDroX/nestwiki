@@ -1,5 +1,6 @@
 import { apiClient } from '#lib/api-client'
 import type { ResponseDto } from '#api/response-dto'
+import type { GlobalPermission } from '#api/permissions'
 
 export interface LoginPayload {
   email: string
@@ -16,11 +17,15 @@ export interface RegisterPayload {
 
 export const UserRole = {
   Admin: 'admin',
-  Editor: 'editor',
-  Reader: 'reader',
+  Member: 'member',
 } as const
 
 export type UserRole = (typeof UserRole)[keyof typeof UserRole]
+
+export interface AuthUserGroup {
+  id: string
+  name: string
+}
 
 export interface AuthUser {
   id: string
@@ -32,6 +37,8 @@ export interface AuthUser {
   commentsCount?: number
   pagesCreatedCount?: number
   pageEditsCount?: number
+  permissions?: GlobalPermission[]
+  groups?: AuthUserGroup[]
 }
 
 export async function login(payload: LoginPayload): Promise<void> {

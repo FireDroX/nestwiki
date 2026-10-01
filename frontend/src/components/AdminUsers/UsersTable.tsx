@@ -25,8 +25,7 @@ export function UsersTable({ users, currentUserId, pendingUserId, onRoleChange, 
   const { t } = useTranslation()
   const roleLabels: Record<UserRole, string> = {
     [UserRole.Admin]: t('admin.users.roleAdmin'),
-    [UserRole.Editor]: t('admin.users.roleEditor'),
-    [UserRole.Reader]: t('admin.users.roleReader'),
+    [UserRole.Member]: t('admin.users.roleMember'),
   }
 
   return (
