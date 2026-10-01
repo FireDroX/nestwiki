@@ -62,10 +62,16 @@ export class TypeormAttachmentsRepository implements AttachmentsRepository {
       conditions.push("a.mime_type NOT LIKE 'image/%'");
     }
 
-    if (params.restrictToPublic) {
-      conditions.push(
-        "a.page_id IS NOT NULL AND p.visibility = 'public' AND p.is_published = 1",
-      );
+    if (params.readablePageIds !== null) {
+      const publicOnlyClause = "p.visibility = 'public' AND p.is_published = 1";
+      if (params.readablePageIds.length > 0) {
+        conditions.push(
+          `a.page_id IS NOT NULL AND (${publicOnlyClause} OR p.id IN (${params.readablePageIds.map(() => '?').join(', ')}))`,
+        );
+        values.push(...params.readablePageIds);
+      } else {
+        conditions.push(`a.page_id IS NOT NULL AND ${publicOnlyClause}`);
+      }
     }
 
     const whereClause = conditions.length

@@ -50,11 +50,17 @@ export class TypeormSearchRepository implements SearchRepository {
     query: string,
     page: number,
     limit: number,
-    restrictToPublic: boolean,
+    readablePageIds: string[] | null,
   ): Promise<{ items: SearchMatch[]; total: number }> {
-    const visibilityClause = restrictToPublic
-      ? "AND p.is_published = true AND p.visibility = 'public'"
-      : '';
+    const publicOnlyClause =
+      "p.is_published = true AND p.visibility = 'public'";
+    const visibilityClause =
+      readablePageIds === null
+        ? ''
+        : readablePageIds.length > 0
+          ? `AND (${publicOnlyClause} OR p.id IN (${readablePageIds.map(() => '?').join(', ')}))`
+          : `AND ${publicOnlyClause}`;
+    const visibilityParams = readablePageIds?.length ? readablePageIds : [];
     const offset = (page - 1) * limit;
     const booleanQuery = toBooleanModePrefixQuery(query);
     const tagTerms = toSearchTerms(query);
@@ -81,7 +87,14 @@ export class TypeormSearchRepository implements SearchRepository {
          ${visibilityClause}
        ORDER BY score DESC
        LIMIT ? OFFSET ?`,
-      [booleanQuery, booleanQuery, ...tagParams, limit, offset],
+      [
+        booleanQuery,
+        booleanQuery,
+        ...tagParams,
+        ...visibilityParams,
+        limit,
+        offset,
+      ],
     );
 
     const countRows = await this.dataSource.query<CountRow[]>(
@@ -91,7 +104,7 @@ export class TypeormSearchRepository implements SearchRepository {
        WHERE p.deleted_at IS NULL
          AND (MATCH (pv.title, pv.content) AGAINST (? IN BOOLEAN MODE) ${tagClause})
          ${visibilityClause}`,
-      [booleanQuery, ...tagParams],
+      [booleanQuery, ...tagParams, ...visibilityParams],
     );
 
     const tagsByPageId = await this.fetchTagsByPageId(

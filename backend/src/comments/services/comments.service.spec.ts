@@ -40,6 +40,7 @@ describe('CommentsService', () => {
     [K in keyof CommentsRepository]: Mock<CommentsRepository[K]>;
   };
   let eventEmitter: { emit: ReturnType<typeof vi.fn> };
+  let adminAuditLogService: { record: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
     commentsRepository = {
@@ -56,6 +57,7 @@ describe('CommentsService', () => {
       countByAuthorId: vi.fn(),
     };
     eventEmitter = { emit: vi.fn() };
+    adminAuditLogService = { record: vi.fn() };
 
     const module = await Test.createTestingModule({
       providers: [
@@ -67,7 +69,7 @@ describe('CommentsService', () => {
           provide: PermissionsService,
           useValue: { hasGlobal: vi.fn().mockResolvedValue(true) },
         },
-        { provide: AdminAuditLogService, useValue: { record: vi.fn() } },
+        { provide: AdminAuditLogService, useValue: adminAuditLogService },
         {
           provide: UserActivityLogService,
           useValue: { record: vi.fn().mockResolvedValue(undefined) },
@@ -134,5 +136,28 @@ describe('CommentsService', () => {
     expect(eventEmitter.emit).toHaveBeenCalledWith(COMMENT_CHANGED_EVENT, {
       pageId: 'page-1',
     });
+  });
+
+  it('records an audit entry when a non-admin comment.moderate holder deletes a comment', async () => {
+    const comment = buildComment({ authorId: 'someone-else' });
+    const moderator: AuthenticatedUser = {
+      id: 'moderator-1',
+      email: 'm@x.com',
+      role: 'member',
+    };
+    commentsRepository.findById.mockResolvedValue(comment);
+    commentsRepository.findRepliesByParentId.mockResolvedValue([]);
+    commentsRepository.deleteMany.mockResolvedValue(undefined);
+
+    await service.deleteComment('comment-1', moderator);
+
+    expect(adminAuditLogService.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        adminId: 'moderator-1',
+        action: 'comment.deleted_by_moderator',
+        targetType: 'Comment',
+        targetId: 'comment-1',
+      }),
+    );
   });
 });

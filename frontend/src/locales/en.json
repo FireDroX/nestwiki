@@ -54,7 +54,8 @@
   "pageTree": {
     "loadError": "Unable to load pages.",
     "noMatch": "No page matches.",
-    "toggle": "Toggle {{title}}"
+    "toggle": "Toggle {{title}}",
+    "createChild": "Create a subpage of {{title}}"
   },
   "home": {
     "title": "Dashboard",
@@ -501,7 +502,8 @@
         "group.permissions.update": "Group permissions updated",
         "access_rule.create": "Access rule created",
         "access_rule.update": "Access rule updated",
-        "access_rule.delete": "Access rule deleted"
+        "access_rule.delete": "Access rule deleted",
+        "comment.deleted_by_moderator": "Comment deleted (moderation)"
       }
     },
     "activityLog": {

@@ -1119,9 +1119,15 @@ describe('PagesService', () => {
       pagesRepository.findChildren.mockImplementation((id: string) =>
         Promise.resolve(id === 'parent' ? [child] : []),
       );
+      permissionsService.getEffectivePageActionsBulk.mockResolvedValue(
+        new Map([['child', ['page.delete']]]),
+      );
 
       await service.deletePage('parent', { cascade: 'true' }, 'user-1');
 
+      expect(
+        permissionsService.getEffectivePageActionsBulk,
+      ).toHaveBeenCalledWith(expect.anything(), ['child']);
       expect(pagesRepository.softDelete).toHaveBeenCalledWith('child');
       expect(pagesRepository.softDelete).toHaveBeenCalledWith('parent');
     });
@@ -1134,8 +1140,8 @@ describe('PagesService', () => {
       pagesRepository.findChildren.mockImplementation((id: string) =>
         Promise.resolve(id === 'parent' ? [child] : []),
       );
-      permissionsService.can.mockImplementation((_user, _action, id) =>
-        Promise.resolve(id !== 'child'),
+      permissionsService.getEffectivePageActionsBulk.mockResolvedValue(
+        new Map([['child', []]]),
       );
 
       await expect(

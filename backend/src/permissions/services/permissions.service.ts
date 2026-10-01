@@ -322,6 +322,96 @@ export class PermissionsService {
   }
 
   /**
+   * The specific page ids `user` can read beyond public pages, or `null` if
+   * unrestricted (admin, or an exclusion-free whole-wiki rule — the caller
+   * should then skip id-based filtering entirely). Used by search/media,
+   * which otherwise only distinguish "public pages" from "everything" and
+   * silently drop private pages the user has an explicit direct or
+   * subtree/group grant on.
+   */
+  async getReadablePageIds(user: User | undefined): Promise<string[] | null> {
+    if (!user) {
+      return [];
+    }
+    if (user.role === 'admin') {
+      return null;
+    }
+    if (!user.isActive) {
+      return [];
+    }
+    if (await this.hasUnrestrictedPageAccess(user, 'page.read')) {
+      return null;
+    }
+
+    const context = await this.loadUserContext(user);
+    const readRules = context.rules.filter(({ rule }) =>
+      rule.actions.includes('page.read'),
+    );
+
+    const included = new Set<string>();
+
+    for (const { rule } of readRules) {
+      if (rule.appliesTo === 'page' && rule.pageId !== null) {
+        included.add(rule.pageId);
+      }
+    }
+
+    const wholeWikiRules = readRules.filter(
+      ({ rule }) => rule.appliesTo === 'subtree' && rule.pageId === null,
+    );
+    if (wholeWikiRules.length > 0) {
+      const allIds = await this.pageHierarchyRepository.findAllPageIds();
+      for (const { excludedPageIds } of wholeWikiRules) {
+        const excluded = await this.expandExcludedIds(excludedPageIds);
+        for (const id of allIds) {
+          if (!excluded.has(id)) {
+            included.add(id);
+          }
+        }
+      }
+    }
+
+    const subtreeRules = readRules.filter(
+      ({ rule }) => rule.appliesTo === 'subtree' && rule.pageId !== null,
+    );
+    if (subtreeRules.length > 0) {
+      const rootIds = [
+        ...new Set(subtreeRules.map(({ rule }) => rule.pageId as string)),
+      ];
+      const descendantsByRoot =
+        await this.pageHierarchyRepository.findDescendantIds(rootIds);
+      for (const { rule, excludedPageIds } of subtreeRules) {
+        const ids = descendantsByRoot.get(rule.pageId as string) ?? [];
+        const excluded = await this.expandExcludedIds(excludedPageIds);
+        for (const id of ids) {
+          if (!excluded.has(id)) {
+            included.add(id);
+          }
+        }
+      }
+    }
+
+    return [...included];
+  }
+
+  private async expandExcludedIds(
+    excludedPageIds: string[],
+  ): Promise<Set<string>> {
+    if (excludedPageIds.length === 0) {
+      return new Set();
+    }
+    const descendantsByExclusion =
+      await this.pageHierarchyRepository.findDescendantIds(excludedPageIds);
+    const excluded = new Set<string>();
+    for (const ids of descendantsByExclusion.values()) {
+      for (const id of ids) {
+        excluded.add(id);
+      }
+    }
+    return excluded;
+  }
+
+  /**
    * Whether `user` holds `action` on `pageId` via a subtree rule that has no
    * exclusion falling inside `pageId`'s own subtree — i.e. whether `user`
    * could re-grant `action` as an unrestricted subtree rule rooted at

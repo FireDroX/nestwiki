@@ -137,18 +137,15 @@ export class MediaService {
     const user = await this.usersService
       .findById(currentUser.id)
       .catch(() => undefined);
-    const restrictToPublic =
-      !(await this.permissionsService.hasUnrestrictedPageAccess(
-        user,
-        'page.read',
-      ));
+    const readablePageIds =
+      await this.permissionsService.getReadablePageIds(user);
 
     const { items, total } = await this.attachmentsRepository.findLibrary({
       search: query.search?.trim() || undefined,
       type,
       page,
       limit,
-      restrictToPublic,
+      readablePageIds,
     });
 
     const withUrls = await Promise.all(

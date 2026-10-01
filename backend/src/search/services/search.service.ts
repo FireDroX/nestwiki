@@ -38,17 +38,14 @@ export class SearchService {
     const user = currentUser
       ? await this.usersService.findById(currentUser.id).catch(() => undefined)
       : undefined;
-    const restrictToPublic =
-      !(await this.permissionsService.hasUnrestrictedPageAccess(
-        user,
-        'page.read',
-      ));
+    const readablePageIds =
+      await this.permissionsService.getReadablePageIds(user);
 
     const { items, total } = await this.searchRepository.search(
       q,
       page,
       limit,
-      restrictToPublic,
+      readablePageIds,
     );
 
     return { items, total, q };

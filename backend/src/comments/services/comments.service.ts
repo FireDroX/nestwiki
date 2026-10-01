@@ -135,15 +135,13 @@ export class CommentsService {
     const deletedIds = await this.hardDeleteWithReplies(comment);
     this.eventEmitter.emit(COMMENT_CHANGED_EVENT, { pageId: comment.pageId });
 
-    if (currentUser.role === 'admin') {
-      await this.adminAuditLogService.record({
-        adminId: currentUser.id,
-        action: 'comment.deleted_by_admin',
-        targetType: 'Comment',
-        targetId: comment.id,
-        metadata: { count: deletedIds.length, ids: deletedIds },
-      });
-    }
+    await this.adminAuditLogService.record({
+      adminId: currentUser.id,
+      action: 'comment.deleted_by_moderator',
+      targetType: 'Comment',
+      targetId: comment.id,
+      metadata: { count: deletedIds.length, ids: deletedIds },
+    });
   }
 
   async listByUser(

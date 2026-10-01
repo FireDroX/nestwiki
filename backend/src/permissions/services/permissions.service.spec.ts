@@ -111,6 +111,8 @@ describe('PermissionsService', () => {
     };
     pageHierarchyRepository = {
       findChains: vi.fn().mockResolvedValue(new Map()),
+      findDescendantIds: vi.fn().mockResolvedValue(new Map()),
+      findAllPageIds: vi.fn().mockResolvedValue([]),
     };
 
     const module = await Test.createTestingModule({
@@ -1117,6 +1119,149 @@ describe('PermissionsService', () => {
       expect(await service.hasUnrestrictedPageAccess(member, 'page.read')).toBe(
         false,
       );
+    });
+  });
+
+  describe('getReadablePageIds', () => {
+    it('returns an empty array for an anonymous user', async () => {
+      expect(await service.getReadablePageIds(undefined)).toEqual([]);
+    });
+
+    it('returns null (unrestricted) for an admin', async () => {
+      const admin = buildUser({ role: 'admin' });
+      expect(await service.getReadablePageIds(admin)).toBeNull();
+    });
+
+    it('returns an empty array for an inactive user', async () => {
+      const inactiveMember = buildUser({ isActive: false });
+      expect(await service.getReadablePageIds(inactiveMember)).toEqual([]);
+    });
+
+    it('returns null when the user has an exclusion-free whole-wiki read rule', async () => {
+      const member = buildUser();
+      pageAccessRulesRepository.findByUserId.mockResolvedValue([
+        buildRule({
+          userId: member.id,
+          pageId: null,
+          appliesTo: 'subtree',
+          actions: ['page.read'],
+        }),
+      ]);
+      expect(await service.getReadablePageIds(member)).toBeNull();
+    });
+
+    it('includes a directly granted single page', async () => {
+      const member = buildUser();
+      pageAccessRulesRepository.findByUserId.mockResolvedValue([
+        buildRule({
+          userId: member.id,
+          pageId: 'p1',
+          appliesTo: 'page',
+          actions: ['page.read'],
+        }),
+      ]);
+      expect(await service.getReadablePageIds(member)).toEqual(['p1']);
+    });
+
+    it('expands a subtree rule to its descendants, minus an excluded sub-subtree', async () => {
+      const member = buildUser();
+      pageAccessRulesRepository.findByUserId.mockResolvedValue([
+        buildRule({
+          userId: member.id,
+          pageId: 'root',
+          appliesTo: 'subtree',
+          actions: ['page.read'],
+        }),
+      ]);
+      pageAccessRulesRepository.findExclusionsForRules.mockResolvedValue(
+        new Map([['rule-1', ['excluded-child']]]),
+      );
+      pageHierarchyRepository.findDescendantIds.mockImplementation(
+        (ids: string[]) =>
+          Promise.resolve(
+            new Map(
+              ids.map((id) =>
+                id === 'root'
+                  ? [id, ['root', 'child-a', 'excluded-child', 'grandchild']]
+                  : [id, ['excluded-child', 'grandchild']],
+              ),
+            ),
+          ),
+      );
+
+      const result = await service.getReadablePageIds(member);
+      expect(result).not.toBeNull();
+      expect(new Set(result)).toEqual(new Set(['root', 'child-a']));
+    });
+
+    it('expands a whole-wiki rule with an exclusion to every page except the excluded sub-subtree', async () => {
+      const member = buildUser();
+      pageAccessRulesRepository.findByUserId.mockResolvedValue([
+        buildRule({
+          userId: member.id,
+          pageId: null,
+          appliesTo: 'subtree',
+          actions: ['page.read'],
+        }),
+      ]);
+      pageAccessRulesRepository.findExclusionsForRules.mockResolvedValue(
+        new Map([['rule-1', ['secret']]]),
+      );
+      pageHierarchyRepository.findAllPageIds.mockResolvedValue([
+        'a',
+        'b',
+        'secret',
+        'secret-child',
+      ]);
+      pageHierarchyRepository.findDescendantIds.mockResolvedValue(
+        new Map([['secret', ['secret', 'secret-child']]]),
+      );
+
+      const result = await service.getReadablePageIds(member);
+      expect(result).not.toBeNull();
+      expect(new Set(result)).toEqual(new Set(['a', 'b']));
+    });
+
+    it('unions coverage across rules instead of letting one rule’s exclusion hide a page another rule grants', async () => {
+      const member = buildUser();
+      pageAccessRulesRepository.findByUserId.mockResolvedValue([
+        buildRule({
+          id: 'rule-1',
+          userId: member.id,
+          pageId: 'root',
+          appliesTo: 'subtree',
+          actions: ['page.read'],
+        }),
+        buildRule({
+          id: 'rule-2',
+          userId: member.id,
+          pageId: 'excluded-child',
+          appliesTo: 'page',
+          actions: ['page.read'],
+        }),
+      ]);
+      pageAccessRulesRepository.findExclusionsForRules.mockResolvedValue(
+        new Map([
+          ['rule-1', ['excluded-child']],
+          ['rule-2', []],
+        ]),
+      );
+      // root's own subtree expansion includes the excluded child; the
+      // exclusion lookup for ['excluded-child'] returns just itself.
+      pageHierarchyRepository.findDescendantIds.mockImplementation(
+        (ids: string[]) => {
+          if (ids.includes('root')) {
+            return Promise.resolve(
+              new Map([['root', ['root', 'excluded-child']]]),
+            );
+          }
+          return Promise.resolve(new Map(ids.map((id) => [id, [id]])));
+        },
+      );
+
+      const result = await service.getReadablePageIds(member);
+      expect(result).not.toBeNull();
+      expect(new Set(result)).toEqual(new Set(['root', 'excluded-child']));
     });
   });
 

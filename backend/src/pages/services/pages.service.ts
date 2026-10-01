@@ -570,8 +570,20 @@ export class PagesService {
 
     if (cascade) {
       const descendantIds = await this.collectDescendantIds(id);
-      for (const descendantId of descendantIds) {
-        await this.assertCan('page.delete', descendantId, userId);
+      if (descendantIds.length > 0) {
+        const user = await this.usersService.findById(userId);
+        const effectiveActions =
+          await this.permissionsService.getEffectivePageActionsBulk(
+            user,
+            descendantIds,
+          );
+        for (const descendantId of descendantIds) {
+          if (
+            !(effectiveActions.get(descendantId) ?? []).includes('page.delete')
+          ) {
+            throw new InsufficientPagePermissionException();
+          }
+        }
       }
       await this.deleteRecursive(id);
     } else {

@@ -23,6 +23,7 @@ export const ADMIN_AUDIT_LOG_ACTIONS = [
   'access_rule.create',
   'access_rule.update',
   'access_rule.delete',
+  'comment.deleted_by_moderator',
 ] as const
 
 interface AdminAuditLogFiltersProps {
