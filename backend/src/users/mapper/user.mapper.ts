@@ -72,6 +72,7 @@ export class UserMapper {
       ...UserMapper.toUserResponseDto(item.user),
       groups: item.groups,
       isActive: item.user.isActive,
+      lockedUntil: item.user.lockedUntil,
     };
   }
 

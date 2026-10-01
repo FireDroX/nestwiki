@@ -842,6 +842,13 @@ $$
 ## Version 0.30
 
 <details>
+<summary>0.30.9 — 2026-10-01</summary>
+
+- Refonte de l'administration des utilisateurs (\`/admin/users\`) : liste avec recherche, filtres (rôle, groupe, statut) et pagination, sélection multiple avec actions en lot (ajout à un groupe, création d'un groupe à partir de la sélection), création d'utilisateur (mot de passe temporaire affiché une seule fois, avec bouton copier). Fiche utilisateur (\`/admin/users/:id\`) en onglets : infos (modification, désactivation/réactivation, réinitialisation de mot de passe, déverrouillage, suppression — actions protégées grisées pour son propre compte), groupes, permissions globales directes (celles héritées d'un groupe apparaissent cochées et grisées avec son nom), accès aux pages via \`PageAccessTreeSelector\` réutilisé (les pages couvertes par un groupe sont signalées par un badge, non modifiables ici), et permissions effectives en lecture seule avec l'origine de chaque droit.
+
+</details>
+
+<details>
 <summary>0.30.8 — 2026-09-29</summary>
 
 - Nouvel écran d'administration \`/admin/groups\` (accessible aux administrateurs ou à quiconque détient la permission \`user.manage\`) : liste des groupes avec nombre de membres/règles, création/renommage/suppression, et fiche par groupe en onglets (membres, permissions globales, accès aux pages). Nouveau composant \`PageAccessTreeSelector\` : arborescence des pages avec cases à cocher tri-state, cocher un nœud couvre toute sa sous-arborescence, décocher une sous-page l'exclut sans toucher au reste, option "cette page uniquement", sélecteur d'actions par règle, et icône de verrou sur les pages privées.

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { useTranslation } from 'react-i18next'
@@ -21,9 +21,12 @@ import { extractErrorMessage } from '#lib/api-errors'
 
 interface CreateGroupDialogProps {
   onCreated: (group: GroupSummary) => void
+  trigger?: ReactNode
+  description?: string
+  extraUserIds?: string[]
 }
 
-export function CreateGroupDialog({ onCreated }: CreateGroupDialogProps) {
+export function CreateGroupDialog({ onCreated, trigger, description: descriptionOverride, extraUserIds = [] }: CreateGroupDialogProps) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [name, setName] = useState('')
@@ -40,8 +43,18 @@ export function CreateGroupDialog({ onCreated }: CreateGroupDialogProps) {
     if (!trimmedName) return
     setCreating(true)
     try {
-      const group = await createGroup({ name: trimmedName, description: description.trim() || undefined })
-      onCreated({ id: group.id, name: group.name, description: group.description, memberCount: 0, ruleCount: 0 })
+      const group = await createGroup({
+        name: trimmedName,
+        description: description.trim() || undefined,
+        userIds: extraUserIds.length > 0 ? extraUserIds : undefined,
+      })
+      onCreated({
+        id: group.id,
+        name: group.name,
+        description: group.description,
+        memberCount: extraUserIds.length,
+        ruleCount: 0,
+      })
       setOpen(false)
       reset()
       toast.success(t('admin.groups.created'))
@@ -61,14 +74,16 @@ export function CreateGroupDialog({ onCreated }: CreateGroupDialogProps) {
       }}
     >
       <DialogTrigger asChild>
-        <Button type="button" size="sm">
-          <Plus /> {t('admin.groups.createButton')}
-        </Button>
+        {trigger ?? (
+          <Button type="button" size="sm">
+            <Plus /> {t('admin.groups.createButton')}
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{t('admin.groups.createTitle')}</DialogTitle>
-          <DialogDescription>{t('admin.groups.createDescription')}</DialogDescription>
+          <DialogDescription>{descriptionOverride ?? t('admin.groups.createDescription')}</DialogDescription>
         </DialogHeader>
 
         <Field>

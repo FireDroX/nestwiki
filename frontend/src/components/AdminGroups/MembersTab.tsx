@@ -46,7 +46,7 @@ export function MembersTab({ members, pending, onChange }: MembersTabProps) {
     }
     let cancelled = false
     const timeout = setTimeout(() => {
-      listUsers(1, SEARCH_LIMIT, trimmed)
+      listUsers({ limit: SEARCH_LIMIT, search: trimmed })
         .then((page) => {
           if (!cancelled) setResults(page.items)
         })

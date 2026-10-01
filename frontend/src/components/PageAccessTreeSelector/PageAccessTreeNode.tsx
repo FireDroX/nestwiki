@@ -1,5 +1,6 @@
 import { ChevronRight, Lock } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { Badge } from '#components/ui/badge'
 import { Checkbox } from '#components/ui/checkbox'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '#components/ui/collapsible'
 import type { PageAction } from '#api/permissions'
@@ -13,6 +14,7 @@ export interface PageAccessTreeNodeProps {
   depth: number
   coverage: (node: PageTreeNode) => NodeCoverage
   rules: AccessRuleLike[]
+  inheritedGroupNames?: (node: PageTreeNode) => string[]
   isExpanded: (id: string) => boolean
   onToggleExpand: (id: string) => void
   onToggleNode: (node: PageTreeNode) => void
@@ -27,6 +29,7 @@ export function PageAccessTreeNode({
   depth,
   coverage,
   rules,
+  inheritedGroupNames,
   isExpanded,
   onToggleExpand,
   onToggleNode,
@@ -42,6 +45,7 @@ export function PageAccessTreeNode({
   const isPending = pendingKey === node.id
   const ownRule = ownRuleForNode(rules, node.id, 'subtree') ?? ownRuleForNode(rules, node.id, 'page')
   const canConfigure = !readOnly && !!ownRule
+  const inherited = inheritedGroupNames?.(node) ?? []
 
   const checkboxState = state === 'full' ? true : state === 'partial' ? 'indeterminate' : false
 
@@ -67,6 +71,12 @@ export function PageAccessTreeNode({
       )}
 
       <span className="truncate text-sm">{node.title}</span>
+
+      {inherited.map((groupName) => (
+        <Badge key={groupName} variant="outline" title={t('pageAccessTree.inheritedFromGroup', { groupName })}>
+          {groupName}
+        </Badge>
+      ))}
 
       {canConfigure && (
         <ActionsMenu
@@ -94,6 +104,7 @@ export function PageAccessTreeNode({
             depth={depth + 1}
             coverage={coverage}
             rules={rules}
+            inheritedGroupNames={inheritedGroupNames}
             isExpanded={isExpanded}
             onToggleExpand={onToggleExpand}
             onToggleNode={onToggleNode}
