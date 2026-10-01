@@ -183,7 +183,7 @@ export class MediaController {
   @ApiOperation({
     summary: 'Rediriger vers le fichier via une URL présignée fraîche',
     description:
-      "URL stable à référencer depuis le contenu Markdown des pages : régénère une URL présignée à chaque appel et redirige (302), donc ne devient jamais invalide contrairement à une URL présignée embarquée telle quelle.",
+      'URL stable à référencer depuis le contenu Markdown des pages : régénère une URL présignée à chaque appel et redirige (302), donc ne devient jamais invalide contrairement à une URL présignée embarquée telle quelle.',
   })
   @ApiParam({ name: 'id', description: "Identifiant de l'attachment" })
   @ApiBadRequestResponse({

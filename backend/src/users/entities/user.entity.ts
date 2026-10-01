@@ -37,6 +37,9 @@ export class User {
   @Column({ type: 'datetime', name: 'locked_until', nullable: true })
   lockedUntil: Date | null;
 
+  @Column({ type: 'boolean', name: 'is_active', default: true })
+  isActive: boolean;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

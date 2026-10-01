@@ -1,6 +1,17 @@
 import { DataSource } from 'typeorm';
 
-const E2E_TABLES = ['page_versions', 'page_permissions', 'pages', 'users'];
+const E2E_TABLES = [
+  'page_access_exclusions',
+  'page_access_rules',
+  'group_permissions',
+  'user_permissions',
+  'group_members',
+  'groups',
+  'page_versions',
+  'page_permissions',
+  'pages',
+  'users',
+];
 
 /**
  * Wipes the tables touched by the e2e suites. Each spec file calls this
