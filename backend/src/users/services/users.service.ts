@@ -33,6 +33,7 @@ import type { SubjectPermissionsRepository } from '../../permissions/persistence
 import { assertActorCanGrantGroupMembership } from '../../permissions/services/group-grant.util.js';
 import { PermissionsService } from '../../permissions/services/permissions.service.js';
 import type { StorageService } from '../../storage/services/storage.service.js';
+import { assertActorIsAdminToActOnAdmin } from './admin-target.util.js';
 import { AdminUpdateUserDto } from '../dto/in/admin-update-user.dto.js';
 import { CreateAdminUserDto } from '../dto/in/create-admin-user.dto.js';
 import { CreateUserDto } from '../dto/in/create-user.dto.js';
@@ -185,7 +186,7 @@ export class UsersService {
   async deleteUser(admin: AuthenticatedUser, id: string): Promise<void> {
     UsersService.assertNotSelf(admin.id, id);
     const user = await this.findById(id);
-    UsersService.assertActorIsAdminToActOnAdmin(admin, user);
+    assertActorIsAdminToActOnAdmin(admin, user);
     await this.assertNotRemovingLastActiveAdmin(user);
 
     await this.userRepository.delete(id);
@@ -336,7 +337,7 @@ export class UsersService {
     dto: AdminUpdateUserDto,
   ): Promise<User> {
     const target = await this.findById(id);
-    UsersService.assertActorIsAdminToActOnAdmin(actor, target);
+    assertActorIsAdminToActOnAdmin(actor, target);
 
     if (dto.displayName !== undefined) {
       this.validateDisplayNameValue(dto.displayName);
@@ -387,7 +388,7 @@ export class UsersService {
       throw new ValidationException('isActive must be a boolean');
     }
     const target = await this.findById(id);
-    UsersService.assertActorIsAdminToActOnAdmin(actor, target);
+    assertActorIsAdminToActOnAdmin(actor, target);
     if (!isActive) {
       UsersService.assertNotSelf(actor.id, id);
       await this.assertNotRemovingLastActiveAdmin(target);
@@ -406,7 +407,7 @@ export class UsersService {
 
   async resetPassword(actor: AuthenticatedUser, id: string): Promise<string> {
     const target = await this.findById(id);
-    UsersService.assertActorIsAdminToActOnAdmin(actor, target);
+    assertActorIsAdminToActOnAdmin(actor, target);
     const temporaryPassword = UsersService.generateTemporaryPassword();
     const passwordHash = await bcrypt.hash(temporaryPassword, SALT_ROUNDS);
     await this.userRepository.updatePassword(id, passwordHash);
@@ -422,7 +423,7 @@ export class UsersService {
 
   async unlock(actor: AuthenticatedUser, id: string): Promise<User> {
     const target = await this.findById(id);
-    UsersService.assertActorIsAdminToActOnAdmin(actor, target);
+    assertActorIsAdminToActOnAdmin(actor, target);
     const updated = await this.userRepository.resetFailedLoginAttempts(id);
     await this.adminAuditLogService.record({
       adminId: actor.id,
@@ -502,15 +503,6 @@ export class UsersService {
     role: UserRole,
   ): void {
     if (role === 'admin' && actor.role !== 'admin') {
-      throw new InsufficientPermissionException();
-    }
-  }
-
-  private static assertActorIsAdminToActOnAdmin(
-    actor: AuthenticatedUser,
-    target: User,
-  ): void {
-    if (target.role === 'admin' && actor.role !== 'admin') {
       throw new InsufficientPermissionException();
     }
   }

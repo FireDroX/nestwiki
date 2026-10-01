@@ -53,4 +53,42 @@ export class TypeormPageHierarchyRepository implements PageHierarchyRepository {
 
     return result;
   }
+
+  async findDescendantIds(pageIds: string[]): Promise<Map<string, string[]>> {
+    const result = new Map<string, string[]>();
+    if (pageIds.length === 0) {
+      return result;
+    }
+
+    const placeholders = pageIds.map(() => '?').join(', ');
+    const rows: { root_id: string; id: string }[] = await this.dataSource.query(
+      `WITH RECURSIVE descendants AS (
+        SELECT id, id AS root_id
+        FROM pages
+        WHERE id IN (${placeholders}) AND deleted_at IS NULL
+        UNION ALL
+        SELECT p.id, d.root_id
+        FROM pages p
+        INNER JOIN descendants d ON p.parent_id = d.id AND p.deleted_at IS NULL
+      )
+      SELECT root_id, id FROM descendants`,
+      pageIds,
+    );
+
+    for (const id of pageIds) {
+      result.set(id, []);
+    }
+    for (const row of rows) {
+      result.get(row.root_id)?.push(row.id);
+    }
+
+    return result;
+  }
+
+  async findAllPageIds(): Promise<string[]> {
+    const rows: { id: string }[] = await this.dataSource.query(
+      'SELECT id FROM pages WHERE deleted_at IS NULL',
+    );
+    return rows.map((row) => row.id);
+  }
 }

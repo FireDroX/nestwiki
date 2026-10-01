@@ -16,6 +16,7 @@ import {
 } from '../../common/variables.global.js';
 import { PagesService } from '../../pages/services/pages.service.js';
 import { PermissionsService } from '../../permissions/services/permissions.service.js';
+import { assertActorIsAdminToActOnAdmin } from '../../users/services/admin-target.util.js';
 import { UsersService } from '../../users/services/users.service.js';
 import { CreateCommentDto } from '../dto/in/create-comment.dto.js';
 import { ListUserCommentsQueryDto } from '../dto/in/list-user-comments-query.dto.js';
@@ -135,15 +136,13 @@ export class CommentsService {
     const deletedIds = await this.hardDeleteWithReplies(comment);
     this.eventEmitter.emit(COMMENT_CHANGED_EVENT, { pageId: comment.pageId });
 
-    if (currentUser.role === 'admin') {
-      await this.adminAuditLogService.record({
-        adminId: currentUser.id,
-        action: 'comment.deleted_by_admin',
-        targetType: 'Comment',
-        targetId: comment.id,
-        metadata: { count: deletedIds.length, ids: deletedIds },
-      });
-    }
+    await this.adminAuditLogService.record({
+      adminId: currentUser.id,
+      action: 'comment.deleted_by_moderator',
+      targetType: 'Comment',
+      targetId: comment.id,
+      metadata: { count: deletedIds.length, ids: deletedIds },
+    });
   }
 
   async listByUser(
@@ -152,7 +151,8 @@ export class CommentsService {
     admin: AuthenticatedUser,
     excludeDeleted = false,
   ): Promise<UserCommentsPage> {
-    await this.usersService.findById(userId);
+    const target = await this.usersService.findById(userId);
+    assertActorIsAdminToActOnAdmin(admin, target);
 
     const page = CommentsService.parsePage(query.page);
     const limit = CommentsService.parseLimit(query.limit);
@@ -182,7 +182,8 @@ export class CommentsService {
     dto: PurgeCommentsDto,
     admin: AuthenticatedUser,
   ): Promise<number> {
-    await this.usersService.findById(userId);
+    const target = await this.usersService.findById(userId);
+    assertActorIsAdminToActOnAdmin(admin, target);
 
     const topLevelIds = dto.commentIds
       ? (
@@ -211,7 +212,7 @@ export class CommentsService {
     await this.commentsRepository.deleteMany(uniqueIds);
     await this.adminAuditLogService.record({
       adminId: admin.id,
-      action: 'comment.purged_by_admin',
+      action: 'comment.purged_by_moderator',
       targetType: 'User',
       targetId: userId,
       metadata: { count: uniqueIds.length, ids: uniqueIds },

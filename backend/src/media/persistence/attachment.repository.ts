@@ -14,7 +14,7 @@ export interface FindLibraryParams {
   type?: 'image' | 'file';
   page: number;
   limit: number;
-  restrictToPublic: boolean;
+  readablePageIds: string[] | null;
 }
 
 export interface FindLibraryResult {

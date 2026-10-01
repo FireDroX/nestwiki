@@ -25,12 +25,12 @@ import {
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
-import { Roles } from '../common/decorators/roles.decorator.js';
+import { RequirePermission } from '../common/decorators/require-permission.decorator.js';
 import { ErrorResponseDto } from '../common/dto/error-response.dto.js';
 import { PaginatedResponseDto } from '../common/dto/paginated-response.dto.js';
 import { ResponseDto } from '../common/dto/response.dto.js';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard.js';
-import { RolesGuard } from '../common/guards/roles.guard.js';
+import { PermissionsGuard } from '../common/guards/permissions.guard.js';
 import type { AuthenticatedUser } from '../common/strategies/jwt.strategy.js';
 import { ListUserCommentsQueryDto } from './dto/in/list-user-comments-query.dto.js';
 import { PurgeCommentsDto } from './dto/in/purge-comments.dto.js';
@@ -117,8 +117,8 @@ export class CommentController {
 @ApiTags('Admin — Comments')
 @ApiBearerAuth()
 @Controller('admin/users/:id/comments')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('admin')
+@UseGuards(JwtAuthGuard, PermissionsGuard)
+@RequirePermission('user.manage')
 @UseFilters(CommentsExceptionFilter)
 export class AdminUserCommentsController {
   constructor(private readonly commentsService: CommentsService) {}
@@ -134,7 +134,7 @@ export class AdminUserCommentsController {
     type: ErrorResponseDto,
   })
   @ApiForbiddenResponse({
-    description: 'Rôle admin requis.',
+    description: 'Permission user.manage requise.',
     type: ErrorResponseDto,
   })
   @ApiNotFoundResponse({
@@ -168,7 +168,7 @@ export class AdminUserCommentsController {
     type: ErrorResponseDto,
   })
   @ApiForbiddenResponse({
-    description: 'Rôle admin requis.',
+    description: 'Permission user.manage requise.',
     type: ErrorResponseDto,
   })
   @ApiNotFoundResponse({

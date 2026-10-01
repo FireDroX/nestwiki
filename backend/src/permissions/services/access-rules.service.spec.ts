@@ -142,6 +142,8 @@ describe('AccessRulesService', () => {
     };
     pageHierarchyRepository = {
       findChains: vi.fn().mockResolvedValue(new Map()),
+      findDescendantIds: vi.fn().mockResolvedValue(new Map()),
+      findAllPageIds: vi.fn().mockResolvedValue([]),
     };
     usersService = {
       findById: vi

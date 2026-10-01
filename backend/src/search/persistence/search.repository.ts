@@ -18,6 +18,6 @@ export interface SearchRepository {
     query: string,
     page: number,
     limit: number,
-    restrictToPublic: boolean,
+    readablePageIds: string[] | null,
   ): Promise<{ items: SearchMatch[]; total: number }>;
 }

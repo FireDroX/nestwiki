@@ -903,6 +903,13 @@ $$
 ## Version 0.30
 
 <details>
+<summary>0.30.12 — 2026-10-01</summary>
+
+- Correctifs de fin d'EPIC-30, trouvés en relisant les PR de l'epic : l'audit de suppression d'un commentaire par modération est désormais toujours enregistré (plus seulement pour les admins), la liste/purge des commentaires d'un utilisateur depuis l'admin accepte désormais \`user.manage\` (plus seulement le rôle admin), recherche et médiathèque respectent maintenant les accès accordés page par page ou via un groupe (plus seulement public/admin), un bouton **+** sur chaque page de l'arborescence permet de créer une sous-page directement (si on en a le droit sur cette page précise), et la suppression en cascade d'un sous-arbre fait un seul contrôle de permissions groupé au lieu d'un par page.
+
+</details>
+
+<details>
 <summary>0.30.11 — 2026-10-01</summary>
 
 - Correction de 3 alertes Dependabot (dépendances transitives, GHSA) : \`fast-uri\` 3.1.6 → 3.1.7 (confusion d'hôte via une parenthèse non fermée dans l'autorité d'une URI), \`multer\` 2.3.0 → 2.4.0 (déni de service via écritures disque orphelines sur upload interrompu), \`undici\` 6.28.0 → 6.28.1 (déni de service via erreur non gérée dans la décompression WebSocket permessage-deflate). Forcées via \`pnpm-workspace.yaml\`.

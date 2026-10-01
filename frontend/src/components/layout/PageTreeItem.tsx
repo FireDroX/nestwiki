@@ -1,4 +1,4 @@
-import { ChevronRight, File, Folder, FolderOpen } from 'lucide-react'
+import { ChevronRight, File, Folder, FolderOpen, Plus } from 'lucide-react'
 import { Link } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '#components/ui/collapsible'
@@ -22,7 +22,7 @@ export function PageTreeItem({ node, parentPath, activeId, isExpanded, onToggle 
   const Icon = hasChildren ? (expanded ? FolderOpen : Folder) : File
 
   const row = (
-    <div className="flex items-center gap-0.5 pl-2">
+    <div className="group flex items-center gap-0.5 pl-2">
       {hasChildren ? (
         <CollapsibleTrigger className="flex size-6 shrink-0 items-center justify-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent">
           <ChevronRight className={cn('size-4 transition-transform', expanded && 'rotate-90')} />
@@ -41,6 +41,15 @@ export function PageTreeItem({ node, parentPath, activeId, isExpanded, onToggle 
         <Icon className="size-4 shrink-0" />
         <span className="truncate">{node.title}</span>
       </Link>
+      {node.canCreateChild && (
+        <Link
+          to={`/new?parent=${node.id}`}
+          className="flex size-6 shrink-0 items-center justify-center rounded-md text-sidebar-foreground opacity-0 hover:bg-sidebar-accent group-hover:opacity-100"
+        >
+          <Plus className="size-3.5" />
+          <span className="sr-only">{t('pageTree.createChild', { title: node.title })}</span>
+        </Link>
+      )}
     </div>
   )
 

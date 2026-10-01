@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
-import { useNavigate } from 'react-router'
+import { useNavigate, useSearchParams } from 'react-router'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
@@ -22,6 +22,7 @@ import { createPageMetadataSchema, type PageMetadataFormValues } from '#schemas/
 export function PageCreate() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { tree, refresh } = usePageTree()
   const { hasGlobal } = usePermissions()
   const editor = useEditorState()
@@ -34,7 +35,12 @@ export function PageCreate() {
 
   const { control, setValue, watch, handleSubmit } = useForm<PageMetadataFormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { title: '', slug: '', visibility: 'private', parentId: null },
+    defaultValues: {
+      title: '',
+      slug: '',
+      visibility: 'private',
+      parentId: searchParams.get('parent'),
+    },
   })
 
   function submit() {

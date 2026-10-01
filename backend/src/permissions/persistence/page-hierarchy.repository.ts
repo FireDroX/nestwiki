@@ -8,4 +8,7 @@ export interface PageChain {
 
 export interface PageHierarchyRepository {
   findChains(pageIds: string[]): Promise<Map<string, PageChain>>;
+  /** For each given page id, itself plus every descendant id. */
+  findDescendantIds(pageIds: string[]): Promise<Map<string, string[]>>;
+  findAllPageIds(): Promise<string[]>;
 }

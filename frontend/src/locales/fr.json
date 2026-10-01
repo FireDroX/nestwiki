@@ -54,7 +54,8 @@
   "pageTree": {
     "loadError": "Impossible de charger les pages.",
     "noMatch": "Aucune page ne correspond.",
-    "toggle": "Basculer {{title}}"
+    "toggle": "Basculer {{title}}",
+    "createChild": "Créer une sous-page de {{title}}"
   },
   "home": {
     "title": "Tableau de bord",
@@ -501,7 +502,9 @@
         "group.permissions.update": "Modification des permissions du groupe",
         "access_rule.create": "Création de règle d'accès",
         "access_rule.update": "Modification de règle d'accès",
-        "access_rule.delete": "Suppression de règle d'accès"
+        "access_rule.delete": "Suppression de règle d'accès",
+        "comment.deleted_by_moderator": "Suppression de commentaire (modération)",
+        "comment.purged_by_moderator": "Purge des commentaires d'un utilisateur"
       }
     },
     "activityLog": {
