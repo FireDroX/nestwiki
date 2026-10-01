@@ -903,6 +903,13 @@ $$
 ## Version 0.30
 
 <details>
+<summary>0.30.11 — 2026-10-01</summary>
+
+- Correction de 3 alertes Dependabot (dépendances transitives, GHSA) : \`fast-uri\` 3.1.6 → 3.1.7 (confusion d'hôte via une parenthèse non fermée dans l'autorité d'une URI), \`multer\` 2.3.0 → 2.4.0 (déni de service via écritures disque orphelines sur upload interrompu), \`undici\` 6.28.0 → 6.28.1 (déni de service via erreur non gérée dans la décompression WebSocket permessage-deflate). Forcées via \`pnpm-workspace.yaml\`.
+
+</details>
+
+<details>
 <summary>0.30.10 — 2026-10-01</summary>
 
 - Panneau **Accès** sur chaque page (visible avec la permission \`page.manage_permissions\`) : ouvre les règles qui couvrent la page — directes (éditables, actions et suppression) et héritées d'une page ancêtre ou de toute la wiki (lecture seule, avec lien vers l'origine). Ajout d'un accès en une recherche unique proposant utilisateurs et groupes, un choix de portée (cette page seule, ou cette page et ses sous-pages avec exclusion de certaines sous-pages), et une sélection d'actions limitée à ce que vous détenez vous-même sur la page — clôture d'EPIC-30. README, CLAUDE.md et une nouvelle page de documentation ("Gérer les utilisateurs, groupes et accès") décrivent le nouveau modèle de permissions ; plus aucune mention des anciens rôles \`editor\`/\`reader\`.
