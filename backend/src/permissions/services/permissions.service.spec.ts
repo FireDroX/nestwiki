@@ -82,6 +82,7 @@ describe('PermissionsService', () => {
       findByIds: vi.fn().mockResolvedValue([]),
       findByName: vi.fn(),
       create: vi.fn(),
+      update: vi.fn(),
       delete: vi.fn(),
       findMemberIds: vi.fn(),
       findGroupIdsForUser: vi.fn().mockResolvedValue([]),
@@ -97,6 +98,7 @@ describe('PermissionsService', () => {
     pageAccessRulesRepository = {
       findByUserId: vi.fn().mockResolvedValue([]),
       findByGroupIds: vi.fn().mockResolvedValue([]),
+      findByPageIdsOrWholeWiki: vi.fn().mockResolvedValue([]),
       findById: vi.fn(),
       create: vi.fn(),
       updateActions: vi.fn(),
@@ -1113,6 +1115,197 @@ describe('PermissionsService', () => {
       expect(await service.hasUnrestrictedPageAccess(member, 'page.read')).toBe(
         false,
       );
+    });
+  });
+
+  describe('hasUnrestrictedActionOnSubtree', () => {
+    it('returns false for an anonymous user', async () => {
+      expect(
+        await service.hasUnrestrictedActionOnSubtree(
+          undefined,
+          'parent',
+          'page.edit',
+        ),
+      ).toBe(false);
+    });
+
+    it('returns true for an admin without loading any rule context', async () => {
+      const admin = buildUser({ role: 'admin' });
+      expect(
+        await service.hasUnrestrictedActionOnSubtree(
+          admin,
+          'parent',
+          'page.edit',
+        ),
+      ).toBe(true);
+      expect(pageHierarchyRepository.findChains).not.toHaveBeenCalled();
+    });
+
+    it('returns false for a nonexistent page', async () => {
+      pageHierarchyRepository.findChains.mockResolvedValue(new Map());
+      expect(
+        await service.hasUnrestrictedActionOnSubtree(
+          buildUser(),
+          'missing',
+          'page.edit',
+        ),
+      ).toBe(false);
+    });
+
+    it('returns false when the only covering rule is page-scoped, not subtree', async () => {
+      const member = buildUser();
+      pageHierarchyRepository.findChains.mockResolvedValue(
+        new Map([
+          [
+            'parent',
+            { pageId: 'parent', visibility: 'private', chainIds: ['parent'] },
+          ],
+        ]),
+      );
+      pageAccessRulesRepository.findByUserId.mockResolvedValue([
+        buildRule({
+          userId: member.id,
+          pageId: 'parent',
+          appliesTo: 'page',
+          actions: ['page.edit'],
+        }),
+      ]);
+      expect(
+        await service.hasUnrestrictedActionOnSubtree(
+          member,
+          'parent',
+          'page.edit',
+        ),
+      ).toBe(false);
+    });
+
+    it('returns true for a subtree rule rooted at pageId with no exclusions', async () => {
+      const member = buildUser();
+      pageHierarchyRepository.findChains.mockResolvedValue(
+        new Map([
+          [
+            'parent',
+            { pageId: 'parent', visibility: 'private', chainIds: ['parent'] },
+          ],
+        ]),
+      );
+      pageAccessRulesRepository.findByUserId.mockResolvedValue([
+        buildRule({
+          userId: member.id,
+          pageId: 'parent',
+          appliesTo: 'subtree',
+          actions: ['page.edit'],
+        }),
+      ]);
+      expect(
+        await service.hasUnrestrictedActionOnSubtree(
+          member,
+          'parent',
+          'page.edit',
+        ),
+      ).toBe(true);
+    });
+
+    it('returns false when the covering subtree rule excludes a descendant of pageId', async () => {
+      const member = buildUser();
+      pageHierarchyRepository.findChains.mockImplementation((ids: string[]) => {
+        if (ids.includes('child')) {
+          return Promise.resolve(
+            new Map([
+              [
+                'child',
+                {
+                  pageId: 'child',
+                  visibility: 'private' as const,
+                  chainIds: ['child', 'parent'],
+                },
+              ],
+            ]),
+          );
+        }
+        return Promise.resolve(
+          new Map([
+            [
+              'parent',
+              {
+                pageId: 'parent',
+                visibility: 'private' as const,
+                chainIds: ['parent'],
+              },
+            ],
+          ]),
+        );
+      });
+      pageAccessRulesRepository.findByUserId.mockResolvedValue([
+        buildRule({
+          id: 'rule-1',
+          userId: member.id,
+          pageId: 'parent',
+          appliesTo: 'subtree',
+          actions: ['page.edit'],
+        }),
+      ]);
+      pageAccessRulesRepository.findExclusionsForRules.mockResolvedValue(
+        new Map([['rule-1', ['child']]]),
+      );
+      expect(
+        await service.hasUnrestrictedActionOnSubtree(
+          member,
+          'parent',
+          'page.edit',
+        ),
+      ).toBe(false);
+    });
+
+    it("returns true when the exclusion lies outside pageId's own subtree", async () => {
+      const member = buildUser();
+      pageHierarchyRepository.findChains.mockImplementation((ids: string[]) => {
+        if (ids.includes('sibling')) {
+          return Promise.resolve(
+            new Map([
+              [
+                'sibling',
+                {
+                  pageId: 'sibling',
+                  visibility: 'private' as const,
+                  chainIds: ['sibling', 'root'],
+                },
+              ],
+            ]),
+          );
+        }
+        return Promise.resolve(
+          new Map([
+            [
+              'parent',
+              {
+                pageId: 'parent',
+                visibility: 'private' as const,
+                chainIds: ['parent', 'root'],
+              },
+            ],
+          ]),
+        );
+      });
+      pageAccessRulesRepository.findByUserId.mockResolvedValue([
+        buildRule({
+          id: 'rule-1',
+          userId: member.id,
+          pageId: 'root',
+          appliesTo: 'subtree',
+          actions: ['page.edit'],
+        }),
+      ]);
+      pageAccessRulesRepository.findExclusionsForRules.mockResolvedValue(
+        new Map([['rule-1', ['sibling']]]),
+      );
+      expect(
+        await service.hasUnrestrictedActionOnSubtree(
+          member,
+          'parent',
+          'page.edit',
+        ),
+      ).toBe(true);
     });
   });
 });

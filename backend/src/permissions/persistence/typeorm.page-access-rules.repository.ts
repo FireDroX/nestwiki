@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { In, IsNull, Repository } from 'typeorm';
 import { PageAction } from '../../common/permissions.js';
 import { PageAccessExclusion } from '../entities/page-access-exclusion.entity.js';
 import { PageAccessRule } from '../entities/page-access-rule.entity.js';
@@ -27,6 +27,15 @@ export class TypeormPageAccessRulesRepository implements PageAccessRulesReposito
       return Promise.resolve([]);
     }
     return this.rules.findBy({ groupId: In(groupIds) });
+  }
+
+  findByPageIdsOrWholeWiki(pageIds: string[]): Promise<PageAccessRule[]> {
+    if (pageIds.length === 0) {
+      return this.rules.findBy({ pageId: IsNull() });
+    }
+    return this.rules.find({
+      where: [{ pageId: In(pageIds) }, { pageId: IsNull() }],
+    });
   }
 
   findById(id: string): Promise<PageAccessRule | null> {

@@ -221,13 +221,18 @@ Table clé/valeur générique pour les réglages globaux (pas par utilisateur). 
 
 ### Users
 
-| Méthode | Route                 | Auth  | Description              |
-| ------- | --------------------- | ----- | ------------------------ |
-| GET     | /users/me             | oui   | Profil courant           |
-| PATCH   | /users/me             | oui   | Modifier son profil      |
-| GET     | /admin/users          | admin | Liste des utilisateurs   |
-| PATCH   | /admin/users/:id/role | admin | Changer un rôle          |
-| DELETE  | /admin/users/:id      | admin | Supprimer un utilisateur |
+| Méthode | Route                                  | Auth               | Description              |
+| ------- | --------------------------------------- | ------------------- | ------------------------ |
+| GET     | /users/me                              | oui                 | Profil courant, avec `permissions` (globales) et `groups` |
+| PATCH   | /users/me                              | oui                 | Modifier son profil      |
+| GET     | /admin/users                           | admin               | Liste des utilisateurs   |
+| PATCH   | /admin/users/:id/role                  | admin               | Changer un rôle          |
+| DELETE  | /admin/users/:id                       | admin               | Supprimer un utilisateur |
+| PUT     | /admin/users/:id/permissions           | admin ou `user.manage` | Remplacer les permissions globales directes |
+| GET     | /admin/users/:id/access-rules          | admin ou `user.manage` | Règles d'accès directes de l'utilisateur |
+| POST    | /admin/users/:id/access-rules          | admin ou `user.manage` | Créer une règle d'accès directe |
+| PATCH   | /admin/users/:id/access-rules/:ruleId  | admin ou `user.manage` | Modifier une règle d'accès directe |
+| DELETE  | /admin/users/:id/access-rules/:ruleId  | admin ou `user.manage` | Supprimer une règle d'accès directe |
 
 ### Pages
 
@@ -242,13 +247,29 @@ Table clé/valeur générique pour les réglages globaux (pas par utilisateur). 
 | DELETE  | /pages/:id         | éditeur+         | Supprimer                 |
 | PATCH   | /pages/:id/visibility | éditeur+      | Changer la visibilité (cascade aux enfants) |
 
-### Permissions
+### Groupes et permissions
 
-| Méthode | Route                        | Auth  | Description                          |
-| ------- | ----------------------------- | ----- | ------------------------------------- |
-| GET     | /pages/:id/permissions        | admin | Grants explicites sur cette page      |
-| POST    | /pages/:id/permissions        | admin | Accorder un droit d'éditeur           |
-| DELETE  | /pages/:id/permissions/:userId | admin | Révoquer un droit d'éditeur          |
+Modèle de permissions granulaires (EPIC-30) : chaque bénéficiaire (utilisateur ou groupe) peut recevoir des permissions globales (`GlobalPermission`, ex. `user.manage`) et des règles d'accès aux pages (`PageAccessRule` : `pageId` ou toute la wiki, portée `page`/`subtree`, `actions` parmi `PageAction`, exclusions possibles sur des descendants). La logique d'attribution est commune aux trois points d'entrée ci-dessous ; toute mutation ajoute une entrée dans `/admin/audit-log`, et un bénéficiaire ne peut jamais se voir accorder par un tiers plus d'actions que ce tiers ne détient lui-même.
+
+| Méthode | Route                                   | Auth                  | Description                          |
+| ------- | ---------------------------------------- | ---------------------- | ------------------------------------- |
+| GET     | /admin/groups                           | admin ou `user.manage` | Liste des groupes (membres, règles)  |
+| POST    | /admin/groups                           | admin ou `user.manage` | Créer un groupe                       |
+| GET     | /admin/groups/:id                       | admin ou `user.manage` | Détail : membres, permissions, règles |
+| PATCH   | /admin/groups/:id                       | admin ou `user.manage` | Modifier nom/description              |
+| DELETE  | /admin/groups/:id                       | admin ou `user.manage` | Supprimer (cascade)                   |
+| PUT     | /admin/groups/:id/members               | admin ou `user.manage` | Remplacer la liste des membres        |
+| PUT     | /admin/groups/:id/permissions           | admin ou `user.manage` | Remplacer les permissions globales    |
+| GET     | /admin/groups/:id/access-rules          | admin ou `user.manage` | Règles d'accès du groupe              |
+| POST    | /admin/groups/:id/access-rules          | admin ou `user.manage` | Créer une règle d'accès               |
+| PATCH   | /admin/groups/:id/access-rules/:ruleId  | admin ou `user.manage` | Modifier une règle d'accès            |
+| DELETE  | /admin/groups/:id/access-rules/:ruleId  | admin ou `user.manage` | Supprimer une règle d'accès           |
+| GET     | /pages/:id/access-rules                 | `page.manage_permissions` sur la page | Règles couvrant la page (directes + héritées, bénéficiaire nommé) |
+| POST    | /pages/:id/access-rules                 | `page.manage_permissions` sur la page | Créer une règle pour un utilisateur ou un groupe |
+| PATCH   | /pages/:id/access-rules/:ruleId         | `page.manage_permissions` sur la page | Modifier une règle directe (non héritée) |
+| DELETE  | /pages/:id/access-rules/:ruleId         | `page.manage_permissions` sur la page | Supprimer une règle directe (non héritée) |
+
+Voir aussi `/pages/:slug` et `/pages/tree`, qui exposent respectivement `permissions` (actions effectives sur la page) et `canCreateChild` par nœud.
 
 ### Versions
 

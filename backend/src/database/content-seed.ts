@@ -842,6 +842,13 @@ $$
 ## Version 0.30
 
 <details>
+<summary>0.30.4 — 2026-09-25</summary>
+
+- Nouvelle API d'administration des groupes (\`/admin/groups\`) et des règles d'accès aux pages, accessible aux administrateurs ou à quiconque détient la permission \`user.manage\` : permissions globales et règles d'accès directes pour un utilisateur ou un groupe, et règles d'accès directement depuis une page (\`/pages/:id/access-rules\`). Toute mutation est tracée dans le journal d'audit, et une escalade de droits au-delà de ce que possède l'auteur de la règle est bloquée.
+
+</details>
+
+<details>
 <summary>0.30.3 — 2026-09-25</summary>
 
 - Le détail d'une page expose désormais la liste précise des actions autorisées (\`permissions\`) au lieu d'un simple \`canEdit\`, l'arborescence des pages indique pour chaque page si l'utilisateur peut y créer une sous-page, et \`GET /users/me\` renvoie les permissions globales et les groupes de l'utilisateur connecté.

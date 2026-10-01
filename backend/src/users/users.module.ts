@@ -10,7 +10,11 @@ import { StorageModule } from '../storage/storage.module.js';
 import { User } from './entities/user.entity.js';
 import { TypeormUserRepository } from './persistence/typeorm.user.repository.js';
 import { UsersService } from './services/users.service.js';
-import { AdminUsersController, UsersController } from './users.controller.js';
+import {
+  AdminUserAccessController,
+  AdminUsersController,
+  UsersController,
+} from './users.controller.js';
 
 @Module({
   imports: [
@@ -22,7 +26,11 @@ import { AdminUsersController, UsersController } from './users.controller.js';
     forwardRef(() => PagesModule),
     forwardRef(() => PermissionsModule),
   ],
-  controllers: [UsersController, AdminUsersController],
+  controllers: [
+    UsersController,
+    AdminUsersController,
+    AdminUserAccessController,
+  ],
   providers: [
     { provide: 'UsersRepository', useClass: TypeormUserRepository },
     {

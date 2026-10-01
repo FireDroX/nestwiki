@@ -8,6 +8,7 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   Query,
   UploadedFile,
   UseFilters,
@@ -37,15 +38,23 @@ import { UserCommentResponseDto } from '../comments/dto/out/user-comment-respons
 import { CommentMapper } from '../comments/mapper/comment.mapper.js';
 import { CommentsService } from '../comments/services/comments.service.js';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
+import { RequirePermission } from '../common/decorators/require-permission.decorator.js';
 import { Roles } from '../common/decorators/roles.decorator.js';
 import { ErrorResponseDto } from '../common/dto/error-response.dto.js';
 import { PaginatedResponseDto } from '../common/dto/paginated-response.dto.js';
 import { ResponseDto } from '../common/dto/response.dto.js';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard.js';
+import { PermissionsGuard } from '../common/guards/permissions.guard.js';
 import { RolesGuard } from '../common/guards/roles.guard.js';
 import type { AuthenticatedUser } from '../common/strategies/jwt.strategy.js';
 import { AVATAR_MAX_SIZE_MB } from '../common/variables.global.js';
 import { PagesService } from '../pages/services/pages.service.js';
+import { CreateAccessRuleDto } from '../permissions/dto/in/create-access-rule.dto.js';
+import { SetGlobalPermissionsDto } from '../permissions/dto/in/set-global-permissions.dto.js';
+import { UpdateAccessRuleDto } from '../permissions/dto/in/update-access-rule.dto.js';
+import type { AccessRuleResponseDto } from '../permissions/dto/out/access-rule-response.dto.js';
+import { AccessRuleMapper } from '../permissions/mapper/access-rule.mapper.js';
+import { AccessRulesService } from '../permissions/services/access-rules.service.js';
 import { PermissionsService } from '../permissions/services/permissions.service.js';
 import { ListMyActivityQueryDto } from './dto/in/list-my-activity-query.dto.js';
 import { ListUsersQueryDto } from './dto/in/list-users-query.dto.js';
@@ -295,5 +304,106 @@ export class AdminUsersController {
     @Param('id') id: string,
   ): Promise<void> {
     await this.usersService.deleteUser(admin.id, id);
+  }
+}
+
+@ApiTags('Admin — Users')
+@ApiBearerAuth()
+@Controller('admin/users')
+@UseGuards(JwtAuthGuard, PermissionsGuard)
+@RequirePermission('user.manage')
+@UseFilters(UsersExceptionFilter)
+export class AdminUserAccessController {
+  constructor(private readonly accessRulesService: AccessRulesService) {}
+
+  @Put(':id/permissions')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({
+    summary: "Remplacer les permissions globales directes de l'utilisateur",
+  })
+  @ApiParam({ name: 'id', description: "Identifiant de l'utilisateur" })
+  async setPermissions(
+    @Param('id') id: string,
+    @Body() dto: SetGlobalPermissionsDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ): Promise<void> {
+    await this.accessRulesService.setGlobalPermissions(
+      { type: 'user', id },
+      dto.permissions,
+      actor.id,
+    );
+  }
+
+  @Get(':id/access-rules')
+  @ApiOperation({
+    summary: "Lister les règles d'accès directes de l'utilisateur",
+  })
+  @ApiParam({ name: 'id', description: "Identifiant de l'utilisateur" })
+  async listAccessRules(
+    @Param('id') id: string,
+  ): Promise<ResponseDto<AccessRuleResponseDto[]>> {
+    const rules = await this.accessRulesService.listAccessRulesForSubject({
+      type: 'user',
+      id,
+    });
+    return AccessRuleMapper.toListResponse(rules);
+  }
+
+  @Post(':id/access-rules')
+  @ApiOperation({
+    summary: "Créer une règle d'accès directe pour l'utilisateur",
+  })
+  @ApiParam({ name: 'id', description: "Identifiant de l'utilisateur" })
+  async createAccessRule(
+    @Param('id') id: string,
+    @Body() dto: CreateAccessRuleDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ): Promise<ResponseDto<AccessRuleResponseDto>> {
+    const rule = await this.accessRulesService.createAccessRule(
+      { type: 'user', id },
+      dto,
+      actor.id,
+    );
+    return AccessRuleMapper.toResponse(rule);
+  }
+
+  @Patch(':id/access-rules/:ruleId')
+  @ApiOperation({
+    summary: "Modifier une règle d'accès directe de l'utilisateur",
+  })
+  @ApiParam({ name: 'id', description: "Identifiant de l'utilisateur" })
+  @ApiParam({ name: 'ruleId', description: 'Identifiant de la règle' })
+  async updateAccessRule(
+    @Param('id') id: string,
+    @Param('ruleId') ruleId: string,
+    @Body() dto: UpdateAccessRuleDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ): Promise<ResponseDto<AccessRuleResponseDto>> {
+    const rule = await this.accessRulesService.updateAccessRule(
+      { type: 'user', id },
+      ruleId,
+      dto,
+      actor.id,
+    );
+    return AccessRuleMapper.toResponse(rule);
+  }
+
+  @Delete(':id/access-rules/:ruleId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({
+    summary: "Supprimer une règle d'accès directe de l'utilisateur",
+  })
+  @ApiParam({ name: 'id', description: "Identifiant de l'utilisateur" })
+  @ApiParam({ name: 'ruleId', description: 'Identifiant de la règle' })
+  async deleteAccessRule(
+    @Param('id') id: string,
+    @Param('ruleId') ruleId: string,
+    @CurrentUser() actor: AuthenticatedUser,
+  ): Promise<void> {
+    await this.accessRulesService.deleteAccessRule(
+      { type: 'user', id },
+      ruleId,
+      actor.id,
+    );
   }
 }

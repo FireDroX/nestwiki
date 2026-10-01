@@ -298,6 +298,61 @@ export class PermissionsService {
     );
   }
 
+  /**
+   * Whether `user` holds `action` on `pageId` via a subtree rule that has no
+   * exclusion falling inside `pageId`'s own subtree — i.e. whether `user`
+   * could re-grant `action` as an unrestricted subtree rule rooted at
+   * `pageId` without exceeding what they hold themselves. A plain
+   * `getEffectivePageActions(user, pageId).includes(action)` is not enough
+   * here: it only confirms `pageId` itself is covered, not the whole
+   * subtree a new subtree rule rooted there would grant.
+   */
+  async hasUnrestrictedActionOnSubtree(
+    user: User | undefined,
+    pageId: string,
+    action: PageAction,
+  ): Promise<boolean> {
+    if (!user) {
+      return false;
+    }
+    if (user.role === 'admin') {
+      return true;
+    }
+    if (!user.isActive) {
+      return false;
+    }
+
+    const chains = await this.pageHierarchyRepository.findChains([pageId]);
+    const chain = chains.get(pageId);
+    if (!chain) {
+      return false;
+    }
+
+    const context = await this.loadUserContext(user);
+    const coveringSubtreeRules = context.rules.filter(
+      ({ rule, excludedPageIds }) =>
+        rule.appliesTo === 'subtree' &&
+        rule.actions.includes(action) &&
+        ruleCoversChain(rule, excludedPageIds, chain),
+    );
+
+    for (const { excludedPageIds } of coveringSubtreeRules) {
+      if (excludedPageIds.length === 0) {
+        return true;
+      }
+      const exclusionChains =
+        await this.pageHierarchyRepository.findChains(excludedPageIds);
+      const hasExclusionInsideSubtree = excludedPageIds.some((excludedId) => {
+        const exclusionChain = exclusionChains.get(excludedId);
+        return exclusionChain?.chainIds.includes(pageId) ?? false;
+      });
+      if (!hasExclusionInsideSubtree) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   async filterReadable(user: User | undefined, pages: Page[]): Promise<Page[]> {
     if (pages.length === 0) {
       return [];

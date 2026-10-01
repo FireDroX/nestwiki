@@ -39,6 +39,8 @@ export class PagesExceptionFilter implements ExceptionFilter {
       case 'CommentNotFoundException':
       case 'TagNotFoundException':
       case 'PageTagNotFoundException':
+      case 'GroupNotFoundException':
+      case 'AccessRuleNotFoundException':
         return { statusCode: HttpStatus.NOT_FOUND, error: exception.message };
       case 'SlugAlreadyExistsException':
       case 'CircularReferenceException':

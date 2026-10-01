@@ -5,11 +5,17 @@ export interface CreateGroupInput {
   description: string | null;
 }
 
+export interface UpdateGroupInput {
+  name?: string;
+  description?: string | null;
+}
+
 export interface GroupsRepository {
   findAll(): Promise<Group[]>;
   findById(id: string): Promise<Group | null>;
   findByName(name: string): Promise<Group | null>;
   create(input: CreateGroupInput): Promise<Group>;
+  update(id: string, input: UpdateGroupInput): Promise<Group>;
   delete(id: string): Promise<void>;
   findMemberIds(groupId: string): Promise<string[]>;
   findGroupIdsForUser(userId: string): Promise<string[]>;

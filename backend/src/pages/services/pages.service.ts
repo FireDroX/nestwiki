@@ -199,6 +199,23 @@ export class PagesService {
     return { page, version, isFollowed, permissions };
   }
 
+  async assertCanManageAccessRules(
+    pageId: string,
+    currentUser?: AuthenticatedUser,
+  ): Promise<void> {
+    await this.getByIdOrFail(pageId, currentUser);
+    const user = await this.resolveFullUser(currentUser);
+    if (
+      !(await this.permissionsService.can(
+        user,
+        'page.manage_permissions',
+        pageId,
+      ))
+    ) {
+      throw new InsufficientPagePermissionException();
+    }
+  }
+
   async getAncestorPath(page: Page): Promise<string> {
     const segments = [page.slug];
     let parentId = page.parentId;

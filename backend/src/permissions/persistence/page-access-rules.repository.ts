@@ -16,6 +16,7 @@ export interface CreatePageAccessRuleInput {
 export interface PageAccessRulesRepository {
   findByUserId(userId: string): Promise<PageAccessRule[]>;
   findByGroupIds(groupIds: string[]): Promise<PageAccessRule[]>;
+  findByPageIdsOrWholeWiki(pageIds: string[]): Promise<PageAccessRule[]>;
   findById(id: string): Promise<PageAccessRule | null>;
   create(input: CreatePageAccessRuleInput): Promise<PageAccessRule>;
   updateActions(id: string, actions: PageAction[]): Promise<void>;

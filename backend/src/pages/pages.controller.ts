@@ -43,6 +43,13 @@ import { CreateCommentDto } from '../comments/dto/in/create-comment.dto.js';
 import { CommentResponseDto } from '../comments/dto/out/comment-response.dto.js';
 import { CommentMapper } from '../comments/mapper/comment.mapper.js';
 import { CommentsService } from '../comments/services/comments.service.js';
+import { UpdateAccessRuleDto } from '../permissions/dto/in/update-access-rule.dto.js';
+import type {
+  AccessRuleResponseDto,
+  PageAccessRuleResponseDto,
+} from '../permissions/dto/out/access-rule-response.dto.js';
+import { AccessRuleMapper } from '../permissions/mapper/access-rule.mapper.js';
+import { AccessRulesService } from '../permissions/services/access-rules.service.js';
 import { PageTagResponseDto } from '../tags/dto/out/page-tag-response.dto.js';
 import { TagSummaryDto } from '../tags/dto/out/tag-response.dto.js';
 import { TagMapper } from '../tags/mapper/tag.mapper.js';
@@ -56,6 +63,7 @@ import { VersionSummaryResponseDto } from '../versions/dto/out/version-summary-r
 import { VersionMapper } from '../versions/mapper/version.mapper.js';
 import { VersionsService } from '../versions/services/versions.service.js';
 import { ChangeVisibilityDto } from './dto/in/change-visibility.dto.js';
+import { CreatePageAccessRuleDto } from './dto/in/create-page-access-rule.dto.js';
 import { CreatePageDto } from './dto/in/create-page.dto.js';
 import { DeletePageQueryDto } from './dto/in/delete-page-query.dto.js';
 import { MergePreviewDto } from './dto/in/merge-preview.dto.js';
@@ -83,6 +91,7 @@ export class PagesController {
     private readonly versionsService: VersionsService,
     private readonly commentsService: CommentsService,
     private readonly tagsService: TagsService,
+    private readonly accessRulesService: AccessRulesService,
   ) {}
 
   @Post()
@@ -732,6 +741,136 @@ export class PagesController {
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<void> {
     await this.tagsService.untagPage(id, tagId, user);
+  }
+
+  @Get(':id/access-rules')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: "Lister les règles d'accès qui couvrent une page",
+    description:
+      'Inclut les règles directes et celles héritées d’un ancêtre ou de la portée « tout le wiki », marquées comme telles.',
+  })
+  @ApiParam({ name: 'id', description: 'Identifiant de la page' })
+  @ApiOkResponse({ description: "Règles d'accès couvrant la page." })
+  @ApiForbiddenResponse({
+    description: 'Droit de gestion des permissions requis sur la page.',
+    type: ErrorResponseDto,
+  })
+  @ApiNotFoundResponse({
+    description: "La page n'existe pas.",
+    type: ErrorResponseDto,
+  })
+  async listAccessRules(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<ResponseDto<PageAccessRuleResponseDto[]>> {
+    await this.pagesService.assertCanManageAccessRules(id, user);
+    const rules = await this.accessRulesService.listAccessRulesForPage(id);
+    return AccessRuleMapper.toPageListResponse(rules);
+  }
+
+  @Post(':id/access-rules')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Créer une règle d'accès sur une page" })
+  @ApiParam({ name: 'id', description: 'Identifiant de la page' })
+  @ApiBody({ type: CreatePageAccessRuleDto })
+  @ApiCreatedResponse({ description: 'Règle créée.' })
+  @ApiBadRequestResponse({
+    description: 'Actions ou exclusions invalides.',
+    type: ErrorResponseDto,
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Authentification requise.',
+    type: ErrorResponseDto,
+  })
+  @ApiForbiddenResponse({
+    description:
+      'Droit de gestion des permissions requis sur la page, ou tentative d’escalade.',
+    type: ErrorResponseDto,
+  })
+  @ApiNotFoundResponse({
+    description: "La page ou le bénéficiaire n'existe pas.",
+    type: ErrorResponseDto,
+  })
+  async createAccessRule(
+    @Param('id') id: string,
+    @Body() dto: CreatePageAccessRuleDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<ResponseDto<AccessRuleResponseDto>> {
+    await this.pagesService.assertCanManageAccessRules(id, user);
+    const rule = await this.accessRulesService.createAccessRule(
+      dto.subject,
+      {
+        pageId: id,
+        appliesTo: dto.appliesTo,
+        actions: dto.actions,
+        excludedPageIds: dto.excludedPageIds,
+      },
+      user.id,
+    );
+    return AccessRuleMapper.toResponse(rule);
+  }
+
+  @Patch(':id/access-rules/:ruleId')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: "Modifier une règle d'accès directe sur une page",
+    description:
+      'Seules les règles ciblant directement cette page (non héritées) peuvent être modifiées ici.',
+  })
+  @ApiParam({ name: 'id', description: 'Identifiant de la page' })
+  @ApiParam({ name: 'ruleId', description: 'Identifiant de la règle' })
+  @ApiForbiddenResponse({
+    description:
+      'Droit de gestion des permissions requis sur la page, ou tentative d’escalade.',
+    type: ErrorResponseDto,
+  })
+  @ApiNotFoundResponse({
+    description: "La règle n'existe pas directement sur cette page.",
+    type: ErrorResponseDto,
+  })
+  async updateAccessRule(
+    @Param('id') id: string,
+    @Param('ruleId') ruleId: string,
+    @Body() dto: UpdateAccessRuleDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<ResponseDto<AccessRuleResponseDto>> {
+    await this.pagesService.assertCanManageAccessRules(id, user);
+    const rule = await this.accessRulesService.updateAccessRuleForPage(
+      id,
+      ruleId,
+      dto,
+      user.id,
+    );
+    return AccessRuleMapper.toResponse(rule);
+  }
+
+  @Delete(':id/access-rules/:ruleId')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({
+    summary: "Supprimer une règle d'accès directe sur une page",
+    description:
+      'Seules les règles ciblant directement cette page (non héritées) peuvent être supprimées ici.',
+  })
+  @ApiParam({ name: 'id', description: 'Identifiant de la page' })
+  @ApiParam({ name: 'ruleId', description: 'Identifiant de la règle' })
+  @ApiNoContentResponse({ description: 'Règle supprimée.' })
+  @ApiNotFoundResponse({
+    description: "La règle n'existe pas directement sur cette page.",
+    type: ErrorResponseDto,
+  })
+  async deleteAccessRule(
+    @Param('id') id: string,
+    @Param('ruleId') ruleId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<void> {
+    await this.pagesService.assertCanManageAccessRules(id, user);
+    await this.accessRulesService.deleteAccessRuleForPage(id, ruleId, user.id);
   }
 
   @Get('*path')

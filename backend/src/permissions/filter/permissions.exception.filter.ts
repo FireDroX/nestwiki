@@ -10,7 +10,7 @@ import type { Response } from 'express';
 import { ErrorResponseDto } from '../../common/dto/error-response.dto.js';
 
 @Catch()
-export class UsersExceptionFilter implements ExceptionFilter {
+export class PermissionsExceptionFilter implements ExceptionFilter {
   catch(exception: Error, host: ArgumentsHost): void {
     const response = host.switchToHttp().getResponse<Response>();
 
@@ -22,7 +22,7 @@ export class UsersExceptionFilter implements ExceptionFilter {
       return;
     }
 
-    const { statusCode, error } = UsersExceptionFilter.resolve(exception);
+    const { statusCode, error } = PermissionsExceptionFilter.resolve(exception);
     const body: ErrorResponseDto = { error };
     response.status(statusCode).json(body);
   }
@@ -32,10 +32,13 @@ export class UsersExceptionFilter implements ExceptionFilter {
     error: string;
   } {
     switch (exception.name) {
-      case 'UserNotFoundException':
+      case 'GroupNotFoundException':
       case 'AccessRuleNotFoundException':
+      case 'UserNotFoundException':
       case 'PageNotFoundException':
         return { statusCode: HttpStatus.NOT_FOUND, error: exception.message };
+      case 'GroupNameAlreadyExistsException':
+        return { statusCode: HttpStatus.CONFLICT, error: exception.message };
       case 'InsufficientPermissionException':
         return { statusCode: HttpStatus.FORBIDDEN, error: exception.message };
       case 'ValidationException':

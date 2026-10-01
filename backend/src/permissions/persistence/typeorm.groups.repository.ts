@@ -3,7 +3,11 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { Group } from '../entities/group.entity.js';
 import { GroupMember } from '../entities/group-member.entity.js';
-import { CreateGroupInput, GroupsRepository } from './groups.repository.js';
+import {
+  CreateGroupInput,
+  GroupsRepository,
+  UpdateGroupInput,
+} from './groups.repository.js';
 
 @Injectable()
 export class TypeormGroupsRepository implements GroupsRepository {
@@ -28,6 +32,11 @@ export class TypeormGroupsRepository implements GroupsRepository {
 
   create(input: CreateGroupInput): Promise<Group> {
     return this.groups.save(this.groups.create(input));
+  }
+
+  async update(id: string, input: UpdateGroupInput): Promise<Group> {
+    await this.groups.update(id, input);
+    return (await this.findById(id))!;
   }
 
   async delete(id: string): Promise<void> {
