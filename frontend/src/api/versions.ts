@@ -62,7 +62,7 @@ export async function restoreVersion(pageId: string, versionId: string): Promise
 export interface Contributor {
   id: string
   displayName: string
-  avatarUrl: string | null
+  hasAvatar: boolean
 }
 
 export async function listContributors(pageId: string): Promise<Contributor[]> {

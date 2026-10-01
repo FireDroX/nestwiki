@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '#
 import { DeleteUserDialog } from '#components/AdminUsers/DeleteUserDialog'
 import { UserCommentsPanel } from '#components/AdminUsers/UserCommentsPanel'
 import { UserRole } from '#api/auth'
-import type { AdminUser } from '#api/users'
+import { avatarRawUrl, type AdminUser } from '#api/users'
 import { toInitials } from '#utils/initials'
 import { intlLocale } from '#utils/relative-time'
 import { isUserLocked } from '#utils/user-status'
@@ -80,7 +80,10 @@ export function UsersTable({
               <TableCell>
                 <Link to={`/admin/users/${user.id}`} className="flex items-center gap-2.5 hover:underline">
                   <Avatar>
-                    <AvatarImage src={user.avatarUrl ?? undefined} alt={user.displayName} />
+                    <AvatarImage
+                      src={user.hasAvatar ? avatarRawUrl(user.id) : undefined}
+                      alt={user.displayName}
+                    />
                     <AvatarFallback>{toInitials(user.displayName)}</AvatarFallback>
                   </Avatar>
                   <div className="min-w-0">

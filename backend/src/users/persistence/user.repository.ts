@@ -20,6 +20,7 @@ export interface UserRepository {
   findByEmail(email: string): Promise<User | null>;
   create(data: CreateUserDto): Promise<User>;
   update(id: string, data: UpdateProfileDto): Promise<User>;
+  updateAvatar(id: string, avatarExtension: string | null): Promise<User>;
   adminUpdate(id: string, data: AdminUpdateUserInput): Promise<User>;
   findAllPaginated(
     page: number,

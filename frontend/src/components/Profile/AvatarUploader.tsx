@@ -15,7 +15,7 @@ import {
   AlertDialogTrigger,
 } from '#components/ui/alert-dialog'
 import { Button } from '#components/ui/button'
-import { removeAvatar, uploadAvatar } from '#api/users'
+import { avatarRawUrl, removeAvatar, uploadAvatar } from '#api/users'
 import type { AuthUser } from '#api/auth'
 import { extractErrorMessage } from '#lib/api-errors'
 import { toInitials } from '#utils/initials'
@@ -94,7 +94,7 @@ export function AvatarUploader({ user, onUpdate }: AvatarUploaderProps) {
     }
   }
 
-  const displayedAvatarUrl = previewUrl ?? user.avatarUrl ?? undefined
+  const displayedAvatarUrl = previewUrl ?? (user.hasAvatar ? avatarRawUrl(user.id) : undefined)
 
   return (
     <div className="flex shrink-0 flex-col items-center gap-2">
@@ -134,7 +134,7 @@ export function AvatarUploader({ user, onUpdate }: AvatarUploaderProps) {
           </Button>
         </div>
       ) : (
-        user.avatarUrl && (
+        user.hasAvatar && (
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button

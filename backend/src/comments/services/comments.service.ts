@@ -28,7 +28,7 @@ import type { CommentsRepository } from '../persistence/comment.repository.js';
 
 export interface AuthorInfo {
   displayName: string;
-  avatarUrl: string | null;
+  hasAvatar: boolean;
 }
 
 export interface UserCommentsPage {
@@ -282,7 +282,10 @@ export class CommentsService {
           const author = await this.usersService.findById(authorId);
           return [
             authorId,
-            { displayName: author.displayName, avatarUrl: author.avatarUrl },
+            {
+              displayName: author.displayName,
+              hasAvatar: author.avatarExtension !== null,
+            },
           ] as const;
         } catch {
           return null;

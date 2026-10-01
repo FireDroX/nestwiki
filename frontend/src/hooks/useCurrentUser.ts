@@ -4,10 +4,11 @@ import { useAuth } from '#hooks/useAuth'
 import { toInitials } from '#utils/initials'
 
 export interface CurrentUser {
+  id: string
   displayName: string
   initials: string
   role: UserRole
-  avatarUrl: string | null
+  hasAvatar: boolean
   permissions: GlobalPermission[]
   groups: AuthUserGroup[]
 }
@@ -18,10 +19,11 @@ export function useCurrentUser(): CurrentUser | null {
     return null
   }
   return {
+    id: user.id,
     displayName: user.displayName,
     initials: toInitials(user.displayName),
     role: user.role,
-    avatarUrl: user.avatarUrl,
+    hasAvatar: user.hasAvatar,
     permissions: user.permissions ?? [],
     groups: user.groups ?? [],
   }

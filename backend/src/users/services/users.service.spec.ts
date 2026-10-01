@@ -2,6 +2,7 @@ import { Test } from '@nestjs/testing';
 import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 import { AdminAuditLogService } from '../../admin/services/admin-audit-log.service.js';
 import { UserActivityLogService } from '../../activity/services/user-activity-log.service.js';
+import { AvatarNotFoundException } from '../../common/exceptions/users/avatar-not-found.exception.js';
 import { EmailAlreadyExistsException } from '../../common/exceptions/auth/email-already-exists.exception.js';
 import { InsufficientPermissionException } from '../../common/exceptions/insufficient-permission.exception.js';
 import { LastActiveAdminException } from '../../common/exceptions/users/last-active-admin.exception.js';
@@ -26,7 +27,7 @@ function buildUser(overrides: Partial<User> = {}): User {
     email: 'user@example.com',
     passwordHash: 'hash',
     displayName: 'User One',
-    avatarUrl: null,
+    avatarExtension: null,
     role: 'member',
     failedLoginAttempts: 0,
     lockedUntil: null,
@@ -88,6 +89,7 @@ describe('UsersService', () => {
       findByEmail: vi.fn().mockResolvedValue(null),
       create: vi.fn(),
       update: vi.fn(),
+      updateAvatar: vi.fn(),
       adminUpdate: vi.fn(),
       findAllPaginated: vi.fn(),
       findAllFiltered: vi.fn().mockResolvedValue({ items: [], total: 0 }),
@@ -239,13 +241,11 @@ describe('UsersService', () => {
       };
     }
 
-    it('deletes any existing avatar files, uploads the new one and persists its presigned URL', async () => {
+    it('deletes any existing avatar files, uploads the new one and persists its extension', async () => {
       const user = buildUser();
-      const updated = buildUser({
-        avatarUrl: 'https://storage.example/signed',
-      });
+      const updated = buildUser({ avatarExtension: 'png' });
       userRepository.findById.mockResolvedValue(user);
-      userRepository.update.mockResolvedValue(updated);
+      userRepository.updateAvatar.mockResolvedValue(updated);
 
       const result = await service.uploadAvatar('user-1', buildFile());
 
@@ -256,9 +256,7 @@ describe('UsersService', () => {
         expect.any(Buffer),
         'image/png',
       );
-      expect(userRepository.update).toHaveBeenCalledWith('user-1', {
-        avatarUrl: 'https://storage.example/signed',
-      });
+      expect(userRepository.updateAvatar).toHaveBeenCalledWith('user-1', 'png');
       expect(result).toEqual(updated);
     });
 
@@ -289,27 +287,56 @@ describe('UsersService', () => {
   });
 
   describe('removeAvatar', () => {
-    it('deletes any existing avatar files and clears avatarUrl', async () => {
-      const user = buildUser({ avatarUrl: 'https://storage.example/old' });
-      const updated = buildUser({ avatarUrl: null });
+    it('deletes any existing avatar files and clears the avatar extension', async () => {
+      const user = buildUser({ avatarExtension: 'png' });
+      const updated = buildUser({ avatarExtension: null });
       userRepository.findById.mockResolvedValue(user);
-      userRepository.update.mockResolvedValue(updated);
+      userRepository.updateAvatar.mockResolvedValue(updated);
 
       const result = await service.removeAvatar('user-1');
 
       expect(storageService.delete).toHaveBeenCalledTimes(3);
-      expect(userRepository.update).toHaveBeenCalledWith('user-1', {
-        avatarUrl: null,
-      });
+      expect(userRepository.updateAvatar).toHaveBeenCalledWith('user-1', null);
       expect(result).toEqual(updated);
     });
 
     it('is a no-op error-wise when there is no avatar to remove', async () => {
-      userRepository.findById.mockResolvedValue(buildUser({ avatarUrl: null }));
-      userRepository.update.mockResolvedValue(buildUser({ avatarUrl: null }));
+      userRepository.findById.mockResolvedValue(
+        buildUser({ avatarExtension: null }),
+      );
+      userRepository.updateAvatar.mockResolvedValue(
+        buildUser({ avatarExtension: null }),
+      );
       storageService.delete.mockRejectedValue(new Error('NotFound'));
 
       await expect(service.removeAvatar('user-1')).resolves.toBeDefined();
+    });
+  });
+
+  describe('getAvatarRedirectUrl', () => {
+    it('returns a fresh presigned URL for the stored avatar extension', async () => {
+      userRepository.findById.mockResolvedValue(
+        buildUser({ avatarExtension: 'png' }),
+      );
+
+      const url = await service.getAvatarRedirectUrl('user-1');
+
+      expect(storageService.getPresignedUrl).toHaveBeenCalledWith(
+        'test-bucket',
+        'avatars/user-1/avatar.png',
+        expect.any(Number),
+      );
+      expect(url).toBe('https://storage.example/signed');
+    });
+
+    it('throws AvatarNotFoundException when the user has no avatar', async () => {
+      userRepository.findById.mockResolvedValue(
+        buildUser({ avatarExtension: null }),
+      );
+
+      await expect(
+        service.getAvatarRedirectUrl('user-1'),
+      ).rejects.toBeInstanceOf(AvatarNotFoundException);
     });
   });
 

@@ -9,7 +9,7 @@ function buildUser(overrides: Partial<User> = {}): User {
     email: 'user@example.com',
     passwordHash: 'hash',
     displayName: 'User One',
-    avatarUrl: null,
+    avatarExtension: null,
     role: 'member',
     failedLoginAttempts: 0,
     lockedUntil: null,
@@ -34,7 +34,7 @@ describe('TypeormUserRepository', () => {
   });
 
   describe('update', () => {
-    it('only ever persists displayName and avatarUrl, even if a role field is smuggled in', async () => {
+    it('only ever persists displayName, even if a role field is smuggled in', async () => {
       const updated = buildUser({ displayName: 'New Name' });
       ormRepository.findOneBy.mockResolvedValue(updated);
 
@@ -48,17 +48,28 @@ describe('TypeormUserRepository', () => {
         displayName: 'New Name',
       });
     });
+  });
 
-    it('only patches the fields actually present on the dto', async () => {
-      const updated = buildUser({ avatarUrl: 'https://example.com/a.png' });
+  describe('updateAvatar', () => {
+    it('persists the avatar extension', async () => {
+      const updated = buildUser({ avatarExtension: 'png' });
       ormRepository.findOneBy.mockResolvedValue(updated);
 
-      await repository.update('user-1', {
-        avatarUrl: 'https://example.com/a.png',
-      });
+      await repository.updateAvatar('user-1', 'png');
 
       expect(ormRepository.update).toHaveBeenCalledWith('user-1', {
-        avatarUrl: 'https://example.com/a.png',
+        avatarExtension: 'png',
+      });
+    });
+
+    it('clears the avatar extension when null', async () => {
+      const updated = buildUser({ avatarExtension: null });
+      ormRepository.findOneBy.mockResolvedValue(updated);
+
+      await repository.updateAvatar('user-1', null);
+
+      expect(ormRepository.update).toHaveBeenCalledWith('user-1', {
+        avatarExtension: null,
       });
     });
   });

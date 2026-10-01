@@ -19,7 +19,7 @@ function buildUser(overrides: Partial<User> = {}): User {
     email: 'user@example.com',
     passwordHash: 'irrelevant',
     displayName: 'User One',
-    avatarUrl: null,
+    avatarExtension: null,
     role: 'member',
     failedLoginAttempts: 0,
     lockedUntil: null,

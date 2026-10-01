@@ -6,7 +6,7 @@ export interface UserResponseDto {
   email: string;
   displayName: string;
   role: UserRole;
-  avatarUrl: string | null;
+  hasAvatar: boolean;
   createdAt: Date;
   commentsCount?: number;
   pagesCreatedCount?: number;

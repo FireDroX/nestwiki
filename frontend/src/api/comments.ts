@@ -6,7 +6,7 @@ export interface Comment {
   pageId: string
   authorId: string
   authorDisplayName: string | null
-  authorAvatarUrl: string | null
+  authorHasAvatar: boolean
   parentId: string | null
   content: string
   editedAt: string | null

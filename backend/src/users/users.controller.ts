@@ -10,12 +10,14 @@ import {
   Post,
   Put,
   Query,
+  Res,
   UploadedFile,
   UseFilters,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import type { Response } from 'express';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
@@ -227,6 +229,26 @@ export class UsersController {
   ): Promise<ResponseDto<UserResponseDto>> {
     const entity = await this.usersService.removeAvatar(user.id);
     return UserMapper.toResponse(entity);
+  }
+
+  @Get(':id/avatar')
+  @ApiOperation({
+    summary:
+      "Rediriger vers la photo de profil d'un utilisateur via une URL présignée fraîche",
+    description:
+      'URL stable à référencer comme src d’image : régénère une URL présignée à chaque appel et redirige (302), donc ne devient jamais invalide contrairement à une URL présignée embarquée telle quelle.',
+  })
+  @ApiParam({ name: 'id', description: "Identifiant de l'utilisateur" })
+  @ApiNotFoundResponse({
+    description: "L'utilisateur n'existe pas ou n'a pas de photo de profil.",
+    type: ErrorResponseDto,
+  })
+  async getAvatar(
+    @Param('id') id: string,
+    @Res() res: Response,
+  ): Promise<void> {
+    const url = await this.usersService.getAvatarRedirectUrl(id);
+    res.redirect(url);
   }
 }
 

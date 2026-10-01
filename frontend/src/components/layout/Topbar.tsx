@@ -14,6 +14,7 @@ import {
 import { InputGroup, InputGroupAddon, InputGroupInput } from '#components/ui/input-group'
 import { GLOBAL_SEARCH_OPEN_EVENT } from '#components/GlobalSearchCommand'
 import { UserRole } from '#api/auth'
+import { avatarRawUrl } from '#api/users'
 import { useAuth } from '#hooks/useAuth'
 import { useCurrentUser } from '#hooks/useCurrentUser'
 import { cn } from '#lib/utils'
@@ -69,7 +70,10 @@ export function Topbar({ onOpenSidebar }: TopbarProps) {
         <DropdownMenu>
           <DropdownMenuTrigger className="ml-auto rounded-full outline-none focus-visible:ring-3 focus-visible:ring-ring/50">
             <Avatar>
-              <AvatarImage src={user?.avatarUrl ?? undefined} alt={user?.displayName} />
+              <AvatarImage
+                src={user?.hasAvatar ? avatarRawUrl(user.id) : undefined}
+                alt={user?.displayName}
+              />
               <AvatarFallback>{user?.initials}</AvatarFallback>
             </Avatar>
           </DropdownMenuTrigger>

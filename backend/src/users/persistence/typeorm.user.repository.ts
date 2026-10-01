@@ -34,11 +34,16 @@ export class TypeormUserRepository implements UserRepository {
     if (data.displayName !== undefined) {
       patch.displayName = data.displayName;
     }
-    if (data.avatarUrl !== undefined) {
-      patch.avatarUrl = data.avatarUrl;
-    }
 
     await this.repository.update(id, patch);
+    return (await this.findById(id)) as User;
+  }
+
+  async updateAvatar(
+    id: string,
+    avatarExtension: string | null,
+  ): Promise<User> {
+    await this.repository.update(id, { avatarExtension });
     return (await this.findById(id)) as User;
   }
 

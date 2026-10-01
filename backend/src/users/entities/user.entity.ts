@@ -24,9 +24,14 @@ export class User {
   @Column({ type: 'varchar', length: 100, name: 'display_name' })
   displayName: string;
 
-  /** Minio object key or absolute URL. */
-  @Column({ type: 'varchar', length: 500, name: 'avatar_url', nullable: true })
-  avatarUrl: string | null;
+  /** File extension of the avatar stored in Minio (key: avatars/{id}/avatar.{ext}), null if none. */
+  @Column({
+    type: 'varchar',
+    length: 10,
+    name: 'avatar_extension',
+    nullable: true,
+  })
+  avatarExtension: string | null;
 
   @Column({ type: 'enum', enum: USER_ROLES, default: 'member' })
   role: UserRole;
