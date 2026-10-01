@@ -28,7 +28,10 @@ import {
 } from '../../common/variables.global.js';
 import type { AuthenticatedUser } from '../../common/strategies/jwt.strategy.js';
 import type { GroupsRepository } from '../../permissions/persistence/groups.repository.js';
+import type { PageAccessRulesRepository } from '../../permissions/persistence/page-access-rules.repository.js';
 import type { SubjectPermissionsRepository } from '../../permissions/persistence/subject-permissions.repository.js';
+import { assertActorCanGrantGroupMembership } from '../../permissions/services/group-grant.util.js';
+import { PermissionsService } from '../../permissions/services/permissions.service.js';
 import type { StorageService } from '../../storage/services/storage.service.js';
 import { AdminUpdateUserDto } from '../dto/in/admin-update-user.dto.js';
 import { CreateAdminUserDto } from '../dto/in/create-admin-user.dto.js';
@@ -72,6 +75,9 @@ export class UsersService {
     private readonly groupsRepository: GroupsRepository,
     @Inject('SubjectPermissionsRepository')
     private readonly subjectPermissionsRepository: SubjectPermissionsRepository,
+    @Inject('PageAccessRulesRepository')
+    private readonly pageAccessRulesRepository: PageAccessRulesRepository,
+    private readonly permissionsService: PermissionsService,
   ) {}
 
   async findById(id: string): Promise<User> {
@@ -320,6 +326,7 @@ export class UsersService {
     dto: AdminUpdateUserDto,
   ): Promise<User> {
     const target = await this.findById(id);
+    UsersService.assertActorIsAdminToActOnAdmin(actor, target);
 
     if (dto.displayName !== undefined) {
       this.validateDisplayNameValue(dto.displayName);
@@ -335,7 +342,6 @@ export class UsersService {
       this.validateRole(dto.role);
       UsersService.assertActorCanSetRole(actor, dto.role);
       if (dto.role !== target.role) {
-        UsersService.assertActorIsAdminToActOnAdmin(actor, target);
         if (dto.role !== 'admin') {
           UsersService.assertNotSelf(actor.id, id);
         }
@@ -389,7 +395,8 @@ export class UsersService {
   }
 
   async resetPassword(actor: AuthenticatedUser, id: string): Promise<string> {
-    await this.findById(id);
+    const target = await this.findById(id);
+    UsersService.assertActorIsAdminToActOnAdmin(actor, target);
     const temporaryPassword = UsersService.generateTemporaryPassword();
     const passwordHash = await bcrypt.hash(temporaryPassword, SALT_ROUNDS);
     await this.userRepository.updatePassword(id, passwordHash);
@@ -404,7 +411,8 @@ export class UsersService {
   }
 
   async unlock(actor: AuthenticatedUser, id: string): Promise<User> {
-    await this.findById(id);
+    const target = await this.findById(id);
+    UsersService.assertActorIsAdminToActOnAdmin(actor, target);
     const updated = await this.userRepository.resetFailedLoginAttempts(id);
     await this.adminAuditLogService.record({
       adminId: actor.id,
@@ -427,6 +435,25 @@ export class UsersService {
     if (groupIds.length > 0) {
       await this.assertGroupsExist(groupIds);
     }
+
+    const previousGroupIds =
+      await this.groupsRepository.findGroupIdsForUser(id);
+    const addedGroupIds = groupIds.filter(
+      (groupId) => !previousGroupIds.includes(groupId),
+    );
+    if (addedGroupIds.length > 0) {
+      const actorEntity = await this.findById(actor.id);
+      for (const groupId of addedGroupIds) {
+        await assertActorCanGrantGroupMembership(
+          this.permissionsService,
+          this.subjectPermissionsRepository,
+          this.pageAccessRulesRepository,
+          actorEntity,
+          groupId,
+        );
+      }
+    }
+
     await this.groupsRepository.setGroupsForUser(id, groupIds);
     await this.adminAuditLogService.record({
       adminId: actor.id,

@@ -12,6 +12,8 @@ import type { PageAccessRulesRepository } from '../persistence/page-access-rules
 import type { SubjectPermissionsRepository } from '../persistence/subject-permissions.repository.js';
 import type { GroupMemberDto } from '../dto/out/group-response.dto.js';
 import type { AccessRuleView } from './access-rules.service.js';
+import { assertActorCanGrantGroupMembership } from './group-grant.util.js';
+import { PermissionsService } from './permissions.service.js';
 
 export interface GroupSummary {
   group: Group;
@@ -36,6 +38,7 @@ export class GroupsService {
     @Inject('PageAccessRulesRepository')
     private readonly pageAccessRulesRepository: PageAccessRulesRepository,
     private readonly usersService: UsersService,
+    private readonly permissionsService: PermissionsService,
     private readonly adminAuditLogService: AdminAuditLogService,
   ) {}
 
@@ -170,6 +173,22 @@ export class GroupsService {
   ): Promise<void> {
     await this.getByIdOrFail(id);
     await this.validateUserIds(userIds);
+
+    const previousMemberIds = await this.groupsRepository.findMemberIds(id);
+    const addsNewMember = userIds.some(
+      (userId) => !previousMemberIds.includes(userId),
+    );
+    if (addsNewMember) {
+      const actor = await this.usersService.findById(actorId);
+      await assertActorCanGrantGroupMembership(
+        this.permissionsService,
+        this.subjectPermissionsRepository,
+        this.pageAccessRulesRepository,
+        actor,
+        id,
+      );
+    }
+
     await this.groupsRepository.setMembers(id, userIds);
 
     await this.adminAuditLogService.record({

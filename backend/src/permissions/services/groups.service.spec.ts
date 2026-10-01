@@ -1,6 +1,7 @@
 import { Test } from '@nestjs/testing';
 import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 import { AdminAuditLogService } from '../../admin/services/admin-audit-log.service.js';
+import { InsufficientPermissionException } from '../../common/exceptions/insufficient-permission.exception.js';
 import { GroupNameAlreadyExistsException } from '../../common/exceptions/permissions/group-name-already-exists.exception.js';
 import { GroupNotFoundException } from '../../common/exceptions/permissions/group-not-found.exception.js';
 import { UserNotFoundException } from '../../common/exceptions/users/user-not-found.exception.js';
@@ -16,6 +17,7 @@ import type {
 import type { PageAccessRulesRepository } from '../persistence/page-access-rules.repository.js';
 import type { SubjectPermissionsRepository } from '../persistence/subject-permissions.repository.js';
 import { GroupsService } from './groups.service.js';
+import { PermissionsService } from './permissions.service.js';
 
 function buildUser(overrides: Partial<User> = {}): User {
   return {
@@ -74,6 +76,18 @@ describe('GroupsService', () => {
     [K in keyof PageAccessRulesRepository]: Mock<PageAccessRulesRepository[K]>;
   };
   let usersService: { findById: Mock<UsersService['findById']> };
+  let permissionsService: {
+    hasGlobal: Mock<PermissionsService['hasGlobal']>;
+    hasUnrestrictedPageAccess: Mock<
+      PermissionsService['hasUnrestrictedPageAccess']
+    >;
+    hasUnrestrictedActionOnSubtree: Mock<
+      PermissionsService['hasUnrestrictedActionOnSubtree']
+    >;
+    getEffectivePageActions: Mock<
+      PermissionsService['getEffectivePageActions']
+    >;
+  };
   let adminAuditLogService: { record: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
@@ -122,6 +136,12 @@ describe('GroupsService', () => {
         .fn()
         .mockImplementation((id: string) => Promise.resolve(buildUser({ id }))),
     };
+    permissionsService = {
+      hasGlobal: vi.fn().mockResolvedValue(true),
+      hasUnrestrictedPageAccess: vi.fn().mockResolvedValue(true),
+      hasUnrestrictedActionOnSubtree: vi.fn().mockResolvedValue(true),
+      getEffectivePageActions: vi.fn().mockResolvedValue([]),
+    };
     adminAuditLogService = { record: vi.fn().mockResolvedValue(undefined) };
 
     const module = await Test.createTestingModule({
@@ -137,6 +157,7 @@ describe('GroupsService', () => {
           useValue: pageAccessRulesRepository,
         },
         { provide: UsersService, useValue: usersService },
+        { provide: PermissionsService, useValue: permissionsService },
         { provide: AdminAuditLogService, useValue: adminAuditLogService },
       ],
     }).compile();
@@ -319,6 +340,46 @@ describe('GroupsService', () => {
       await expect(
         service.setMembers('missing', [], 'admin-1'),
       ).rejects.toBeInstanceOf(GroupNotFoundException);
+    });
+
+    it('blocks adding a member to a group that grants a permission the actor lacks', async () => {
+      subjectPermissionsRepository.findForGroup.mockResolvedValue([
+        'user.manage',
+      ]);
+      permissionsService.hasGlobal.mockResolvedValue(false);
+
+      await expect(
+        service.setMembers('group-1', ['user-1'], 'actor-1'),
+      ).rejects.toBeInstanceOf(InsufficientPermissionException);
+      expect(groupsRepository.setMembers).not.toHaveBeenCalled();
+    });
+
+    it('adds a member when the actor already holds everything the group grants', async () => {
+      subjectPermissionsRepository.findForGroup.mockResolvedValue([
+        'tag.create',
+      ]);
+      permissionsService.hasGlobal.mockResolvedValue(true);
+
+      await service.setMembers('group-1', ['user-1'], 'actor-1');
+
+      expect(usersService.findById).toHaveBeenCalledWith('actor-1');
+      expect(groupsRepository.setMembers).toHaveBeenCalledWith('group-1', [
+        'user-1',
+      ]);
+    });
+
+    it('skips the escalation check when no new member is added', async () => {
+      groupsRepository.findMemberIds.mockResolvedValue(['user-1', 'user-2']);
+      subjectPermissionsRepository.findForGroup.mockResolvedValue([
+        'user.manage',
+      ]);
+      permissionsService.hasGlobal.mockResolvedValue(false);
+
+      await service.setMembers('group-1', ['user-1'], 'actor-1');
+
+      expect(groupsRepository.setMembers).toHaveBeenCalledWith('group-1', [
+        'user-1',
+      ]);
     });
   });
 });

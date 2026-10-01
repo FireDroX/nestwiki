@@ -1,10 +1,11 @@
 import { z } from 'zod';
 import { SearchService } from '../../search/services/search.service.js';
+import { UsersService } from '../../users/services/users.service.js';
 import {
   defineMcpTool,
   McpToolDefinition,
 } from '../registry/mcp-tools.registry.js';
-import { asFullAccessUser } from './full-access-user.util.js';
+import { resolveMcpUser, toAuthenticatedUser } from './mcp-actor.util.js';
 
 const SEARCH_READ_SCOPE = 'search:read';
 const PAGES_READ_SCOPE = 'pages:read';
@@ -12,6 +13,7 @@ const EXCERPT_MAX_LENGTH = 200;
 
 export function buildSearchTools(
   searchService: SearchService,
+  usersService: UsersService,
 ): McpToolDefinition[] {
   return [
     defineMcpTool({
@@ -23,9 +25,12 @@ export function buildSearchTools(
       },
       requiredScopes: [SEARCH_READ_SCOPE, PAGES_READ_SCOPE],
       handler: async (input, ctx) => {
+        const user = toAuthenticatedUser(
+          await resolveMcpUser(usersService, ctx),
+        );
         const { items } = await searchService.search(
           { q: input.query, limit: input.limit?.toString() },
-          asFullAccessUser(ctx),
+          user,
         );
         return {
           results: items.map((item) => ({
