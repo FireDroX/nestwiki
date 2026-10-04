@@ -415,6 +415,17 @@ docker run -d --name minio --network mariadb-network --restart unless-stopped \\
   <span>Ces trois fichiers <code>.env</code> ne sont <strong>jamais commités</strong> (<code>.gitignore</code>) : sur un premier <code>git clone</code> sans eux, <code>docker compose up</code> échoue (variables manquantes) — c'est attendu, pas un bug. Une fois créés à la main comme ci-dessus, tous les déploiements suivants (manuels ou automatiques via CI/CD) fonctionnent.</span>
 </div>
 
+## Aperçus de liens (Discord, Slack, X…)
+
+Les robots d'aperçu de lien n'exécutent pas le JavaScript : servis par la SPA, ils verraient la même carte par défaut pour toutes les pages. \`frontend/nginx.conf\` les repère donc par leur \`User-Agent\` (\`Discordbot\`, \`Twitterbot\`, \`Slackbot\`, \`facebookexternalhit\`, \`LinkedInBot\`, \`WhatsApp\`, \`TelegramBot\`…) et, **uniquement sur \`/pages/*\`**, réécrit la requête en interne vers \`/api/meta/pages/*\` sur le backend. L'URL vue par le robot reste \`/pages/<chemin>\` (pas de redirection), les humains reçoivent toujours la SPA, et toutes les autres routes gardent la carte par défaut de \`index.html\`. Les réponses portent \`Vary: User-Agent\` pour qu'un cache intermédiaire ne serve pas la version robot à un humain (ou l'inverse).
+
+Le backend construit les URLs absolues de la carte (\`og:url\`, boutons) à partir de \`FRONTEND_URL\` : en production, cette variable doit donc être l'URL publique réelle du wiki.
+
+<div class="callout">
+  <span class="callout-icon">💡</span>
+  <span>Si le frontend est un jour servi autrement que par ce conteneur nginx (CDN, autre reverse proxy), cette règle est à reproduire sur le nouveau point d'entrée, sinon les aperçus retombent sur la carte par défaut. Pour vérifier : <code>curl -A "Discordbot/2.0" https://&lt;hôte&gt;/pages/documentation</code> doit renvoyer le HTML des balises meta, et la même commande sans <code>-A</code> la SPA. Discord garde les aperçus en cache : après un changement, ajoutez un paramètre à l'URL (ex. <code>?v=2</code>) pour forcer un nouvel aperçu.</span>
+</div>
+
 ## CI/CD
 
 - \`.github/workflows/ci.yml\` — lint + tests (backend + frontend) sur chaque PR vers \`main\` ; build Docker des deux images en plus sur chaque push vers \`main\`. Voir la page [Notes de version](/pages/documentation/notes-de-version) pour le détail des jobs.
@@ -901,6 +912,13 @@ $$
         content: `# Notes de version
 
 ## Version 0.31
+
+<details>
+<summary>0.31.5 — 2026-10-04</summary>
+
+- Les aperçus de lien sont désormais propres à chaque page : \`frontend/nginx.conf\` repère les robots d'aperçu (Discord, Slack, X, Facebook, LinkedIn, WhatsApp, Telegram…) par leur \`User-Agent\` et leur sert, sur \`/pages/*\` uniquement, le HTML des balises meta et le composant Discord rendus par le backend, via une réécriture interne (l'URL reste \`/pages/<chemin>\`). Les visiteurs humains reçoivent toujours l'application. Voir la page Déploiement, section « Aperçus de liens ».
+
+</details>
 
 <details>
 <summary>0.31.4 — 2026-10-04</summary>
