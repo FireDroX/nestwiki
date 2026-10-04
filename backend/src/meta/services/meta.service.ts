@@ -12,7 +12,7 @@ import {
   META_IMAGE_PATH,
   META_TITLE_SUFFIX,
 } from '../constants/meta.constants.js';
-import { DiscordComponentEmbedBuilder } from '../builder/discord-component-embed.builder.js';
+import { DiscordComponentEmbedBuilder } from '../mapper/discord-component-embed.builder.js';
 import { DiscordComponentEmbedDto } from '../dto/out/discord-component-embed.dto.js';
 import { PageMetaDto } from '../dto/out/page-meta.dto.js';
 
