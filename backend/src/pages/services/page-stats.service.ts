@@ -7,6 +7,8 @@ import {
   PageStatsAuthorDto,
   PageStatsResponseDto,
 } from '../dto/out/page-stats-response.dto.js';
+import { PageVersion } from '../entities/page-version.entity.js';
+import { Page } from '../entities/page.entity.js';
 import { PagesService } from './pages.service.js';
 
 @Injectable()
@@ -24,7 +26,13 @@ export class PageStatsService {
   ): Promise<PageStatsResponseDto> {
     const { page, version } =
       await this.pagesService.getReadableWithCurrentVersion(id, currentUser);
+    return this.getStatsForPage(page, version);
+  }
 
+  async getStatsForPage(
+    page: Page,
+    version: PageVersion,
+  ): Promise<PageStatsResponseDto> {
     const [versionsCount, commentsCount, contributorsCount, lastModifiedBy] =
       await Promise.all([
         this.versionsService.countByPage(page.id),

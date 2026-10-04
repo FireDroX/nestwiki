@@ -961,10 +961,12 @@ describe('PagesService', () => {
         },
       );
       permissionsService.can.mockResolvedValue(true);
+      const version = buildVersion({ id: child.currentVersionId! });
+      pagesRepository.findVersionById.mockResolvedValue(version);
 
       const result = await service.findPublicByPath(['docs', 'guide']);
 
-      expect(result).toEqual({ page: child, ancestors: [parent] });
+      expect(result).toEqual({ page: child, version, ancestors: [parent] });
       expect(permissionsService.can).toHaveBeenCalledWith(
         undefined,
         'page.read',
@@ -1000,6 +1002,8 @@ describe('PagesService', () => {
       );
       permissionsService.can.mockResolvedValue(true);
 
+      pagesRepository.findVersionById.mockResolvedValue(buildVersion());
+
       const result = await service.findPublicByPath([
         'secret',
         'equipe',
@@ -1018,6 +1022,14 @@ describe('PagesService', () => {
       pagesRepository.findBySlugAndParent.mockResolvedValue(null);
 
       expect(await service.findPublicByPath(['missing'])).toBeNull();
+    });
+
+    it('returns null when the current version cannot be found', async () => {
+      pagesRepository.findBySlugAndParent.mockResolvedValue(buildPage());
+      permissionsService.can.mockResolvedValue(true);
+      pagesRepository.findVersionById.mockResolvedValue(null);
+
+      expect(await service.findPublicByPath(['home'])).toBeNull();
     });
 
     it('returns null for a page that is not readable anonymously', async () => {

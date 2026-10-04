@@ -1,8 +1,12 @@
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { PageStatsResponseDto } from '../../pages/dto/out/page-stats-response.dto.js';
+import { PageVersion } from '../../pages/entities/page-version.entity.js';
 import { Page } from '../../pages/entities/page.entity.js';
+import { PageStatsService } from '../../pages/services/page-stats.service.js';
 import { PagesService } from '../../pages/services/pages.service.js';
+import { TagsService } from '../../tags/services/tags.service.js';
 import {
   DEFAULT_META_DESCRIPTION,
   DEFAULT_META_TITLE,
@@ -29,80 +33,96 @@ function buildPage(overrides: Partial<Page> = {}): Page {
   };
 }
 
+const version = { id: 'version-1', authorId: 'author-1' } as PageVersion;
+
+const stats: PageStatsResponseDto = {
+  viewCount: 1240,
+  lastModifiedAt: new Date('2026-10-01T10:00:00Z'),
+  lastModifiedBy: { id: 'author-1', displayName: 'Alice' },
+  versionsCount: 12,
+  commentsCount: 5,
+  contributorsCount: 3,
+};
+
 describe('MetaService', () => {
   let service: MetaService;
   let pagesService: { findPublicByPath: ReturnType<typeof vi.fn> };
-  let configService: { get: ReturnType<typeof vi.fn> };
+  let pageStatsService: { getStatsForPage: ReturnType<typeof vi.fn> };
+  let tagsService: {
+    listTagsOfAlreadyAuthorizedPage: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(async () => {
     pagesService = { findPublicByPath: vi.fn() };
-    configService = { get: vi.fn().mockReturnValue(`${ORIGIN}/`) };
+    pageStatsService = { getStatsForPage: vi.fn().mockResolvedValue(stats) };
+    tagsService = {
+      listTagsOfAlreadyAuthorizedPage: vi
+        .fn()
+        .mockResolvedValue([{ name: 'guide' }, { name: 'installation' }]),
+    };
 
     const moduleRef = await Test.createTestingModule({
       providers: [
         MetaService,
         { provide: PagesService, useValue: pagesService },
-        { provide: ConfigService, useValue: configService },
+        { provide: PageStatsService, useValue: pageStatsService },
+        { provide: TagsService, useValue: tagsService },
+        {
+          provide: ConfigService,
+          useValue: { get: vi.fn().mockReturnValue(`${ORIGIN}/`) },
+        },
       ],
     }).compile();
 
     service = moduleRef.get(MetaService);
   });
 
-  it('returns the page title, breadcrumb and absolute urls for a nested public page', async () => {
-    const docs = buildPage({
-      id: 'docs',
-      slug: 'docs',
-      title: 'Documentation',
-    });
-    const guide = buildPage({ id: 'guide', slug: 'guide', title: 'Guides' });
-    const install = buildPage({
-      id: 'install',
-      slug: 'install',
-      title: 'Installation',
-    });
+  it('builds the card of a nested public page from its breadcrumb, tags and stats', async () => {
+    const docs = buildPage({ id: 'docs', title: 'Documentation' });
+    const install = buildPage({ id: 'install', title: 'Installation' });
     pagesService.findPublicByPath.mockResolvedValue({
       page: install,
-      ancestors: [docs, guide],
+      version,
+      ancestors: [docs],
     });
 
-    const meta = await service.getPageMeta(['docs', 'guide', 'install']);
+    const meta = await service.getPageMeta(['docs', 'install']);
 
-    expect(pagesService.findPublicByPath).toHaveBeenCalledWith([
-      'docs',
-      'guide',
+    expect(pageStatsService.getStatsForPage).toHaveBeenCalledWith(
+      install,
+      version,
+    );
+    expect(tagsService.listTagsOfAlreadyAuthorizedPage).toHaveBeenCalledWith(
       'install',
-    ]);
-    expect(meta).toEqual({
-      title: 'Installation — OpenWiki',
-      description: 'Documentation › Guides › Installation',
-      url: `${ORIGIN}/pages/docs/guide/install`,
-      imageUrl: `${ORIGIN}/og-image.png`,
-      discordEmbed: {
-        component: {
-          type: 17,
-          accent_color: 0xec3013,
-          components: [{ type: 10, content: '# Installation' }],
+    );
+    expect(meta.title).toBe('Installation — OpenWiki');
+    expect(meta.description).toBe(
+      'Documentation › Installation · 2 tags · 1 240 vues',
+    );
+    expect(meta.url).toBe(`${ORIGIN}/pages/docs/install`);
+    expect(meta.imageUrl).toBe(`${ORIGIN}/og-image.png`);
+
+    const actionRow = meta.discordEmbed?.component.components.at(-1);
+    expect(actionRow).toEqual({
+      type: 1,
+      components: [
+        {
+          type: 2,
+          style: 5,
+          label: 'Ouvrir la page',
+          url: `${ORIGIN}/pages/docs/install`,
         },
-      },
+        {
+          type: 2,
+          style: 5,
+          label: 'Modifier',
+          url: `${ORIGIN}/edit/docs/install`,
+        },
+      ],
     });
   });
 
-  it('uses a generic description for a root page', async () => {
-    const root = buildPage({ title: 'Documentation' });
-    pagesService.findPublicByPath.mockResolvedValue({
-      page: root,
-      ancestors: [],
-    });
-
-    const meta = await service.getPageMeta(['documentation']);
-
-    expect(meta.title).toBe('Documentation — OpenWiki');
-    expect(meta.description).toBe('Page du wiki OpenWiki.');
-    expect(meta.url).toBe(`${ORIGIN}/pages/documentation`);
-  });
-
-  it('falls back to the default card without leaking anything when the page is not publicly readable', async () => {
+  it('falls back to the default card without loading anything else when the page is not publicly readable', async () => {
     pagesService.findPublicByPath.mockResolvedValue(null);
 
     const meta = await service.getPageMeta(['secret']);
@@ -114,16 +134,23 @@ describe('MetaService', () => {
       imageUrl: `${ORIGIN}/og-image.png`,
       discordEmbed: null,
     });
+    expect(pageStatsService.getStatsForPage).not.toHaveBeenCalled();
+    expect(tagsService.listTagsOfAlreadyAuthorizedPage).not.toHaveBeenCalled();
   });
 
-  it('url-encodes path segments in the page url', async () => {
+  it('url-encodes path segments in the page and edit urls', async () => {
     pagesService.findPublicByPath.mockResolvedValue({
       page: buildPage(),
+      version,
       ancestors: [],
     });
 
     const meta = await service.getPageMeta(['a b']);
 
     expect(meta.url).toBe(`${ORIGIN}/pages/a%20b`);
+    const actionRow = meta.discordEmbed?.component.components.at(-1);
+    expect(actionRow?.type === 1 && actionRow.components[1].url).toBe(
+      `${ORIGIN}/edit/a%20b`,
+    );
   });
 });
