@@ -28,4 +28,5 @@ export interface CommentsRepository {
   findAllIdsByAuthorId(authorId: string): Promise<string[]>;
   findByIdsAndAuthorId(ids: string[], authorId: string): Promise<Comment[]>;
   countByAuthorId(authorId: string): Promise<number>;
+  countByPageId(pageId: string): Promise<number>;
 }

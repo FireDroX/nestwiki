@@ -13,6 +13,7 @@ import { PagesController } from './pages.controller.js';
 import { TypeormPageFollowRepository } from './persistence/typeorm.page-follow.repository.js';
 import { TypeormPagesRepository } from './persistence/typeorm.page.repository.js';
 import { PageMergeService } from './services/page-merge.service.js';
+import { PageStatsService } from './services/page-stats.service.js';
 import { PagesService } from './services/pages.service.js';
 
 @Module({
@@ -31,6 +32,7 @@ import { PagesService } from './services/pages.service.js';
     { provide: 'PageFollowsRepository', useClass: TypeormPageFollowRepository },
     PagesService,
     PageMergeService,
+    PageStatsService,
   ],
   exports: [PagesService],
 })

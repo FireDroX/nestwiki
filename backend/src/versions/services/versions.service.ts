@@ -67,6 +67,14 @@ export class VersionsService {
     return entries.filter((entry): entry is ContributorInfo => entry !== null);
   }
 
+  countByPage(pageId: string): Promise<number> {
+    return this.versionsRepository.countByPageId(pageId);
+  }
+
+  countContributors(pageId: string): Promise<number> {
+    return this.versionsRepository.countContributorsByPageId(pageId);
+  }
+
   async findOne(pageId: string, versionId: string): Promise<PageVersion> {
     const version = await this.versionsRepository.findByIdAndPageId(
       versionId,

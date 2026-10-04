@@ -76,6 +76,7 @@ describe('CommentsService', () => {
       findAllIdsByAuthorId: vi.fn(),
       findByIdsAndAuthorId: vi.fn(),
       countByAuthorId: vi.fn(),
+      countByPageId: vi.fn(),
     };
     eventEmitter = { emit: vi.fn() };
     adminAuditLogService = { record: vi.fn() };

@@ -903,6 +903,15 @@ $$
 ## Version 0.31
 
 <details>
+<summary>0.31.3 — 2026-10-04</summary>
+
+- Nouvel endpoint \`GET /pages/:id/stats\` : nombre de vues, date et auteur de la dernière modification, nombre de versions, de commentaires (hors supprimés) et de contributeurs d'une page. Mêmes droits de lecture que la page (anonyme autorisé sur une page publique) ; la consultation des stats n'incrémente pas le compteur de vues.
+- Noms de page réservés, car ils entreraient en conflit avec les routes de l'API : \`tree\` pour une page racine (\`/pages/tree\`), et \`versions\`, \`comments\`, \`tags\`, \`access-rules\`, \`stats\` pour une page placée directement sous une page racine (\`/pages/<racine>/stats\`…). Refusés à la création et au déplacement d'une page (erreur 400, vérifiée aussi dans le formulaire de création) ; partout ailleurs dans l'arbre, ces noms restent libres.
+- Rattrapage des photos de profil perdues lors du passage à \`avatar_extension\` (0.30.14) : une migration exécutée une seule fois retrouve dans Minio le fichier \`avatars/{id}/avatar.{jpg,png,webp}\` des utilisateurs sans avatar et le rattache à leur compte (une seule requête de listing, jamais de compte qui a déjà un avatar). Si Minio est injoignable à ce moment-là, la migration ne bloque pas le démarrage et le rattrapage peut être relancé à la main avec \`pnpm run backfill:avatars\`.
+
+</details>
+
+<details>
 <summary>0.31.2 — 2026-10-04</summary>
 
 - Les aperçus de lien d'une page publique embarquent désormais un composant Discord (\`<script id="discord:component-embed">\`) : un conteneur aux couleurs du wiki affichant le titre de la page. Les autres plateformes l'ignorent et gardent les balises Open Graph. Le contenu est échappé (balisage Discord et balise \`</script>\`) et tronqué sous les limites de Discord ; le composant est absent de la carte par défaut (page privée ou inconnue).

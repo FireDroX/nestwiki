@@ -27,4 +27,6 @@ export interface VersionsRepository {
   ): Promise<FindAllByPageResult>;
   findByIdAndPageId(id: string, pageId: string): Promise<PageVersion | null>;
   findContributorsByPageId(pageId: string): Promise<ContributorRow[]>;
+  countByPageId(pageId: string): Promise<number>;
+  countContributorsByPageId(pageId: string): Promise<number>;
 }

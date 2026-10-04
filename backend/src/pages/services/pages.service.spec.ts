@@ -8,6 +8,7 @@ import { PageAccessForbiddenException } from '../../common/exceptions/pages/page
 import { PageHasChildrenException } from '../../common/exceptions/pages/page-has-children.exception.js';
 import { PageNotFoundException } from '../../common/exceptions/pages/page-not-found.exception.js';
 import { ParentPageNotFoundException } from '../../common/exceptions/pages/parent-page-not-found.exception.js';
+import { ReservedSlugException } from '../../common/exceptions/pages/reserved-slug.exception.js';
 import { SlugAlreadyExistsException } from '../../common/exceptions/pages/slug-already-exists.exception.js';
 import { VersionNotFoundException } from '../../common/exceptions/pages/version-not-found.exception.js';
 import { ValidationException } from '../../common/exceptions/validation.exception.js';
@@ -605,6 +606,21 @@ describe('PagesService', () => {
     const childId = '22222222-2222-2222-2222-222222222222';
     const otherId = '33333333-3333-3333-3333-333333333333';
 
+    it('throws ReservedSlugException when moving a "stats" page directly under a root page', async () => {
+      const page = buildPage({ id: pageId, slug: 'stats', parentId: childId });
+      const root = buildPage({ id: otherId, parentId: null });
+
+      pagesRepository.findById.mockImplementation((id: string) =>
+        Promise.resolve(id === pageId ? page : id === otherId ? root : null),
+      );
+      pagesRepository.findVersionById.mockResolvedValue(buildVersion());
+
+      await expect(
+        service.movePage(pageId, { newParentId: otherId }, 'user-1'),
+      ).rejects.toBeInstanceOf(ReservedSlugException);
+      expect(pagesRepository.updateParent).not.toHaveBeenCalled();
+    });
+
     it('detects a cycle when newParentId is a descendant of the page', async () => {
       const page = buildPage({ id: pageId, parentId: null });
       const child = buildPage({ id: childId, parentId: pageId });
@@ -771,6 +787,53 @@ describe('PagesService', () => {
       });
       expect(result).toBe(created);
     });
+
+    it('throws ReservedSlugException for a root page named "tree"', async () => {
+      await expect(
+        service.createPage({ ...dto, slug: 'tree' }, 'user-1'),
+      ).rejects.toBeInstanceOf(ReservedSlugException);
+      expect(pagesRepository.createWithFirstVersion).not.toHaveBeenCalled();
+    });
+
+    it.each(['versions', 'comments', 'tags', 'access-rules', 'stats'])(
+      'throws ReservedSlugException for "%s" directly under a root page',
+      async (slug) => {
+        pagesRepository.findById.mockResolvedValue(
+          buildPage({ id: 'root-1', parentId: null }),
+        );
+
+        await expect(
+          service.createPage({ ...dto, slug, parentId: 'root-1' }, 'user-1'),
+        ).rejects.toBeInstanceOf(ReservedSlugException);
+        expect(pagesRepository.createWithFirstVersion).not.toHaveBeenCalled();
+      },
+    );
+
+    it.each([
+      ['stats', 'at the root', undefined],
+      ['tree', 'under a root page', 'root-1'],
+      ['stats', 'deeper in the tree', 'child-1'],
+    ])(
+      'allows "%s" %s, where it does not collide with any route',
+      async (slug, _where, parentId) => {
+        pagesRepository.findById.mockImplementation((id: string) =>
+          Promise.resolve(
+            id === 'root-1'
+              ? buildPage({ id: 'root-1', parentId: null })
+              : buildPage({ id: 'child-1', parentId: 'root-1' }),
+          ),
+        );
+        pagesRepository.findBySlugAndParent.mockResolvedValue(null);
+        pagesRepository.createWithFirstVersion.mockResolvedValue({
+          page: buildPage({ slug }),
+          version: buildVersion(),
+        });
+
+        await service.createPage({ ...dto, slug, parentId }, 'user-1');
+
+        expect(pagesRepository.createWithFirstVersion).toHaveBeenCalled();
+      },
+    );
 
     it('throws ValidationException for an invalid slug', async () => {
       await expect(
@@ -964,6 +1027,43 @@ describe('PagesService', () => {
       permissionsService.can.mockResolvedValue(false);
 
       expect(await service.findPublicByPath(['secret'])).toBeNull();
+    });
+  });
+
+  describe('getReadableWithCurrentVersion', () => {
+    it('returns a readable page and its current version without touching the view count', async () => {
+      const page = buildPage({ viewCount: 4 });
+      const version = buildVersion({ id: page.currentVersionId! });
+      pagesRepository.findById.mockResolvedValue(page);
+      pagesRepository.findVersionById.mockResolvedValue(version);
+
+      const result = await service.getReadableWithCurrentVersion(
+        page.id,
+        member,
+      );
+
+      expect(result).toEqual({ page, version });
+      expect(page.viewCount).toBe(4);
+      expect(pagesRepository.incrementViewCount).not.toHaveBeenCalled();
+    });
+
+    it('throws PageAccessForbiddenException for a private page and no permission', async () => {
+      pagesRepository.findById.mockResolvedValue(
+        buildPage({ visibility: 'private' }),
+      );
+      permissionsService.can.mockResolvedValue(false);
+
+      await expect(
+        service.getReadableWithCurrentVersion('page-1'),
+      ).rejects.toBeInstanceOf(PageAccessForbiddenException);
+    });
+
+    it('throws PageNotFoundException for an unknown page', async () => {
+      pagesRepository.findById.mockResolvedValue(null);
+
+      await expect(
+        service.getReadableWithCurrentVersion('nope', member),
+      ).rejects.toBeInstanceOf(PageNotFoundException);
     });
   });
 
