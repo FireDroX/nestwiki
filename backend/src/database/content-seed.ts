@@ -486,23 +486,22 @@ Sur **Discord**, une carte aux couleurs du wiki :
 
 Le bouton « Modifier » est affiché à tout le monde, mais il mène à l'éditeur, qui vérifie toujours les droits : un visiteur sans le droit \`page.edit\` sur la page ne pourra pas la modifier (connexion demandée s'il n'est pas connecté).
 
-Les **autres plateformes** utilisent les balises Open Graph : titre de la page, description \`fil d'Ariane · N tags · N vues\` et l'image habituelle d'OpenWiki.
+Les **autres plateformes** utilisent les balises Open Graph : titre de la page, une description du type \`Documentation › Installation · 2 tags · 1 240 vues\` (la partie tags disparaît quand la page n'en a aucun) et l'image habituelle d'OpenWiki.
 
 ## Pages privées
 
-Seules les pages **publiques** ont un aperçu détaillé. Le lien d'une page privée (ou d'une page qui n'existe pas) affiche la carte générique d'OpenWiki : ni son titre, ni ses tags, ni ses statistiques ne sont divulgués, même si la personne qui colle le lien y a accès.
+Seules les pages **publiques** ont un aperçu détaillé. Le lien d'une page privée (ou d'une page qui n'existe pas) affiche la carte générique d'OpenWiki : ni son titre, ni ses tags, ni ses statistiques ne sont divulgués, même si la personne qui colle le lien y a accès. De même, le fil d'Ariane d'une page publique n'affiche jamais ses pages parentes privées.
 
 ## Fonctionnement
 
-Les robots des plateformes n'exécutent pas le JavaScript de l'application. Le serveur web du frontend les reconnaît donc à leur \`User-Agent\` et, sur les adresses \`/pages/...\` uniquement, leur sert à la place un petit document HTML généré par le backend (\`GET /api/meta/pages/<chemin>\`). Ce document contient les balises Open Graph et un composant Discord (\`<script id="discord:component-embed">\`) que seul Discord interprète. Les visiteurs humains, eux, reçoivent toujours l'application normale. La configuration côté serveur est décrite dans la page [Déploiement](/pages/documentation/guide-demarrage/deploiement#aperçus-de-liens-discord-slack-x).
+Les robots des plateformes n'exécutent pas le JavaScript de l'application. Le serveur web du frontend les reconnaît donc à leur \`User-Agent\` et, sur les adresses \`/pages/...\` uniquement, leur sert à la place un petit document HTML généré par le backend (\`GET /api/meta/pages/<chemin>\`). Ce document contient les balises Open Graph et un composant Discord (\`<script id="discord:component-embed">\`) que seul Discord interprète. Les visiteurs humains, eux, reçoivent toujours l'application normale. La configuration côté serveur, la commande pour vérifier ce que reçoit un robot et l'astuce pour forcer un nouvel aperçu malgré le cache des plateformes sont décrites dans la page [Déploiement](/pages/documentation/guide-demarrage/deploiement), section « Aperçus de liens ».
 
-Les statistiques de la carte viennent du même calcul que l'endpoint \`GET /api/pages/<chemin>/stats\`, et générer un aperçu ne compte pas comme une vue.
+Les statistiques de la carte viennent du même calcul que l'endpoint \`GET /api/pages/<id>/stats\`, et générer un aperçu ne compte pas comme une vue.
 
-## Limites et tests
+## Limites
 
-- Les plateformes **gardent les aperçus en cache** : après une modification de la page, un lien déjà partagé peut montrer l'ancien aperçu. Ajoutez un paramètre à l'URL (ex. \`?v=2\`) pour en obtenir un nouveau.
-- L'image de l'aperçu est la même pour toutes les pages.
-- Pour vérifier ce que reçoit un robot : \`curl -A "Discordbot/2.0" https://<hôte>/pages/documentation\` doit renvoyer le HTML des balises meta, et la même commande sans \`-A\`, l'application.`,
+- Les plateformes **gardent les aperçus en cache** : après une modification de la page, un lien déjà partagé peut montrer l'ancien aperçu.
+- L'image de l'aperçu est la même pour toutes les pages.`,
       },
       {
         slug: 'mcp',
@@ -956,12 +955,10 @@ $$
 
 ## Version 0.31
 
-Aperçus de liens par page : carte Discord (titre, fil d'Ariane, tags, statistiques, dernière modification, boutons Ouvrir / Modifier) et balises Open Graph propres à chaque page publique, servies aux robots des plateformes par le nginx du frontend. Nouvel endpoint de statistiques par page. Voir [Aperçus de liens](/pages/documentation/apercus-de-liens).
-
 <details>
 <summary>0.31.6 — 2026-10-04</summary>
 
-- Nouvelle page de documentation [Aperçus de liens](/pages/documentation/apercus-de-liens) : contenu de la carte, cas des pages privées, fonctionnement, limites (cache des plateformes) et commande de test. Ajout d'un raccourci depuis l'accueil de la documentation, du tag \`Meta\` dans la documentation de l'API, et des endpoints \`GET /meta/pages/*path\` et \`GET /pages/*path/stats\` au README.
+- Nouvelle page de documentation [Aperçus de liens](/pages/documentation/apercus-de-liens) : contenu de la carte, cas des pages privées, fonctionnement et limites. Ajout d'un raccourci depuis l'accueil de la documentation, du tag \`Meta\` dans la documentation de l'API, et de l'endpoint \`GET /meta/pages/*path\` au README.
 
 </details>
 
