@@ -29,6 +29,7 @@ import { UpdatePageDto } from '../dto/in/update-page.dto.js';
 import { FindByPathResultDto } from '../dto/out/find-by-path-result.dto.js';
 import { PageMergePreviewResponseDto } from '../dto/out/page-merge-preview-response.dto.js';
 import { PageTreeNodeDto } from '../dto/out/page-tree-node.dto.js';
+import { PublicPageByPathResultDto } from '../dto/out/public-page-by-path-result.dto.js';
 import { UpdatePageResultDto } from '../dto/out/update-page-result.dto.js';
 import { PageVersion } from '../entities/page-version.entity.js';
 import { Page, PAGE_VISIBILITIES } from '../entities/page.entity.js';
@@ -197,6 +198,38 @@ export class PagesService {
     );
 
     return { page, version, isFollowed, permissions };
+  }
+
+  async findPublicByPath(
+    segments: string[],
+  ): Promise<PublicPageByPathResultDto | null> {
+    if (segments.length === 0) {
+      return null;
+    }
+
+    const chain: Page[] = [];
+    let parentId: string | null = null;
+    for (const slug of segments) {
+      const page: Page | null = await this.pagesRepository.findBySlugAndParent(
+        slug,
+        parentId,
+      );
+      if (!page) {
+        return null;
+      }
+      chain.push(page);
+      parentId = page.id;
+    }
+
+    const page = chain[chain.length - 1];
+    if (
+      !page.currentVersionId ||
+      !(await this.permissionsService.can(undefined, 'page.read', page.id))
+    ) {
+      return null;
+    }
+
+    return { page, ancestors: chain.slice(0, -1) };
   }
 
   async assertCanManageAccessRules(

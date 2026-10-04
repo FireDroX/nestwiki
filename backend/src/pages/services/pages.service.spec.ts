@@ -876,6 +876,60 @@ describe('PagesService', () => {
     });
   });
 
+  describe('findPublicByPath', () => {
+    it('returns the page and its ancestors for a publicly readable page without touching the view count', async () => {
+      const parent = buildPage({
+        id: 'parent-1',
+        slug: 'docs',
+        parentId: null,
+      });
+      const child = buildPage({
+        id: 'child-1',
+        slug: 'guide',
+        parentId: 'parent-1',
+      });
+      pagesRepository.findBySlugAndParent.mockImplementation(
+        (slug: string, parentId: string | null) => {
+          if (slug === 'docs' && parentId === null)
+            return Promise.resolve(parent);
+          if (slug === 'guide' && parentId === 'parent-1')
+            return Promise.resolve(child);
+          return Promise.resolve(null);
+        },
+      );
+      permissionsService.can.mockResolvedValue(true);
+
+      const result = await service.findPublicByPath(['docs', 'guide']);
+
+      expect(result).toEqual({ page: child, ancestors: [parent] });
+      expect(permissionsService.can).toHaveBeenCalledWith(
+        undefined,
+        'page.read',
+        child.id,
+      );
+      expect(pagesRepository.incrementViewCount).not.toHaveBeenCalled();
+    });
+
+    it('returns null for an empty path', async () => {
+      expect(await service.findPublicByPath([])).toBeNull();
+    });
+
+    it('returns null when a segment does not exist', async () => {
+      pagesRepository.findBySlugAndParent.mockResolvedValue(null);
+
+      expect(await service.findPublicByPath(['missing'])).toBeNull();
+    });
+
+    it('returns null for a page that is not readable anonymously', async () => {
+      pagesRepository.findBySlugAndParent.mockResolvedValue(
+        buildPage({ visibility: 'private' }),
+      );
+      permissionsService.can.mockResolvedValue(false);
+
+      expect(await service.findPublicByPath(['secret'])).toBeNull();
+    });
+  });
+
   describe('findByPath', () => {
     it('resolves a page by its full ancestor slug path', async () => {
       const parent = buildPage({

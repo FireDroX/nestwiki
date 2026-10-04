@@ -14,6 +14,7 @@ import { JwtAuthModule } from './common/jwt-auth.module.js';
 import { HealthModule } from './health/health.module.js';
 import { McpModule } from './mcp/mcp.module.js';
 import { MediaModule } from './media/media.module.js';
+import { MetaModule } from './meta/meta.module.js';
 import { PagesModule } from './pages/pages.module.js';
 import { PermissionsModule } from './permissions/permissions.module.js';
 import { RealtimeModule } from './realtime/realtime.module.js';
@@ -58,6 +59,7 @@ const GLOBAL_THROTTLE_LIMIT = 100;
     McpModule,
     CommentsModule,
     StatsModule,
+    MetaModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerBehindProxyGuard }],
 })
