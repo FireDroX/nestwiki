@@ -346,6 +346,12 @@ Voir aussi `/pages/*path` et `/pages/tree`, qui exposent respectivement `permiss
 | ------- | ---------- | ---------------- | ------------------- |
 | GET     | /search?q= | selon visibilité | Recherche full-text |
 
+### Aperçus de liens
+
+| Méthode | Route             | Auth | Description |
+| ------- | ----------------- | ---- | ----------- |
+| GET     | /meta/pages/*path | non  | HTML minimal (balises Open Graph/Twitter + composant Discord `discord:component-embed`) d'une page publique, pour les robots d'aperçu ; carte par défaut si la page est privée ou inconnue. Servi aux robots sur `/pages/*` par `frontend/nginx.conf`. N'incrémente pas les vues |
+
 ### MCP (pilotage par IA)
 
 | Méthode   | Route                   | Auth                 | Description                                         |

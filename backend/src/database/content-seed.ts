@@ -98,6 +98,10 @@ const PAGE_TREE_SEED: PageSeed[] = [
     <strong>Endpoints</strong>
     <span>Référence complète de l'API REST</span>
   </a>
+  <a class="doc-link-card" href="/pages/documentation/apercus-de-liens">
+    <strong>Aperçus de liens</strong>
+    <span>Cartes Discord et Open Graph de chaque page</span>
+  </a>
   <a class="doc-link-card" href="/pages/documentation/mcp">
     <strong>Intégration MCP</strong>
     <span>Piloter le wiki depuis un assistant IA</span>
@@ -460,6 +464,44 @@ Si une application Access protège un jour ce hostname (service token), \`deploy
 La documentation ci-dessous est générée automatiquement à partir des routes réellement exposées par le backend (schéma OpenAPI de \`/api/docs-json\`).
 
 <api-reference></api-reference>`,
+      },
+      {
+        slug: 'apercus-de-liens',
+        title: 'Aperçus de liens',
+        tags: ['documentation'],
+        content: `# Aperçus de liens
+
+Quand vous collez le lien d'une page du wiki dans Discord, Slack, X, WhatsApp ou Telegram, la plateforme affiche un aperçu propre à cette page plutôt que la carte générique d'OpenWiki.
+
+## Ce que montre l'aperçu
+
+Sur **Discord**, une carte aux couleurs du wiki :
+
+- le **titre** de la page ;
+- son **fil d'Ariane** (ex. \`Documentation › Guide de démarrage › Installation\`), omis pour une page racine ;
+- ses **tags** (8 au maximum, puis \`+N\`) ;
+- ses **statistiques** : nombre de vues, de versions, de commentaires et de contributeurs ;
+- la **date et l'auteur de la dernière modification** ;
+- deux boutons : **Ouvrir la page** et **Modifier**.
+
+Le bouton « Modifier » est affiché à tout le monde, mais il mène à l'éditeur, qui vérifie toujours les droits : un visiteur sans le droit \`page.edit\` sur la page ne pourra pas la modifier (connexion demandée s'il n'est pas connecté).
+
+Les **autres plateformes** utilisent les balises Open Graph : titre de la page, une description du type \`Documentation › Installation · 2 tags · 1 240 vues\` (la partie tags disparaît quand la page n'en a aucun) et l'image habituelle d'OpenWiki.
+
+## Pages privées
+
+Seules les pages **publiques** ont un aperçu détaillé. Le lien d'une page privée (ou d'une page qui n'existe pas) affiche la carte générique d'OpenWiki : ni son titre, ni ses tags, ni ses statistiques ne sont divulgués, même si la personne qui colle le lien y a accès. De même, le fil d'Ariane d'une page publique n'affiche jamais ses pages parentes privées.
+
+## Fonctionnement
+
+Les robots des plateformes n'exécutent pas le JavaScript de l'application. Le serveur web du frontend les reconnaît donc à leur \`User-Agent\` et, sur les adresses \`/pages/...\` uniquement, leur sert à la place un petit document HTML généré par le backend (\`GET /api/meta/pages/<chemin>\`). Ce document contient les balises Open Graph et un composant Discord (\`<script id="discord:component-embed">\`) que seul Discord interprète. Les visiteurs humains, eux, reçoivent toujours l'application normale. La configuration côté serveur, la commande pour vérifier ce que reçoit un robot et l'astuce pour forcer un nouvel aperçu malgré le cache des plateformes sont décrites dans la page [Déploiement](/pages/documentation/guide-demarrage/deploiement), section « Aperçus de liens ».
+
+Les statistiques de la carte viennent du même calcul que l'endpoint \`GET /api/pages/<id>/stats\`, et générer un aperçu ne compte pas comme une vue.
+
+## Limites
+
+- Les plateformes **gardent les aperçus en cache** : après une modification de la page, un lien déjà partagé peut montrer l'ancien aperçu.
+- L'image de l'aperçu est la même pour toutes les pages.`,
       },
       {
         slug: 'mcp',
@@ -912,6 +954,14 @@ $$
         content: `# Notes de version
 
 ## Version 0.31
+
+<details>
+<summary>0.31.6 — 2026-10-04</summary>
+
+- Nouvelle page de documentation [Aperçus de liens](/pages/documentation/apercus-de-liens) : contenu de la carte, cas des pages privées, fonctionnement et limites. Ajout d'un raccourci depuis l'accueil de la documentation, du tag \`Meta\` dans la documentation de l'API, et de l'endpoint \`GET /meta/pages/*path\` au README.
+- Les photos de profil acceptent désormais les GIF (animés compris), en plus de JPG, PNG et WEBP, toujours dans la limite de 2 Mo.
+
+</details>
 
 <details>
 <summary>0.31.5 — 2026-10-04</summary>

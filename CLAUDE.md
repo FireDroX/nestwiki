@@ -61,7 +61,7 @@ Config : trois fichiers `.env` séparés (chacun avec un `.env.example` à copie
 
 `GET /health` ne retourne en revanche plus cette version — il reste un JSON nu (`{ status: 'ok' }`), pas enveloppé par `ResponseDto` — c'est un healthcheck consommé par des outils d'infra, pas par le frontend applicatif.
 
-En complément du bump de version, chaque ticket terminé ajoute aussi une entrée dans le contenu de la page **"Notes de version"** seedée par `backend/src/database/content-seed.ts` (entrée `notes-de-version` de `PAGE_TREE_SEED`) : entrée en tête de ce contenu markdown (plus récent en premier), titrée `## <version> — <date>`, suivie d'une liste à puces résumant le changement.
+En complément du bump de version, chaque ticket terminé ajoute aussi une entrée dans le contenu de la page **"Notes de version"** seedée par `backend/src/database/content-seed.ts` (entrée `notes-de-version` de `PAGE_TREE_SEED`) : entrée en tête de la section `## Version 0.<n>` de l'EPIC courant (créée au premier ticket de l'EPIC, plus récent en premier), sous la forme d'un bloc `<details><summary><version> — <date></summary>` contenant une liste à puces résumant le changement.
 
 ## Architecture backend (`backend/src`)
 
