@@ -958,7 +958,7 @@ $$
 <details>
 <summary>0.31.7 — 2026-10-04</summary>
 
-- Correctif : au-delà de la limite de 100 requêtes par minute, l'API répond enfin \`429 Too Many Requests\` (avec l'en-tête \`Retry-After\`) au lieu d'une erreur 500. Plus largement, toute erreur HTTP non spécifique à un module (413, 404 de route, 429…) garde désormais son vrai code au lieu d'être transformée en 500 par le filtre d'erreurs du module ; les endpoints OAuth renvoient \`temporarily_unavailable\` en cas de limitation.
+- Correctif : au-delà de la limite de 100 requêtes par minute, l'API répond enfin \`429 Too Many Requests\` (avec l'en-tête \`Retry-After\`) au lieu d'une erreur 500. Plus largement, toute erreur HTTP non spécifique à un module (413, 404 de route, 429…) garde désormais son vrai code au lieu d'être transformée en 500 par le filtre d'erreurs du module ; les endpoints OAuth renvoient \`temporarily_unavailable\` en cas de limitation. Côté application, les messages d'erreur affichent alors « Trop de requêtes, réessayez dans N s. » (délai lu dans \`Retry-After\`) au lieu du texte technique du serveur.
 - Correctif OAuth : une requête \`/oauth/token\`, \`/oauth/revoke\` ou \`/oauth/authorize\` sans \`client_id\` (ou sans \`client_secret\` / \`token\`) répond désormais \`400 invalid_request\` / \`invalid_client\` au lieu d'une erreur 500 qui exposait un message interne de la base de données.
 
 </details>

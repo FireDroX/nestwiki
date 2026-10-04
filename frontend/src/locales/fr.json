@@ -740,6 +740,8 @@
     }
   },
   "errors": {
-    "generic": "Une erreur est survenue, veuillez réessayer."
+    "generic": "Une erreur est survenue, veuillez réessayer.",
+    "tooManyRequests": "Trop de requêtes, réessayez dans {{seconds}} s.",
+    "tooManyRequestsNoDelay": "Trop de requêtes, patientez un instant avant de réessayer."
   }
 }
