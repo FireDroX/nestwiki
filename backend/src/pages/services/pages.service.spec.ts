@@ -876,6 +876,97 @@ describe('PagesService', () => {
     });
   });
 
+  describe('findPublicByPath', () => {
+    it('returns the page and its ancestors for a publicly readable page without touching the view count', async () => {
+      const parent = buildPage({
+        id: 'parent-1',
+        slug: 'docs',
+        parentId: null,
+      });
+      const child = buildPage({
+        id: 'child-1',
+        slug: 'guide',
+        parentId: 'parent-1',
+      });
+      pagesRepository.findBySlugAndParent.mockImplementation(
+        (slug: string, parentId: string | null) => {
+          if (slug === 'docs' && parentId === null)
+            return Promise.resolve(parent);
+          if (slug === 'guide' && parentId === 'parent-1')
+            return Promise.resolve(child);
+          return Promise.resolve(null);
+        },
+      );
+      permissionsService.can.mockResolvedValue(true);
+
+      const result = await service.findPublicByPath(['docs', 'guide']);
+
+      expect(result).toEqual({ page: child, ancestors: [parent] });
+      expect(permissionsService.can).toHaveBeenCalledWith(
+        undefined,
+        'page.read',
+        child.id,
+      );
+      expect(pagesRepository.incrementViewCount).not.toHaveBeenCalled();
+    });
+
+    it('never exposes private ancestors of a public page', async () => {
+      const privateRoot = buildPage({
+        id: 'root-1',
+        slug: 'secret',
+        title: 'Projet Secret',
+        visibility: 'private',
+      });
+      const publicMiddle = buildPage({
+        id: 'middle-1',
+        slug: 'equipe',
+        parentId: 'root-1',
+      });
+      const publicLeaf = buildPage({
+        id: 'leaf-1',
+        slug: 'planning',
+        parentId: 'middle-1',
+      });
+      const pagesBySlug: Record<string, Page> = {
+        secret: privateRoot,
+        equipe: publicMiddle,
+        planning: publicLeaf,
+      };
+      pagesRepository.findBySlugAndParent.mockImplementation((slug: string) =>
+        Promise.resolve(pagesBySlug[slug] ?? null),
+      );
+      permissionsService.can.mockResolvedValue(true);
+
+      const result = await service.findPublicByPath([
+        'secret',
+        'equipe',
+        'planning',
+      ]);
+
+      expect(result?.page).toBe(publicLeaf);
+      expect(result?.ancestors).toEqual([publicMiddle]);
+    });
+
+    it('returns null for an empty path', async () => {
+      expect(await service.findPublicByPath([])).toBeNull();
+    });
+
+    it('returns null when a segment does not exist', async () => {
+      pagesRepository.findBySlugAndParent.mockResolvedValue(null);
+
+      expect(await service.findPublicByPath(['missing'])).toBeNull();
+    });
+
+    it('returns null for a page that is not readable anonymously', async () => {
+      pagesRepository.findBySlugAndParent.mockResolvedValue(
+        buildPage({ visibility: 'private' }),
+      );
+      permissionsService.can.mockResolvedValue(false);
+
+      expect(await service.findPublicByPath(['secret'])).toBeNull();
+    });
+  });
+
   describe('findByPath', () => {
     it('resolves a page by its full ancestor slug path', async () => {
       const parent = buildPage({
