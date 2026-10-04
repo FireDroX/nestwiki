@@ -34,6 +34,6 @@ import { PagesService } from './services/pages.service.js';
     PageMergeService,
     PageStatsService,
   ],
-  exports: [PagesService],
+  exports: [PagesService, PageStatsService],
 })
 export class PagesModule {}

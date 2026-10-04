@@ -233,10 +233,17 @@ export class PagesService {
       return null;
     }
 
+    const version = await this.pagesRepository.findVersionById(
+      page.currentVersionId,
+    );
+    if (!version) {
+      return null;
+    }
+
     const publicAncestors = chain
       .slice(0, -1)
       .filter((ancestor) => ancestor.visibility === 'public');
-    return { page, ancestors: publicAncestors };
+    return { page, version, ancestors: publicAncestors };
   }
 
   private async findChainByPath(segments: string[]): Promise<Page[] | null> {

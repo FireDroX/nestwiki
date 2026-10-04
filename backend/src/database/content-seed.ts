@@ -903,6 +903,13 @@ $$
 ## Version 0.31
 
 <details>
+<summary>0.31.4 — 2026-10-04</summary>
+
+- Carte Discord complète pour toute page publique : titre, fil d'Ariane, tags (8 maximum, puis \`+N\`), statistiques (vues, versions, commentaires, contributeurs), date et auteur de la dernière modification, et deux boutons « Ouvrir la page » et « Modifier ». La description Open Graph reprend le fil d'Ariane, le nombre de tags et de vues. Le bouton « Modifier » mène à l'éditeur, qui applique toujours les droits de l'utilisateur.
+
+</details>
+
+<details>
 <summary>0.31.3 — 2026-10-04</summary>
 
 - Nouvel endpoint \`GET /pages/:id/stats\` : nombre de vues, date et auteur de la dernière modification, nombre de versions, de commentaires (hors supprimés) et de contributeurs d'une page. Mêmes droits de lecture que la page (anonyme autorisé sur une page publique) ; la consultation des stats n'incrémente pas le compteur de vues.
