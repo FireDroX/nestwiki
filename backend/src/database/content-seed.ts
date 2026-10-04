@@ -907,6 +907,7 @@ $$
 
 - Nouvel endpoint \`GET /pages/*path/stats\` : nombre de vues, date et auteur de la dernière modification, nombre de versions, de commentaires (hors supprimés) et de contributeurs d'une page, résolue par son chemin complet. Mêmes droits de lecture que la page (anonyme autorisé sur une page publique) ; la consultation des stats n'incrémente pas le compteur de vues.
 - Noms de page réservés : \`tree\`, \`versions\`, \`comments\`, \`tags\`, \`access-rules\` et \`stats\` sont refusés à la création d'une page (erreur 400, vérifiée aussi dans le formulaire), car ils entreraient en conflit avec les routes de l'API (ex. \`/pages/<parent>/stats\`).
+- Rattrapage des photos de profil perdues lors du passage à \`avatar_extension\` (0.30.14) : le nouveau script \`backfill:avatars\`, lancé à chaque démarrage du conteneur, retrouve dans Minio le fichier \`avatars/{id}/avatar.{jpg,png,webp}\` des utilisateurs sans avatar et le rattache à leur compte. Il ne touche jamais un compte qui a déjà un avatar.
 
 </details>
 
