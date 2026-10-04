@@ -177,6 +177,10 @@ export class CommentsService {
     return this.commentsRepository.countByAuthorId(authorId);
   }
 
+  countByPage(pageId: string): Promise<number> {
+    return this.commentsRepository.countByPageId(pageId);
+  }
+
   async purgeByUser(
     userId: string,
     dto: PurgeCommentsDto,

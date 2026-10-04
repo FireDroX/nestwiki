@@ -54,4 +54,17 @@ export class TypeormVersionsRepository implements VersionsRepository {
       lastContributedAt: new Date(row.lastContributedAt),
     }));
   }
+
+  countByPageId(pageId: string): Promise<number> {
+    return this.repository.count({ where: { pageId } });
+  }
+
+  async countContributorsByPageId(pageId: string): Promise<number> {
+    const row = await this.repository
+      .createQueryBuilder('version')
+      .select('COUNT(DISTINCT version.authorId)', 'count')
+      .where('version.pageId = :pageId', { pageId })
+      .getRawOne<{ count: string | number }>();
+    return Number(row?.count ?? 0);
+  }
 }

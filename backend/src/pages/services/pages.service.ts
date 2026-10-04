@@ -158,6 +158,30 @@ export class PagesService {
     segments: string[],
     currentUser?: AuthenticatedUser,
   ): Promise<FindByPathResultDto> {
+    const { page, version } = await this.resolveReadableByPath(
+      segments,
+      currentUser,
+    );
+
+    await this.pagesRepository.incrementViewCount(page.id);
+    page.viewCount += 1;
+
+    const isFollowed = currentUser
+      ? await this.pageFollowRepository.isFollowing(currentUser.id, page.id)
+      : false;
+
+    const permissions = await this.permissionsService.getEffectivePageActions(
+      await this.resolveFullUser(currentUser),
+      page.id,
+    );
+
+    return { page, version, isFollowed, permissions };
+  }
+
+  async resolveReadableByPath(
+    segments: string[],
+    currentUser?: AuthenticatedUser,
+  ): Promise<{ page: Page; version: PageVersion }> {
     const chain = await this.findChainByPath(segments);
     const page = chain?.[chain.length - 1];
     if (!page || !page.currentVersionId) {
@@ -173,19 +197,7 @@ export class PagesService {
       throw new PageNotFoundException();
     }
 
-    await this.pagesRepository.incrementViewCount(page.id);
-    page.viewCount += 1;
-
-    const isFollowed = currentUser
-      ? await this.pageFollowRepository.isFollowing(currentUser.id, page.id)
-      : false;
-
-    const permissions = await this.permissionsService.getEffectivePageActions(
-      await this.resolveFullUser(currentUser),
-      page.id,
-    );
-
-    return { page, version, isFollowed, permissions };
+    return { page, version };
   }
 
   async findPublicByPath(

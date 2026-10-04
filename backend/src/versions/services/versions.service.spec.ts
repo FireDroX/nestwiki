@@ -52,6 +52,8 @@ describe('VersionsService', () => {
       findAllByPageId: vi.fn(),
       findByIdAndPageId: vi.fn(),
       findContributorsByPageId: vi.fn(),
+      countByPageId: vi.fn(),
+      countContributorsByPageId: vi.fn(),
     };
     usersService = { findById: vi.fn() };
 

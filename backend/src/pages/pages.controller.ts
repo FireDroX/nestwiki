@@ -73,10 +73,12 @@ import { UpdatePageDto } from './dto/in/update-page.dto.js';
 import { PageDetailResponseDto } from './dto/out/page-detail-response.dto.js';
 import { PageMergePreviewResponseDto } from './dto/out/page-merge-preview-response.dto.js';
 import { PageResponseDto } from './dto/out/page-response.dto.js';
+import { PageStatsResponseDto } from './dto/out/page-stats-response.dto.js';
 import { PageTreeNodeDto } from './dto/out/page-tree-node.dto.js';
 import { PageUpdateResponseDto } from './dto/out/page-update-response.dto.js';
 import { PagesExceptionFilter } from './filter/pages-exception.filter.js';
 import { PageMapper } from './mapper/page.mapper.js';
+import { PageStatsService } from './services/page-stats.service.js';
 import { PagesService } from './services/pages.service.js';
 
 const COMMENT_CREATE_THROTTLE_LIMIT = 10;
@@ -92,6 +94,7 @@ export class PagesController {
     private readonly commentsService: CommentsService,
     private readonly tagsService: TagsService,
     private readonly accessRulesService: AccessRulesService,
+    private readonly pageStatsService: PageStatsService,
   ) {}
 
   @Post()
@@ -871,6 +874,39 @@ export class PagesController {
   ): Promise<void> {
     await this.pagesService.assertCanManageAccessRules(id, user);
     await this.accessRulesService.deleteAccessRuleForPage(id, ruleId, user.id);
+  }
+
+  @Get('*path/stats')
+  @UseGuards(OptionalJwtAuthGuard)
+  @ApiOperation({
+    summary: "Statistiques d'une page par son chemin",
+    description:
+      "Authentification optionnelle : droits alignés sur la visibilité de la page. N'incrémente pas le compteur de vues.",
+  })
+  @ApiParam({
+    name: 'path',
+    description:
+      'Chemin de la page (slugs séparés par "/"), ex. "documentation/guide-demarrage".',
+    type: String,
+  })
+  @ApiOkResponse({
+    description:
+      'Vues, dernière modification, nombre de versions, de commentaires et de contributeurs.',
+  })
+  @ApiForbiddenResponse({
+    description: 'Page privée, accès non autorisé.',
+    type: ErrorResponseDto,
+  })
+  @ApiNotFoundResponse({
+    description: 'Aucune page ne correspond à ce chemin.',
+    type: ErrorResponseDto,
+  })
+  async getStatsByPath(
+    @Param('path') path: string[],
+    @CurrentUser() user?: AuthenticatedUser,
+  ): Promise<ResponseDto<PageStatsResponseDto>> {
+    const stats = await this.pageStatsService.getStatsByPath(path, user);
+    return PageMapper.toStatsResponse(stats);
   }
 
   @Get('*path')

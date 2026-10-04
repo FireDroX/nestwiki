@@ -3,6 +3,7 @@ import { ResponseDto } from '../../common/dto/response.dto.js';
 import { PageDetailResponseDto } from '../dto/out/page-detail-response.dto.js';
 import { PageMergePreviewResponseDto } from '../dto/out/page-merge-preview-response.dto.js';
 import { PageResponseDto } from '../dto/out/page-response.dto.js';
+import { PageStatsResponseDto } from '../dto/out/page-stats-response.dto.js';
 import { PageUpdateResponseDto } from '../dto/out/page-update-response.dto.js';
 import { PageVersion } from '../entities/page-version.entity.js';
 import { Page } from '../entities/page.entity.js';
@@ -22,6 +23,12 @@ export class PageMapper {
       },
       createdAt: page.createdAt,
     };
+  }
+
+  static toStatsResponse(
+    stats: PageStatsResponseDto,
+  ): ResponseDto<PageStatsResponseDto> {
+    return new ResponseDto(stats);
   }
 
   static toResponse(

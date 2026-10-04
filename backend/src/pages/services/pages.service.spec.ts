@@ -967,6 +967,40 @@ describe('PagesService', () => {
     });
   });
 
+  describe('resolveReadableByPath', () => {
+    it('resolves a readable page and its current version without touching the view count', async () => {
+      const page = buildPage({ viewCount: 4 });
+      const version = buildVersion({ id: page.currentVersionId! });
+      pagesRepository.findBySlugAndParent.mockResolvedValue(page);
+      pagesRepository.findVersionById.mockResolvedValue(version);
+
+      const result = await service.resolveReadableByPath(['home'], member);
+
+      expect(result).toEqual({ page, version });
+      expect(page.viewCount).toBe(4);
+      expect(pagesRepository.incrementViewCount).not.toHaveBeenCalled();
+    });
+
+    it('throws PageAccessForbiddenException for a private page and no permission', async () => {
+      pagesRepository.findBySlugAndParent.mockResolvedValue(
+        buildPage({ visibility: 'private' }),
+      );
+      permissionsService.can.mockResolvedValue(false);
+
+      await expect(
+        service.resolveReadableByPath(['secret']),
+      ).rejects.toBeInstanceOf(PageAccessForbiddenException);
+    });
+
+    it('throws PageNotFoundException for an unknown path', async () => {
+      pagesRepository.findBySlugAndParent.mockResolvedValue(null);
+
+      await expect(
+        service.resolveReadableByPath(['nope'], member),
+      ).rejects.toBeInstanceOf(PageNotFoundException);
+    });
+  });
+
   describe('findByPath', () => {
     it('resolves a page by its full ancestor slug path', async () => {
       const parent = buildPage({

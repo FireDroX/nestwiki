@@ -903,6 +903,13 @@ $$
 ## Version 0.31
 
 <details>
+<summary>0.31.3 — 2026-10-04</summary>
+
+- Nouvel endpoint \`GET /pages/*path/stats\` : nombre de vues, date et auteur de la dernière modification, nombre de versions, de commentaires (hors supprimés) et de contributeurs d'une page, résolue par son chemin complet. Mêmes droits de lecture que la page (anonyme autorisé sur une page publique) ; la consultation des stats n'incrémente pas le compteur de vues.
+
+</details>
+
+<details>
 <summary>0.31.2 — 2026-10-04</summary>
 
 - Les aperçus de lien d'une page publique embarquent désormais un composant Discord (\`<script id="discord:component-embed">\`) : un conteneur aux couleurs du wiki affichant le titre de la page. Les autres plateformes l'ignorent et gardent les balises Open Graph. Le contenu est échappé (balisage Discord et balise \`</script>\`) et tronqué sous les limites de Discord ; le composant est absent de la carte par défaut (page privée ou inconnue).

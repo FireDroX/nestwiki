@@ -95,4 +95,10 @@ export class TypeormCommentsRepository implements CommentsRepository {
       where: { authorId, deletedAt: IsNull() },
     });
   }
+
+  countByPageId(pageId: string): Promise<number> {
+    return this.repository.count({
+      where: { pageId, deletedAt: IsNull() },
+    });
+  }
 }
