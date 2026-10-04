@@ -13,8 +13,13 @@ import { ErrorResponseDto } from '../dto/error-response.dto.js';
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
   catch(exception: unknown, host: ArgumentsHost): void {
-    const response = host.switchToHttp().getResponse<Response>();
+    HttpExceptionFilter.respond(
+      exception,
+      host.switchToHttp().getResponse<Response>(),
+    );
+  }
 
+  static respond(exception: unknown, response: Response): void {
     if (
       exception instanceof UnauthorizedException ||
       exception instanceof ForbiddenException
@@ -23,16 +28,16 @@ export class HttpExceptionFilter implements ExceptionFilter {
       return;
     }
 
-    const statusCode =
-      exception instanceof HttpException
-        ? exception.getStatus()
-        : HttpStatus.INTERNAL_SERVER_ERROR;
-
     const body: ErrorResponseDto = {
       error: HttpExceptionFilter.extractMessage(exception),
     };
+    response.status(HttpExceptionFilter.statusOf(exception)).json(body);
+  }
 
-    response.status(statusCode).json(body);
+  static statusOf(exception: unknown): number {
+    return exception instanceof HttpException
+      ? exception.getStatus()
+      : HttpStatus.INTERNAL_SERVER_ERROR;
   }
 
   private static extractMessage(exception: unknown): string {

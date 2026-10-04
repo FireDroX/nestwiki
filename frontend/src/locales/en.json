@@ -740,6 +740,8 @@
     }
   },
   "errors": {
-    "generic": "An error occurred, please try again."
+    "generic": "An error occurred, please try again.",
+    "tooManyRequests": "Too many requests, try again in {{seconds}} s.",
+    "tooManyRequestsNoDelay": "Too many requests, please wait a moment before trying again."
   }
 }

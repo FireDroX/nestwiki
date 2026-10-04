@@ -5,6 +5,7 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import type { Response } from 'express';
+import { HttpExceptionFilter } from '../../common/filters/http-exception.filter.js';
 
 interface OAuthErrorBody {
   error: string;
@@ -66,13 +67,33 @@ export class OAuthExceptionFilter implements ExceptionFilter {
           },
         };
       default:
-        return {
-          statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-          body: {
-            error: 'server_error',
-            error_description: exception.message || 'Internal server error',
-          },
-        };
+        return OAuthExceptionFilter.fromHttpStatus(
+          HttpExceptionFilter.statusOf(exception),
+          exception.message || 'Internal server error',
+        );
     }
+  }
+
+  private static fromHttpStatus(
+    statusCode: number,
+    description: string,
+  ): { statusCode: number; body: OAuthErrorBody } {
+    return {
+      statusCode,
+      body: {
+        error: OAuthExceptionFilter.errorCodeFor(statusCode),
+        error_description: description,
+      },
+    };
+  }
+
+  private static errorCodeFor(statusCode: number): string {
+    if (statusCode === Number(HttpStatus.TOO_MANY_REQUESTS)) {
+      return 'temporarily_unavailable';
+    }
+    if (statusCode >= Number(HttpStatus.INTERNAL_SERVER_ERROR)) {
+      return 'server_error';
+    }
+    return 'invalid_request';
   }
 }

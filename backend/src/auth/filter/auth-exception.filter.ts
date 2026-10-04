@@ -7,6 +7,7 @@ import {
 import type { Response } from 'express';
 import { AccountLockedException } from '../../common/exceptions/auth/account-locked.exception.js';
 import { ErrorResponseDto } from '../../common/dto/error-response.dto.js';
+import { HttpExceptionFilter } from '../../common/filters/http-exception.filter.js';
 
 @Catch()
 export class AuthExceptionFilter implements ExceptionFilter {
@@ -24,15 +25,18 @@ export class AuthExceptionFilter implements ExceptionFilter {
       return;
     }
 
-    const { statusCode, error } = AuthExceptionFilter.resolve(exception);
-    const body: ErrorResponseDto = { error };
-    response.status(statusCode).json(body);
+    const resolved = AuthExceptionFilter.resolve(exception);
+    if (!resolved) {
+      HttpExceptionFilter.respond(exception, response);
+      return;
+    }
+    const body: ErrorResponseDto = { error: resolved.error };
+    response.status(resolved.statusCode).json(body);
   }
 
-  private static resolve(exception: Error): {
-    statusCode: number;
-    error: string;
-  } {
+  private static resolve(
+    exception: Error,
+  ): { statusCode: number; error: string } | null {
     switch (exception.name) {
       case 'EmailAlreadyExistsException':
         return { statusCode: HttpStatus.CONFLICT, error: exception.message };
@@ -56,10 +60,7 @@ export class AuthExceptionFilter implements ExceptionFilter {
       case 'CompromisedPasswordException':
         return { statusCode: HttpStatus.BAD_REQUEST, error: exception.message };
       default:
-        return {
-          statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-          error: exception.message || 'Internal server error',
-        };
+        return null;
     }
   }
 }

@@ -3,6 +3,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { OAuthInvalidGrantException } from '../../common/exceptions/mcp/oauth-invalid-grant.exception.js';
+import { OAuthInvalidRequestException } from '../../common/exceptions/mcp/oauth-invalid-request.exception.js';
 import {
   MCP_SCOPES,
   OAUTH_ACCESS_TOKEN_EXPIRY_SECONDS,
@@ -109,7 +110,12 @@ export class OAuthFlowService {
     return this.issueTokenPair(input.client, stored.userId);
   }
 
-  async revoke(refreshToken: string): Promise<{ userId: string } | null> {
+  async revoke(
+    refreshToken: string | undefined,
+  ): Promise<{ userId: string } | null> {
+    if (!refreshToken) {
+      throw new OAuthInvalidRequestException('token is required');
+    }
     const stored = await this.refreshTokenRepository.findByTokenHash(
       OAuthFlowService.hash(refreshToken),
     );
