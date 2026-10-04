@@ -31,7 +31,7 @@ export function PageCreate() {
   const handleAttachmentUpload = useFileUpload(editorRef, undefined)
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
-  const schema = useMemo(() => createPageMetadataSchema(t), [t])
+  const schema = useMemo(() => createPageMetadataSchema(t, 'create'), [t])
 
   const { control, setValue, watch, handleSubmit } = useForm<PageMetadataFormValues>({
     resolver: zodResolver(schema),

@@ -136,6 +136,7 @@
     "slugRequired": "Le slug est requis",
     "slugTooLong": "Le slug ne peut pas dépasser {{count}} caractères",
     "slugInvalid": "Le slug ne peut contenir que des lettres minuscules, chiffres et tirets",
+    "slugReserved": "Ce nom est réservé par le wiki, choisissez-en un autre",
     "pathLabel": "Chemin",
     "pathImmutable": "Le chemin ne peut pas être modifié après la création.",
     "parentLabel": "Page parente",

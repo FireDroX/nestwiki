@@ -54,6 +54,7 @@ export class PagesExceptionFilter implements ExceptionFilter {
         return { statusCode: HttpStatus.FORBIDDEN, error: exception.message };
       case 'ValidationException':
       case 'ReplyNestingException':
+      case 'ReservedSlugException':
         return { statusCode: HttpStatus.BAD_REQUEST, error: exception.message };
       default:
         return {

@@ -65,7 +65,7 @@ export function PageEditor() {
   const [currentParentId, setCurrentParentId] = useState<string | null>(null)
   const [commentsEnabled, setCommentsEnabledState] = useState(true)
   const [baseVersionId, setBaseVersionId] = useState('')
-  const schema = useMemo(() => createPageMetadataSchema(t), [t])
+  const schema = useMemo(() => createPageMetadataSchema(t, 'edit'), [t])
 
   const { control, setValue, watch, getValues, reset } = useForm<PageMetadataFormValues>({
     resolver: zodResolver(schema),

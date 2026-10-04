@@ -8,6 +8,7 @@ import { PageAccessForbiddenException } from '../../common/exceptions/pages/page
 import { PageHasChildrenException } from '../../common/exceptions/pages/page-has-children.exception.js';
 import { PageNotFoundException } from '../../common/exceptions/pages/page-not-found.exception.js';
 import { ParentPageNotFoundException } from '../../common/exceptions/pages/parent-page-not-found.exception.js';
+import { ReservedSlugException } from '../../common/exceptions/pages/reserved-slug.exception.js';
 import { SlugAlreadyExistsException } from '../../common/exceptions/pages/slug-already-exists.exception.js';
 import { VersionNotFoundException } from '../../common/exceptions/pages/version-not-found.exception.js';
 import { ValidationException } from '../../common/exceptions/validation.exception.js';
@@ -771,6 +772,16 @@ describe('PagesService', () => {
       });
       expect(result).toBe(created);
     });
+
+    it.each(['tree', 'versions', 'comments', 'tags', 'access-rules', 'stats'])(
+      'throws ReservedSlugException for the reserved slug "%s"',
+      async (slug) => {
+        await expect(
+          service.createPage({ ...dto, slug }, 'user-1'),
+        ).rejects.toBeInstanceOf(ReservedSlugException);
+        expect(pagesRepository.createWithFirstVersion).not.toHaveBeenCalled();
+      },
+    );
 
     it('throws ValidationException for an invalid slug', async () => {
       await expect(

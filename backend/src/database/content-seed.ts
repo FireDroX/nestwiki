@@ -906,6 +906,7 @@ $$
 <summary>0.31.3 — 2026-10-04</summary>
 
 - Nouvel endpoint \`GET /pages/*path/stats\` : nombre de vues, date et auteur de la dernière modification, nombre de versions, de commentaires (hors supprimés) et de contributeurs d'une page, résolue par son chemin complet. Mêmes droits de lecture que la page (anonyme autorisé sur une page publique) ; la consultation des stats n'incrémente pas le compteur de vues.
+- Noms de page réservés : \`tree\`, \`versions\`, \`comments\`, \`tags\`, \`access-rules\` et \`stats\` sont refusés à la création d'une page (erreur 400, vérifiée aussi dans le formulaire), car ils entreraient en conflit avec les routes de l'API (ex. \`/pages/<parent>/stats\`).
 
 </details>
 

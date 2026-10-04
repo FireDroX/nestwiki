@@ -9,6 +9,7 @@ import { PageAccessForbiddenException } from '../../common/exceptions/pages/page
 import { PageHasChildrenException } from '../../common/exceptions/pages/page-has-children.exception.js';
 import { PageNotFoundException } from '../../common/exceptions/pages/page-not-found.exception.js';
 import { ParentPageNotFoundException } from '../../common/exceptions/pages/parent-page-not-found.exception.js';
+import { ReservedSlugException } from '../../common/exceptions/pages/reserved-slug.exception.js';
 import { SlugAlreadyExistsException } from '../../common/exceptions/pages/slug-already-exists.exception.js';
 import { VersionNotFoundException } from '../../common/exceptions/pages/version-not-found.exception.js';
 import { ValidationException } from '../../common/exceptions/validation.exception.js';
@@ -16,6 +17,7 @@ import type { PageAction } from '../../common/permissions.js';
 import {
   CHANGE_SUMMARY_MAX_LENGTH,
   SLUG_MAX_LENGTH,
+  RESERVED_PAGE_SLUGS,
   SLUG_REGEX,
   TITLE_MAX_LENGTH,
   UUID_REGEX,
@@ -84,6 +86,7 @@ export class PagesService {
     createdById: string,
   ): Promise<{ page: Page; version: PageVersion }> {
     this.validateCreatePage(dto);
+    PagesService.assertSlugNotReserved(dto.slug);
 
     const parentId = dto.parentId ?? null;
     const user = await this.usersService.findById(createdById);
@@ -816,6 +819,12 @@ export class PagesService {
       await this.resolveFullUser(currentUser),
       pages,
     );
+  }
+
+  private static assertSlugNotReserved(slug: string): void {
+    if (RESERVED_PAGE_SLUGS.includes(slug)) {
+      throw new ReservedSlugException(slug);
+    }
   }
 
   private validateCreatePage(dto: CreatePageDto): void {

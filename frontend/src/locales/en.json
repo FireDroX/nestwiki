@@ -136,6 +136,7 @@
     "slugRequired": "Slug is required",
     "slugTooLong": "Slug cannot exceed {{count}} characters",
     "slugInvalid": "Slug can only contain lowercase letters, digits and hyphens",
+    "slugReserved": "This name is reserved by the wiki, please choose another one",
     "pathLabel": "Path",
     "pathImmutable": "The path cannot be changed after creation.",
     "parentLabel": "Parent page",
