@@ -903,6 +903,13 @@ $$
 ## Version 0.31
 
 <details>
+<summary>0.31.2 — 2026-10-04</summary>
+
+- Les aperçus de lien d'une page publique embarquent désormais un composant Discord (\`<script id="discord:component-embed">\`) : un conteneur aux couleurs du wiki affichant le titre de la page. Les autres plateformes l'ignorent et gardent les balises Open Graph. Le contenu est échappé (balisage Discord et balise \`</script>\`) et tronqué sous les limites de Discord ; le composant est absent de la carte par défaut (page privée ou inconnue).
+
+</details>
+
+<details>
 <summary>0.31.1 — 2026-10-04</summary>
 
 - Nouvel endpoint public \`GET /meta/pages/*path\` qui renvoie un HTML minimal avec les balises Open Graph et Twitter d'une page (titre, fil d'Ariane, URL absolue), destiné aux robots d'aperçu de lien (Discord, Slack, X…). Une page privée, inconnue ou non lisible anonymement renvoie la carte par défaut du wiki, sans divulguer son titre, et le fil d'Ariane d'une page publique n'inclut jamais ses ancêtres privés. La requête n'incrémente pas le compteur de vues et n'est pas soumise à la limite de débit globale (les robots d'aperçu partagent quelques adresses IP). Le routage des robots vers cet endpoint arrive dans un ticket suivant.

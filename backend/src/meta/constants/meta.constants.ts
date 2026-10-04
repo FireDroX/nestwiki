@@ -9,6 +9,8 @@ export const DEFAULT_PAGE_META_DESCRIPTION = 'Page du wiki OpenWiki.';
 
 export const META_THEME_COLOR = '#ec3013';
 
+export const META_ACCENT_COLOR = parseInt(META_THEME_COLOR.slice(1), 16);
+
 export const META_IMAGE_PATH = '/og-image.png';
 
 export const META_IMAGE_WIDTH = 1200;

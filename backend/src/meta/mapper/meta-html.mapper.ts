@@ -4,6 +4,11 @@ import {
   META_THEME_COLOR,
   SITE_NAME,
 } from '../constants/meta.constants.js';
+import {
+  DISCORD_COMPONENT_EMBED_MIME_TYPE,
+  DISCORD_COMPONENT_EMBED_SCRIPT_ID,
+} from '../constants/discord-component.constants.js';
+import { DiscordComponentEmbedDto } from '../dto/out/discord-component-embed.dto.js';
 import { PageMetaDto } from '../dto/out/page-meta.dto.js';
 
 const HTML_ESCAPES: Record<string, string> = {
@@ -45,9 +50,27 @@ export class MetaHtmlMapper {
       `<meta name="twitter:title" content="${title}" />`,
       `<meta name="twitter:description" content="${description}" />`,
       `<meta name="twitter:image" content="${imageUrl}" />`,
+      ...(meta.discordEmbed
+        ? [MetaHtmlMapper.toDiscordEmbedScript(meta.discordEmbed)]
+        : []),
       '</head>',
       '<body></body>',
       '</html>',
+    ].join('\n');
+  }
+
+  static serializeForScript(value: unknown): string {
+    return JSON.stringify(value).replace(
+      /[<>&]|\p{Zl}|\p{Zp}/gu,
+      (char) => `\\u${char.charCodeAt(0).toString(16).padStart(4, '0')}`,
+    );
+  }
+
+  private static toDiscordEmbedScript(embed: DiscordComponentEmbedDto): string {
+    return [
+      `<script id="${DISCORD_COMPONENT_EMBED_SCRIPT_ID}" type="${DISCORD_COMPONENT_EMBED_MIME_TYPE}">`,
+      MetaHtmlMapper.serializeForScript(embed),
+      '</script>',
     ].join('\n');
   }
 }

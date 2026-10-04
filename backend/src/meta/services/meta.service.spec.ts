@@ -78,6 +78,13 @@ describe('MetaService', () => {
       description: 'Documentation › Guides › Installation',
       url: `${ORIGIN}/pages/docs/guide/install`,
       imageUrl: `${ORIGIN}/og-image.png`,
+      discordEmbed: {
+        component: {
+          type: 17,
+          accent_color: 0xec3013,
+          components: [{ type: 10, content: '# Installation' }],
+        },
+      },
     });
   });
 
@@ -105,6 +112,7 @@ describe('MetaService', () => {
       description: DEFAULT_META_DESCRIPTION,
       url: ORIGIN,
       imageUrl: `${ORIGIN}/og-image.png`,
+      discordEmbed: null,
     });
   });
 
