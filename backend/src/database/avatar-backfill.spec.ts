@@ -9,7 +9,7 @@ describe('backfillAvatarExtensions', () => {
         'avatars/user-1/avatar.jpg',
         'avatars/user-2/avatar.png',
         'avatars/user-3/avatar.webp',
-        'avatars/user-4/avatar.gif',
+        'avatars/user-4/avatar.bmp',
         'avatars/user-5/other.jpg',
       ].map((name) => ({ name })),
     );

@@ -959,6 +959,7 @@ $$
 <summary>0.31.6 — 2026-10-04</summary>
 
 - Nouvelle page de documentation [Aperçus de liens](/pages/documentation/apercus-de-liens) : contenu de la carte, cas des pages privées, fonctionnement et limites. Ajout d'un raccourci depuis l'accueil de la documentation, du tag \`Meta\` dans la documentation de l'API, et de l'endpoint \`GET /meta/pages/*path\` au README.
+- Les photos de profil acceptent désormais les GIF (animés compris), en plus de JPG, PNG et WEBP, toujours dans la limite de 2 Mo.
 
 </details>
 

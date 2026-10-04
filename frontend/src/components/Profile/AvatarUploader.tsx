@@ -20,7 +20,7 @@ import type { AuthUser } from '#api/auth'
 import { extractErrorMessage } from '#lib/api-errors'
 import { toInitials } from '#utils/initials'
 
-const ALLOWED_AVATAR_TYPES = ['image/jpeg', 'image/png', 'image/webp']
+const ALLOWED_AVATAR_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
 const AVATAR_MAX_SIZE_BYTES = 2 * 1024 * 1024
 
 interface AvatarUploaderProps {

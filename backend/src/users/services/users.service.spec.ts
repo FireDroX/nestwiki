@@ -249,7 +249,7 @@ describe('UsersService', () => {
 
       const result = await service.uploadAvatar('user-1', buildFile());
 
-      expect(storageService.delete).toHaveBeenCalledTimes(3);
+      expect(storageService.delete).toHaveBeenCalledTimes(4);
       expect(storageService.upload).toHaveBeenCalledWith(
         'test-bucket',
         'avatars/user-1/avatar.png',
@@ -267,11 +267,31 @@ describe('UsersService', () => {
       expect(storageService.upload).not.toHaveBeenCalled();
     });
 
+    it('accepts an animated GIF and keeps its content type', async () => {
+      userRepository.findById.mockResolvedValue(buildUser());
+      userRepository.updateAvatar.mockResolvedValue(
+        buildUser({ avatarExtension: 'gif' }),
+      );
+
+      await service.uploadAvatar(
+        'user-1',
+        buildFile({ mimetype: 'image/gif' }),
+      );
+
+      expect(storageService.upload).toHaveBeenCalledWith(
+        'test-bucket',
+        'avatars/user-1/avatar.gif',
+        expect.any(Buffer),
+        'image/gif',
+      );
+      expect(userRepository.updateAvatar).toHaveBeenCalledWith('user-1', 'gif');
+    });
+
     it('throws ValidationException for an unsupported file type', async () => {
       userRepository.findById.mockResolvedValue(buildUser());
 
       await expect(
-        service.uploadAvatar('user-1', buildFile({ mimetype: 'image/gif' })),
+        service.uploadAvatar('user-1', buildFile({ mimetype: 'image/bmp' })),
       ).rejects.toBeInstanceOf(ValidationException);
       expect(storageService.upload).not.toHaveBeenCalled();
     });
@@ -295,7 +315,7 @@ describe('UsersService', () => {
 
       const result = await service.removeAvatar('user-1');
 
-      expect(storageService.delete).toHaveBeenCalledTimes(3);
+      expect(storageService.delete).toHaveBeenCalledTimes(4);
       expect(userRepository.updateAvatar).toHaveBeenCalledWith('user-1', null);
       expect(result).toEqual(updated);
     });

@@ -668,7 +668,7 @@
     "avatarUploadFailed": "Impossible d'envoyer la photo de profil.",
     "avatarRemoveSuccess": "Photo de profil retirée.",
     "avatarRemoveFailed": "Impossible de retirer la photo de profil.",
-    "avatarInvalidType": "Formats acceptés : JPG, PNG, WEBP.",
+    "avatarInvalidType": "Formats acceptés : JPG, PNG, WEBP, GIF.",
     "avatarTooLarge": "L'image dépasse la taille maximale de 2 Mo.",
     "changePhoto": "Changer la photo",
     "removePhoto": "Retirer la photo",
