@@ -956,6 +956,14 @@ $$
 ## Version 0.31
 
 <details>
+<summary>0.31.8 — 2026-10-04</summary>
+
+- Correctif de déploiement : les commandes \`migration:*\` et \`backfill:avatars\` chargent désormais le correctif de résolution de \`stream-json\` déjà utilisé au démarrage de l'application. Sans lui, la migration de rattrapage des avatars (qui utilise le client Minio) échouait sur le système de fichiers sensible à la casse de l'image Docker (\`ERR_MODULE_NOT_FOUND\`) et empêchait le conteneur backend de démarrer.
+- \`shadcn\` passe en dépendance de développement : c'est un outil en ligne de commande de génération de composants, seule sa feuille de style est utilisée au build, et rien n'en est livré dans l'application.
+
+</details>
+
+<details>
 <summary>0.31.7 — 2026-10-04</summary>
 
 - Correctif : au-delà de la limite de 100 requêtes par minute, l'API répond enfin \`429 Too Many Requests\` (avec l'en-tête \`Retry-After\`) au lieu d'une erreur 500. Plus largement, toute erreur HTTP non spécifique à un module (413, 404 de route, 429…) garde désormais son vrai code au lieu d'être transformée en 500 par le filtre d'erreurs du module ; les endpoints OAuth renvoient \`temporarily_unavailable\` en cas de limitation. Côté application, les messages d'erreur affichent alors « Trop de requêtes, réessayez dans N s. » (délai lu dans \`Retry-After\`) au lieu du texte technique du serveur.
