@@ -956,6 +956,13 @@ $$
 ## Version 0.31
 
 <details>
+<summary>0.31.7 — 2026-10-04</summary>
+
+- Correctif : au-delà de la limite de 100 requêtes par minute, l'API répond enfin \`429 Too Many Requests\` (avec l'en-tête \`Retry-After\`) au lieu d'une erreur 500. Plus largement, toute erreur HTTP non spécifique à un module (413, 404 de route, 429…) garde désormais son vrai code au lieu d'être transformée en 500 par le filtre d'erreurs du module ; les endpoints OAuth renvoient \`temporarily_unavailable\` en cas de limitation.
+
+</details>
+
+<details>
 <summary>0.31.6 — 2026-10-04</summary>
 
 - Nouvelle page de documentation [Aperçus de liens](/pages/documentation/apercus-de-liens) : contenu de la carte, cas des pages privées, fonctionnement et limites. Ajout d'un raccourci depuis l'accueil de la documentation, du tag \`Meta\` dans la documentation de l'API, et de l'endpoint \`GET /meta/pages/*path\` au README.
