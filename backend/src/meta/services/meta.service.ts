@@ -8,9 +8,12 @@ import {
   DEFAULT_META_ORIGIN,
   DEFAULT_META_TITLE,
   DEFAULT_PAGE_META_DESCRIPTION,
+  META_ACCENT_COLOR,
   META_IMAGE_PATH,
   META_TITLE_SUFFIX,
 } from '../constants/meta.constants.js';
+import { DiscordComponentEmbedBuilder } from '../mapper/discord-component-embed.builder.js';
+import { DiscordComponentEmbedDto } from '../dto/out/discord-component-embed.dto.js';
 import { PageMetaDto } from '../dto/out/page-meta.dto.js';
 
 @Injectable()
@@ -31,6 +34,7 @@ export class MetaService {
         description: DEFAULT_META_DESCRIPTION,
         url: origin,
         imageUrl,
+        discordEmbed: null,
       };
     }
 
@@ -40,7 +44,14 @@ export class MetaService {
       description: MetaService.buildDescription(page, ancestors),
       url: `${origin}/pages/${segments.map(encodeURIComponent).join('/')}`,
       imageUrl,
+      discordEmbed: MetaService.buildDiscordEmbed(page),
     };
+  }
+
+  private static buildDiscordEmbed(page: Page): DiscordComponentEmbedDto {
+    return new DiscordComponentEmbedBuilder(META_ACCENT_COLOR)
+      .heading(page.title)
+      .build();
   }
 
   private getOrigin(): string {
