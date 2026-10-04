@@ -281,7 +281,7 @@ Toutes les routes `/admin/users` sont accessibles aux administrateurs ou à quic
 | POST    | /pages             | `page.create_root` (racine) ou `page.create_child` (sur le parent) | Créer une page |
 | GET     | /pages/tree        | selon visibilité | Arborescence complète     |
 | GET     | /pages/*path       | selon visibilité | Lire une page par son chemin complet (slugs des ancêtres, comme dans l'URL) |
-| GET     | /pages/*path/stats | selon visibilité | Stats d'une page (vues, dernière modification, versions, commentaires, contributeurs) — n'incrémente pas les vues |
+| GET     | /pages/:id/stats   | selon visibilité | Stats d'une page (vues, dernière modification, versions, commentaires, contributeurs) — n'incrémente pas les vues |
 | PATCH   | /pages/:id         | `page.edit` sur la page | Éditer (nouvelle version) |
 | POST    | /pages/:id/merge-preview | `page.edit` sur la page | Prévisualiser une fusion à 3 voies (base/mine/theirs) sans sauvegarder |
 | PATCH   | /pages/:id/move    | `page.move` sur la page | Déplacer dans l'arbre     |

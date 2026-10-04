@@ -876,19 +876,14 @@ export class PagesController {
     await this.accessRulesService.deleteAccessRuleForPage(id, ruleId, user.id);
   }
 
-  @Get('*path/stats')
+  @Get(':id/stats')
   @UseGuards(OptionalJwtAuthGuard)
   @ApiOperation({
-    summary: "Statistiques d'une page par son chemin",
+    summary: "Statistiques d'une page",
     description:
       "Authentification optionnelle : droits alignés sur la visibilité de la page. N'incrémente pas le compteur de vues.",
   })
-  @ApiParam({
-    name: 'path',
-    description:
-      'Chemin de la page (slugs séparés par "/"), ex. "documentation/guide-demarrage".',
-    type: String,
-  })
+  @ApiParam({ name: 'id', description: 'Identifiant de la page' })
   @ApiOkResponse({
     description:
       'Vues, dernière modification, nombre de versions, de commentaires et de contributeurs.',
@@ -898,14 +893,14 @@ export class PagesController {
     type: ErrorResponseDto,
   })
   @ApiNotFoundResponse({
-    description: 'Aucune page ne correspond à ce chemin.',
+    description: "La page n'existe pas.",
     type: ErrorResponseDto,
   })
-  async getStatsByPath(
-    @Param('path') path: string[],
+  async getStats(
+    @Param('id') id: string,
     @CurrentUser() user?: AuthenticatedUser,
   ): Promise<ResponseDto<PageStatsResponseDto>> {
-    const stats = await this.pageStatsService.getStatsByPath(path, user);
+    const stats = await this.pageStatsService.getStatsById(id, user);
     return PageMapper.toStatsResponse(stats);
   }
 

@@ -35,7 +35,7 @@ const version = {
 
 describe('PageStatsService', () => {
   let service: PageStatsService;
-  let pagesService: { resolveReadableByPath: ReturnType<typeof vi.fn> };
+  let pagesService: { getReadableWithCurrentVersion: ReturnType<typeof vi.fn> };
   let versionsService: {
     countByPage: ReturnType<typeof vi.fn>;
     countContributors: ReturnType<typeof vi.fn>;
@@ -45,7 +45,9 @@ describe('PageStatsService', () => {
 
   beforeEach(async () => {
     pagesService = {
-      resolveReadableByPath: vi.fn().mockResolvedValue({ page, version }),
+      getReadableWithCurrentVersion: vi
+        .fn()
+        .mockResolvedValue({ page, version }),
     };
     versionsService = {
       countByPage: vi.fn().mockResolvedValue(12),
@@ -72,10 +74,10 @@ describe('PageStatsService', () => {
   });
 
   it('aggregates the stats of a readable page', async () => {
-    const stats = await service.getStatsByPath(['docs', 'guide'], member);
+    const stats = await service.getStatsById('page-1', member);
 
-    expect(pagesService.resolveReadableByPath).toHaveBeenCalledWith(
-      ['docs', 'guide'],
+    expect(pagesService.getReadableWithCurrentVersion).toHaveBeenCalledWith(
+      'page-1',
       member,
     );
     expect(versionsService.countByPage).toHaveBeenCalledWith('page-1');
@@ -92,10 +94,10 @@ describe('PageStatsService', () => {
   });
 
   it('works for an anonymous visitor on a public page', async () => {
-    const stats = await service.getStatsByPath(['guide']);
+    const stats = await service.getStatsById('page-1');
 
-    expect(pagesService.resolveReadableByPath).toHaveBeenCalledWith(
-      ['guide'],
+    expect(pagesService.getReadableWithCurrentVersion).toHaveBeenCalledWith(
+      'page-1',
       undefined,
     );
     expect(stats.viewCount).toBe(1240);
@@ -104,28 +106,28 @@ describe('PageStatsService', () => {
   it('returns a null last author when the author no longer exists', async () => {
     usersService.findById.mockRejectedValue(new Error('not found'));
 
-    const stats = await service.getStatsByPath(['guide'], member);
+    const stats = await service.getStatsById('page-1', member);
 
     expect(stats.lastModifiedBy).toBeNull();
   });
 
   it('propagates PageAccessForbiddenException for an unreadable private page', async () => {
-    pagesService.resolveReadableByPath.mockRejectedValue(
+    pagesService.getReadableWithCurrentVersion.mockRejectedValue(
       new PageAccessForbiddenException(),
     );
 
-    await expect(
-      service.getStatsByPath(['secret'], member),
-    ).rejects.toBeInstanceOf(PageAccessForbiddenException);
+    await expect(service.getStatsById('page-1', member)).rejects.toBeInstanceOf(
+      PageAccessForbiddenException,
+    );
     expect(versionsService.countByPage).not.toHaveBeenCalled();
   });
 
   it('propagates PageNotFoundException for an unknown path', async () => {
-    pagesService.resolveReadableByPath.mockRejectedValue(
+    pagesService.getReadableWithCurrentVersion.mockRejectedValue(
       new PageNotFoundException(),
     );
 
-    await expect(service.getStatsByPath(['nope'])).rejects.toBeInstanceOf(
+    await expect(service.getStatsById('nope')).rejects.toBeInstanceOf(
       PageNotFoundException,
     );
   });

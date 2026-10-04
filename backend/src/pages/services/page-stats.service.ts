@@ -18,14 +18,12 @@ export class PageStatsService {
     private readonly usersService: UsersService,
   ) {}
 
-  async getStatsByPath(
-    segments: string[],
+  async getStatsById(
+    id: string,
     currentUser?: AuthenticatedUser,
   ): Promise<PageStatsResponseDto> {
-    const { page, version } = await this.pagesService.resolveReadableByPath(
-      segments,
-      currentUser,
-    );
+    const { page, version } =
+      await this.pagesService.getReadableWithCurrentVersion(id, currentUser);
 
     const [versionsCount, commentsCount, contributorsCount, lastModifiedBy] =
       await Promise.all([

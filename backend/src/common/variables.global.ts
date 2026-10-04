@@ -11,8 +11,8 @@ export const ACCESS_TOKEN_COOKIE = 'accessToken';
 export const REFRESH_TOKEN_COOKIE = 'refreshToken';
 export const SLUG_REGEX = /^[a-z0-9-]+$/;
 export const SLUG_MAX_LENGTH = 255;
-export const RESERVED_PAGE_SLUGS: readonly string[] = [
-  'tree',
+export const RESERVED_ROOT_PAGE_SLUGS: readonly string[] = ['tree'];
+export const RESERVED_CHILD_OF_ROOT_PAGE_SLUGS: readonly string[] = [
   'versions',
   'comments',
   'tags',

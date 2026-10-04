@@ -25,7 +25,7 @@
     "migration:revert": "tsx ./node_modules/typeorm/cli.js migration:revert -d src/config/data-source.ts",
     "seed:dev": "tsx src/database/dev-seed.ts",
     "seed:content": "tsx src/database/content-seed.ts",
-    "backfill:avatars": "tsx src/database/avatar-backfill.ts"
+    "backfill:avatars": "tsx src/database/run-avatar-backfill.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",

@@ -17,7 +17,8 @@ import type { PageAction } from '../../common/permissions.js';
 import {
   CHANGE_SUMMARY_MAX_LENGTH,
   SLUG_MAX_LENGTH,
-  RESERVED_PAGE_SLUGS,
+  RESERVED_CHILD_OF_ROOT_PAGE_SLUGS,
+  RESERVED_ROOT_PAGE_SLUGS,
   SLUG_REGEX,
   TITLE_MAX_LENGTH,
   UUID_REGEX,
@@ -86,12 +87,12 @@ export class PagesService {
     createdById: string,
   ): Promise<{ page: Page; version: PageVersion }> {
     this.validateCreatePage(dto);
-    PagesService.assertSlugNotReserved(dto.slug);
 
     const parentId = dto.parentId ?? null;
     const user = await this.usersService.findById(createdById);
+    let parent: Page | null = null;
     if (parentId !== null) {
-      const parent = await this.pagesRepository.findById(parentId);
+      parent = await this.pagesRepository.findById(parentId);
       if (!parent) {
         throw new ParentPageNotFoundException();
       }
@@ -109,6 +110,8 @@ export class PagesService {
     ) {
       throw new InsufficientPagePermissionException();
     }
+
+    PagesService.assertSlugNotReserved(dto.slug, parent);
 
     const existing = await this.pagesRepository.findBySlugAndParent(
       dto.slug,
@@ -181,26 +184,37 @@ export class PagesService {
     return { page, version, isFollowed, permissions };
   }
 
-  async resolveReadableByPath(
+  async getReadableWithCurrentVersion(
+    id: string,
+    currentUser?: AuthenticatedUser,
+  ): Promise<{ page: Page; version: PageVersion }> {
+    const page = await this.getByIdOrFail(id, currentUser);
+    return { page, version: await this.loadCurrentVersion(page) };
+  }
+
+  private async resolveReadableByPath(
     segments: string[],
     currentUser?: AuthenticatedUser,
   ): Promise<{ page: Page; version: PageVersion }> {
     const chain = await this.findChainByPath(segments);
     const page = chain?.[chain.length - 1];
-    if (!page || !page.currentVersionId) {
+    if (!page) {
       throw new PageNotFoundException();
     }
 
     await this.assertAccessible(page, currentUser);
 
-    const version = await this.pagesRepository.findVersionById(
-      page.currentVersionId,
-    );
+    return { page, version: await this.loadCurrentVersion(page) };
+  }
+
+  private async loadCurrentVersion(page: Page): Promise<PageVersion> {
+    const version = page.currentVersionId
+      ? await this.pagesRepository.findVersionById(page.currentVersionId)
+      : null;
     if (!version) {
       throw new PageNotFoundException();
     }
-
-    return { page, version };
+    return version;
   }
 
   async findPublicByPath(
@@ -534,6 +548,7 @@ export class PagesService {
     }
 
     const newParentId = dto.newParentId;
+    let newParent: Page | null = null;
     if (newParentId !== null) {
       let currentId: string | null = newParentId;
       while (currentId !== null) {
@@ -545,9 +560,11 @@ export class PagesService {
         if (!ancestor) {
           throw new ParentPageNotFoundException();
         }
+        newParent ??= ancestor;
         currentId = ancestor.parentId;
       }
     }
+    PagesService.assertSlugNotReserved(page.slug, newParent);
 
     const movingUser = await this.usersService.findById(userId);
     if (newParentId === null) {
@@ -821,8 +838,17 @@ export class PagesService {
     );
   }
 
-  private static assertSlugNotReserved(slug: string): void {
-    if (RESERVED_PAGE_SLUGS.includes(slug)) {
+  private static assertSlugNotReserved(
+    slug: string,
+    parent: Page | null,
+  ): void {
+    const reservedSlugs =
+      parent === null
+        ? RESERVED_ROOT_PAGE_SLUGS
+        : parent.parentId === null
+          ? RESERVED_CHILD_OF_ROOT_PAGE_SLUGS
+          : [];
+    if (reservedSlugs.includes(slug)) {
       throw new ReservedSlugException(slug);
     }
   }

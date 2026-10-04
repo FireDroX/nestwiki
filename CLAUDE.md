@@ -44,7 +44,7 @@ pnpm run migration:revert    # annule la dernière migration
 pnpm run migration:generate  # diff entities vs DB (via tsx, hors contexte Nest)
 pnpm run seed:dev            # crée l'utilisateur admin de dev (dev uniquement, jamais en prod)
 pnpm run seed:content        # (re)seed la page arborescence documentation/notes-de-version/faq (safe en prod, à rejouer à chaque déploiement)
-pnpm run backfill:avatars    # rattache aux comptes sans avatar_extension le fichier avatars/{id}/avatar.* encore présent dans Minio (idempotent, lancé par entrypoint.sh)
+pnpm run backfill:avatars    # rattache aux comptes sans avatar_extension le fichier avatars/{id}/avatar.* encore présent dans Minio (idempotent ; déjà exécuté une fois automatiquement par la migration 1790300000000, à relancer à la main seulement si elle a été sautée faute de Minio joignable)
 ```
 
 Config : trois fichiers `.env` séparés (chacun avec un `.env.example` à copier) :

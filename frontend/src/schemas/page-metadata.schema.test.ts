@@ -4,25 +4,21 @@ import { createPageMetadataSchema } from './page-metadata.schema'
 
 const t = ((key: string) => key) as unknown as TFunction
 
-const values = { title: 'Stats', slug: 'stats', visibility: 'public' as const, parentId: null }
+const values = { title: 'Stats', slug: 'stats', visibility: 'public' as const, parentId: 'root-page' }
 
 describe('createPageMetadataSchema', () => {
-  it('rejects a reserved slug when creating a page', () => {
-    const result = createPageMetadataSchema(t, 'create').safeParse(values)
+  it('rejects a slug reserved at the depth where the page would be created', () => {
+    const result = createPageMetadataSchema(t, () => 2).safeParse(values)
 
     expect(result.success).toBe(false)
-    expect(result.error?.issues[0].message).toBe('pageMetadataForm.slugReserved')
+    expect(result.error?.issues[0]).toMatchObject({ path: ['slug'], message: 'pageMetadataForm.slugReserved' })
   })
 
-  it('accepts a regular slug when creating a page', () => {
-    const result = createPageMetadataSchema(t, 'create').safeParse({ ...values, slug: 'statistiques' })
-
-    expect(result.success).toBe(true)
+  it('accepts the same slug deeper in the tree, where it does not collide with any route', () => {
+    expect(createPageMetadataSchema(t, () => 3).safeParse(values).success).toBe(true)
   })
 
-  it('does not block editing an existing page whose immutable slug is reserved', () => {
-    const result = createPageMetadataSchema(t, 'edit').safeParse(values)
-
-    expect(result.success).toBe(true)
+  it('does not check reserved slugs without a depth resolver (editing an existing page)', () => {
+    expect(createPageMetadataSchema(t).safeParse(values).success).toBe(true)
   })
 })

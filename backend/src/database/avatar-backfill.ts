@@ -1,79 +1,57 @@
-import 'dotenv/config';
 import { Client } from 'minio';
-import { DataSource, IsNull } from 'typeorm';
 import { AVATAR_MIME_TO_EXTENSION } from '../common/variables.global.js';
-import { User } from '../users/entities/user.entity.js';
 
-const dataSource = new DataSource({
-  type: 'mysql',
-  host: process.env.DB_HOST,
-  port: Number(process.env.DB_PORT),
-  username: process.env.DB_USERNAME,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_DATABASE,
-  timezone: 'Z',
-  synchronize: false,
-  entities: [User],
-});
+type RunQuery = (query: string, parameters?: unknown[]) => Promise<unknown>;
 
-const minio = new Client({
-  endPoint: process.env.MINIO_ENDPOINT!,
-  port: Number(process.env.MINIO_PORT),
-  accessKey: process.env.MINIO_ACCESS_KEY,
-  secretKey: process.env.MINIO_SECRET_KEY,
-  useSSL: process.env.MINIO_USE_SSL === 'true',
-});
+const AVATAR_PREFIX = 'avatars/';
 
-const bucket = process.env.MINIO_BUCKET!;
+const AVATAR_KEY_REGEX = /^avatars\/([^/]+)\/avatar\.([a-z0-9]+)$/;
 
-async function objectExists(key: string): Promise<boolean> {
-  try {
-    await minio.statObject(bucket, key);
-    return true;
-  } catch (error) {
-    if ((error as { code?: string }).code === 'NotFound') {
-      return false;
-    }
-    throw error;
-  }
-}
-
-async function findStoredAvatarExtension(
-  userId: string,
-): Promise<string | null> {
-  for (const extension of Object.values(AVATAR_MIME_TO_EXTENSION)) {
-    if (await objectExists(`avatars/${userId}/avatar.${extension}`)) {
-      return extension;
-    }
-  }
-  return null;
-}
-
-async function run(): Promise<void> {
-  await dataSource.initialize();
-  const userRepository = dataSource.getRepository(User);
-
-  const usersWithoutAvatar = await userRepository.find({
-    where: { avatarExtension: IsNull() },
-    select: { id: true },
+export function createMinioClientFromEnv(): Client {
+  return new Client({
+    endPoint: process.env.MINIO_ENDPOINT!,
+    port: Number(process.env.MINIO_PORT),
+    accessKey: process.env.MINIO_ACCESS_KEY,
+    secretKey: process.env.MINIO_SECRET_KEY,
+    useSSL: process.env.MINIO_USE_SSL === 'true',
   });
+}
+
+async function listStoredAvatarExtensions(
+  minio: Client,
+  bucket: string,
+): Promise<Map<string, string>> {
+  const allowedExtensions = new Set(Object.values(AVATAR_MIME_TO_EXTENSION));
+  const extensionByUserId = new Map<string, string>();
+  for await (const item of minio.listObjectsV2(bucket, AVATAR_PREFIX, true)) {
+    const match = AVATAR_KEY_REGEX.exec((item as { name?: string }).name ?? '');
+    if (match && allowedExtensions.has(match[2])) {
+      extensionByUserId.set(match[1], match[2]);
+    }
+  }
+  return extensionByUserId;
+}
+
+export async function backfillAvatarExtensions(
+  runQuery: RunQuery,
+  minio: Client,
+  bucket: string,
+): Promise<number> {
+  const extensionByUserId = await listStoredAvatarExtensions(minio, bucket);
+  const usersWithoutAvatar = (await runQuery(
+    'SELECT `id` FROM `users` WHERE `avatar_extension` IS NULL',
+  )) as { id: string }[];
 
   let restored = 0;
-  for (const user of usersWithoutAvatar) {
-    const extension = await findStoredAvatarExtension(user.id);
+  for (const { id } of usersWithoutAvatar) {
+    const extension = extensionByUserId.get(id);
     if (extension) {
-      await userRepository.update(user.id, { avatarExtension: extension });
+      await runQuery(
+        'UPDATE `users` SET `avatar_extension` = ? WHERE `id` = ? AND `avatar_extension` IS NULL',
+        [extension, id],
+      );
       restored += 1;
     }
   }
-
-  await dataSource.destroy();
-  console.log(
-    `Avatar backfill complete: ${restored} avatar(s) restored out of ${usersWithoutAvatar.length} user(s) without one.`,
-  );
+  return restored;
 }
-
-run().catch((error: unknown) => {
-  console.error(error);
-  process.exitCode = 1;
-});
