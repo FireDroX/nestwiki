@@ -1002,6 +1002,8 @@ describe('PagesService', () => {
       );
       permissionsService.can.mockResolvedValue(true);
 
+      pagesRepository.findVersionById.mockResolvedValue(buildVersion());
+
       const result = await service.findPublicByPath([
         'secret',
         'equipe',

@@ -48,13 +48,15 @@ describe('MetaService', () => {
   let service: MetaService;
   let pagesService: { findPublicByPath: ReturnType<typeof vi.fn> };
   let pageStatsService: { getStatsForPage: ReturnType<typeof vi.fn> };
-  let tagsService: { listPageTags: ReturnType<typeof vi.fn> };
+  let tagsService: {
+    listTagsOfAlreadyAuthorizedPage: ReturnType<typeof vi.fn>;
+  };
 
   beforeEach(async () => {
     pagesService = { findPublicByPath: vi.fn() };
     pageStatsService = { getStatsForPage: vi.fn().mockResolvedValue(stats) };
     tagsService = {
-      listPageTags: vi
+      listTagsOfAlreadyAuthorizedPage: vi
         .fn()
         .mockResolvedValue([{ name: 'guide' }, { name: 'installation' }]),
     };
@@ -90,7 +92,9 @@ describe('MetaService', () => {
       install,
       version,
     );
-    expect(tagsService.listPageTags).toHaveBeenCalledWith('install');
+    expect(tagsService.listTagsOfAlreadyAuthorizedPage).toHaveBeenCalledWith(
+      'install',
+    );
     expect(meta.title).toBe('Installation — OpenWiki');
     expect(meta.description).toBe(
       'Documentation › Installation · 2 tags · 1 240 vues',
@@ -131,7 +135,7 @@ describe('MetaService', () => {
       discordEmbed: null,
     });
     expect(pageStatsService.getStatsForPage).not.toHaveBeenCalled();
-    expect(tagsService.listPageTags).not.toHaveBeenCalled();
+    expect(tagsService.listTagsOfAlreadyAuthorizedPage).not.toHaveBeenCalled();
   });
 
   it('url-encodes path segments in the page and edit urls', async () => {

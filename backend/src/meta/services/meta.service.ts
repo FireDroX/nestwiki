@@ -59,7 +59,7 @@ export class MetaService {
     const { page, version, ancestors } = result;
     const [stats, tags] = await Promise.all([
       this.pageStatsService.getStatsForPage(page, version),
-      this.tagsService.listPageTags(page.id),
+      this.tagsService.listTagsOfAlreadyAuthorizedPage(page.id),
     ]);
     const encodedPath = segments.map(encodeURIComponent).join('/');
 

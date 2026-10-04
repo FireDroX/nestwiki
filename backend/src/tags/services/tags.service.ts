@@ -95,6 +95,10 @@ export class TagsService {
     return this.tagRepository.findTagsByPageId(pageId);
   }
 
+  listTagsOfAlreadyAuthorizedPage(pageId: string): Promise<Tag[]> {
+    return this.tagRepository.findTagsByPageId(pageId);
+  }
+
   private async assertCanManageTags(
     pageId: string,
     currentUser?: AuthenticatedUser,
