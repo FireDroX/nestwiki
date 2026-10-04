@@ -905,7 +905,7 @@ $$
 <details>
 <summary>0.31.1 — 2026-10-04</summary>
 
-- Nouvel endpoint public \`GET /meta/pages/*path\` qui renvoie un HTML minimal avec les balises Open Graph et Twitter d'une page (titre, fil d'Ariane, URL absolue), destiné aux robots d'aperçu de lien (Discord, Slack, X…). Une page privée, inconnue ou non lisible anonymement renvoie la carte par défaut du wiki, sans divulguer son titre. La requête n'incrémente pas le compteur de vues. Le routage des robots vers cet endpoint arrive dans un ticket suivant.
+- Nouvel endpoint public \`GET /meta/pages/*path\` qui renvoie un HTML minimal avec les balises Open Graph et Twitter d'une page (titre, fil d'Ariane, URL absolue), destiné aux robots d'aperçu de lien (Discord, Slack, X…). Une page privée, inconnue ou non lisible anonymement renvoie la carte par défaut du wiki, sans divulguer son titre, et le fil d'Ariane d'une page publique n'inclut jamais ses ancêtres privés. La requête n'incrémente pas le compteur de vues et n'est pas soumise à la limite de débit globale (les robots d'aperçu partagent quelques adresses IP). Le routage des robots vers cet endpoint arrive dans un ticket suivant.
 
 </details>
 

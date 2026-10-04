@@ -5,10 +5,12 @@ import {
   ApiParam,
   ApiTags,
 } from '@nestjs/swagger';
+import { SkipThrottle } from '@nestjs/throttler';
 import { MetaHtmlMapper } from './mapper/meta-html.mapper.js';
 import { MetaService } from './services/meta.service.js';
 
 @ApiTags('Meta')
+@SkipThrottle()
 @Controller('meta')
 export class MetaController {
   constructor(private readonly metaService: MetaService) {}

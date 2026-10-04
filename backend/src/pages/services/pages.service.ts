@@ -158,20 +158,8 @@ export class PagesService {
     segments: string[],
     currentUser?: AuthenticatedUser,
   ): Promise<FindByPathResultDto> {
-    if (segments.length === 0) {
-      throw new PageNotFoundException();
-    }
-
-    let parentId: string | null = null;
-    let page: Page | null = null;
-    for (const slug of segments) {
-      page = await this.pagesRepository.findBySlugAndParent(slug, parentId);
-      if (!page) {
-        throw new PageNotFoundException();
-      }
-      parentId = page.id;
-    }
-
+    const chain = await this.findChainByPath(segments);
+    const page = chain?.[chain.length - 1];
     if (!page || !page.currentVersionId) {
       throw new PageNotFoundException();
     }
@@ -203,6 +191,26 @@ export class PagesService {
   async findPublicByPath(
     segments: string[],
   ): Promise<PublicPageByPathResultDto | null> {
+    const chain = await this.findChainByPath(segments);
+    if (!chain) {
+      return null;
+    }
+
+    const page = chain[chain.length - 1];
+    if (
+      !page.currentVersionId ||
+      !(await this.permissionsService.can(undefined, 'page.read', page.id))
+    ) {
+      return null;
+    }
+
+    const publicAncestors = chain
+      .slice(0, -1)
+      .filter((ancestor) => ancestor.visibility === 'public');
+    return { page, ancestors: publicAncestors };
+  }
+
+  private async findChainByPath(segments: string[]): Promise<Page[] | null> {
     if (segments.length === 0) {
       return null;
     }
@@ -220,16 +228,7 @@ export class PagesService {
       chain.push(page);
       parentId = page.id;
     }
-
-    const page = chain[chain.length - 1];
-    if (
-      !page.currentVersionId ||
-      !(await this.permissionsService.can(undefined, 'page.read', page.id))
-    ) {
-      return null;
-    }
-
-    return { page, ancestors: chain.slice(0, -1) };
+    return chain;
   }
 
   async assertCanManageAccessRules(

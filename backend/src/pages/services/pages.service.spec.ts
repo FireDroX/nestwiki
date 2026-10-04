@@ -910,6 +910,43 @@ describe('PagesService', () => {
       expect(pagesRepository.incrementViewCount).not.toHaveBeenCalled();
     });
 
+    it('never exposes private ancestors of a public page', async () => {
+      const privateRoot = buildPage({
+        id: 'root-1',
+        slug: 'secret',
+        title: 'Projet Secret',
+        visibility: 'private',
+      });
+      const publicMiddle = buildPage({
+        id: 'middle-1',
+        slug: 'equipe',
+        parentId: 'root-1',
+      });
+      const publicLeaf = buildPage({
+        id: 'leaf-1',
+        slug: 'planning',
+        parentId: 'middle-1',
+      });
+      const pagesBySlug: Record<string, Page> = {
+        secret: privateRoot,
+        equipe: publicMiddle,
+        planning: publicLeaf,
+      };
+      pagesRepository.findBySlugAndParent.mockImplementation((slug: string) =>
+        Promise.resolve(pagesBySlug[slug] ?? null),
+      );
+      permissionsService.can.mockResolvedValue(true);
+
+      const result = await service.findPublicByPath([
+        'secret',
+        'equipe',
+        'planning',
+      ]);
+
+      expect(result?.page).toBe(publicLeaf);
+      expect(result?.ancestors).toEqual([publicMiddle]);
+    });
+
     it('returns null for an empty path', async () => {
       expect(await service.findPublicByPath([])).toBeNull();
     });
