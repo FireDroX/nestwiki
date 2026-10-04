@@ -29,6 +29,10 @@ function setupSwagger(app: INestApplication): void {
     )
     .addTag('Tags', 'Gestion des tags et de leur association aux pages')
     .addTag(
+      'Meta',
+      "Balises Open Graph et composant Discord des pages, pour les robots d'aperçu de lien",
+    )
+    .addTag(
       'Admin — MCP',
       'Gestion des clés API du serveur MCP (pilotage par IA, réservé aux admins)',
     )
