@@ -956,6 +956,13 @@ $$
 ## Version 0.31
 
 <details>
+<summary>0.31.9 — 2026-10-04</summary>
+
+- Correctif : le temps réel (bandeau « nouvelle version disponible », fusion en direct dans l'éditeur, arbre et commentaires mis à jour sans recharger) ne fonctionnait pas en production. Le nginx du frontend ne relayait pas \`/socket.io/\` vers le backend : ces requêtes recevaient la page HTML de l'application et la connexion temps réel n'aboutissait jamais. \`frontend/nginx.conf\` proxifie désormais \`/socket.io/\` vers le backend, upgrade WebSocket compris.
+
+</details>
+
+<details>
 <summary>0.31.8 — 2026-10-04</summary>
 
 - Correctif de déploiement : les commandes \`migration:*\` et \`backfill:avatars\` chargent désormais le correctif de résolution de \`stream-json\` déjà utilisé au démarrage de l'application. Sans lui, la migration de rattrapage des avatars (qui utilise le client Minio) échouait sur le système de fichiers sensible à la casse de l'image Docker (\`ERR_MODULE_NOT_FOUND\`) et empêchait le conteneur backend de démarrer.
