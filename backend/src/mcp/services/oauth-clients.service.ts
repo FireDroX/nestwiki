@@ -44,7 +44,10 @@ export class OAuthClientsService {
     return this.clientRepository.findAll();
   }
 
-  async getByClientId(clientId: string): Promise<OAuthClient> {
+  async getByClientId(clientId: string | undefined): Promise<OAuthClient> {
+    if (!clientId) {
+      throw new OAuthInvalidRequestException('client_id is required');
+    }
     const client = await this.clientRepository.findByClientId(clientId);
     if (!client) {
       throw new OAuthInvalidClientException();
@@ -60,8 +63,11 @@ export class OAuthClientsService {
     return client;
   }
 
-  verifySecret(client: OAuthClient, plainSecret: string): void {
-    if (client.clientSecretHash !== OAuthClientsService.hash(plainSecret)) {
+  verifySecret(client: OAuthClient, plainSecret: string | undefined): void {
+    if (
+      !plainSecret ||
+      client.clientSecretHash !== OAuthClientsService.hash(plainSecret)
+    ) {
       throw new OAuthInvalidClientException();
     }
   }

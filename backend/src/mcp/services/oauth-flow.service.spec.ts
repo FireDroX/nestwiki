@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Test } from '@nestjs/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { OAuthInvalidRequestException } from '../../common/exceptions/mcp/oauth-invalid-request.exception.js';
 import { OAuthClient } from '../entities/oauth-client.entity.js';
 import { OAuthRefreshToken } from '../entities/oauth-refresh-token.entity.js';
 import { OAuthFlowService } from './oauth-flow.service.js';
@@ -214,6 +215,13 @@ describe('OAuthFlowService', () => {
 
       expect(result).toEqual({ userId: stored.userId });
       expect(refreshTokenRepository.revoke).toHaveBeenCalledWith(stored.id);
+    });
+
+    it('rejects a request without token as invalid_request', async () => {
+      await expect(service.revoke(undefined)).rejects.toBeInstanceOf(
+        OAuthInvalidRequestException,
+      );
+      expect(refreshTokenRepository.findByTokenHash).not.toHaveBeenCalled();
     });
 
     it('is a no-op for an unknown token', async () => {
