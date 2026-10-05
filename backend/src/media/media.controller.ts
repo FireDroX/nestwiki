@@ -38,6 +38,7 @@ import { RequirePermission } from '../common/decorators/require-permission.decor
 import { ErrorResponseDto } from '../common/dto/error-response.dto.js';
 import { ResponseDto } from '../common/dto/response.dto.js';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard.js';
+import { AnonymousFallbackJwtAuthGuard } from '../common/guards/anonymous-fallback-jwt-auth.guard.js';
 import { OptionalJwtAuthGuard } from '../common/guards/optional-jwt-auth.guard.js';
 import { PermissionsGuard } from '../common/guards/permissions.guard.js';
 import type { AuthenticatedUser } from '../common/strategies/jwt.strategy.js';
@@ -179,7 +180,7 @@ export class MediaController {
   }
 
   @Get(':id/raw')
-  @UseGuards(OptionalJwtAuthGuard)
+  @UseGuards(AnonymousFallbackJwtAuthGuard)
   @ApiOperation({
     summary: 'Rediriger vers le fichier via une URL présignée fraîche',
     description:
