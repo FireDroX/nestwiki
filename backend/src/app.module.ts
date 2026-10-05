@@ -25,6 +25,7 @@ import { StorageModule } from './storage/storage.module.js';
 import { TagsModule } from './tags/tags.module.js';
 import { UsersModule } from './users/users.module.js';
 import { VersionsModule } from './versions/versions.module.js';
+import { validateEnvironment } from './config/env.validation.js';
 import { typeOrmConfig } from './config/typeorm.config.js';
 
 const GLOBAL_THROTTLE_TTL_MS = 60000;
@@ -32,7 +33,7 @@ const GLOBAL_THROTTLE_LIMIT = 100;
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({ isGlobal: true, validate: validateEnvironment }),
     EventEmitterModule.forRoot(),
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],

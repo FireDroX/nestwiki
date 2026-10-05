@@ -37,12 +37,12 @@ jobs:
       mysql:
         image: mysql:8
         env:
-          MYSQL_ROOT_PASSWORD: root
+          MYSQL_ROOT_PASSWORD: ci-mysql-root-password
           MYSQL_DATABASE: nestwiki
         ports:
           - 3306:3306
         options: >-
-          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot --silent"
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -pci-mysql-root-password --silent"
           --health-interval=5s
           --health-timeout=5s
           --health-retries=10
@@ -50,16 +50,16 @@ jobs:
       DB_HOST: localhost
       DB_PORT: 3306
       DB_USERNAME: root
-      DB_PASSWORD: root
+      DB_PASSWORD: ci-mysql-root-password
       DB_DATABASE: nestwiki
       MINIO_ENDPOINT: localhost
       MINIO_PORT: 9000
       MINIO_ACCESS_KEY: minioadmin
-      MINIO_SECRET_KEY: minioadmin
+      MINIO_SECRET_KEY: ci-storage-secret-key
       MINIO_BUCKET: nestwiki
       MINIO_USE_SSL: 'false'
-      JWT_ACCESS_SECRET: ci-access-secret
-      JWT_REFRESH_SECRET: ci-refresh-secret
+      JWT_ACCESS_SECRET: ci-jwt-access-secret-not-for-production
+      JWT_REFRESH_SECRET: ci-jwt-refresh-secret-not-for-production
       FRONTEND_URL: http://localhost:5173
       PORT: '3000'
     steps:
@@ -81,7 +81,7 @@ jobs:
       - name: Start Minio
         run: |
           docker run -d --name minio -p 9000:9000 -p 9001:9001 \
-            -e RUSTFS_ACCESS_KEY=minioadmin -e RUSTFS_SECRET_KEY=minioadmin \
+            -e RUSTFS_ACCESS_KEY=minioadmin -e RUSTFS_SECRET_KEY=ci-storage-secret-key \
             -e RUSTFS_ADDRESS=":9000" -e RUSTFS_CONSOLE_ADDRESS=":9001" \
             rustfs/rustfs:latest /data
           for i in $(seq 1 30); do

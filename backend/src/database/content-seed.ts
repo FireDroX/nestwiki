@@ -956,6 +956,16 @@ $$
 ## Version 1.0
 
 <details>
+<summary>1.0.2 — 2026-10-05</summary>
+
+- Sécurité : le backend **refuse de démarrer** tant qu'un secret de \`backend/.env\` est absent, trop faible ou égal à une valeur par défaut connue (\`changeme\`, \`minioadmin\`, \`root\`…). Avant, une instance installée avec les valeurs d'exemple démarrait avec un secret JWT public, ce qui permettait à n'importe qui de fabriquer un jeton administrateur.
+- Règles : \`JWT_ACCESS_SECRET\` et \`JWT_REFRESH_SECRET\` obligatoires, d'au moins 32 caractères et différents l'un de l'autre ; \`DB_PASSWORD\` et \`MINIO_SECRET_KEY\` obligatoires et non triviaux ; \`ADMIN_PASSWORD\`, s'il est renseigné, d'au moins 8 caractères. Le message d'erreur liste toutes les variables à corriger d'un coup.
+- ⚠️ **Avant de mettre à jour une instance existante**, vérifiez ces variables (y compris en développement) et générez les valeurs manquantes avec \`openssl rand -hex 32\`. Changer \`DB_PASSWORD\` ou \`MINIO_SECRET_KEY\` impose de changer aussi le mot de passe côté MySQL/stockage ; changer les secrets JWT déconnecte simplement tous les utilisateurs.
+- Les \`.env.example\` ne contiennent plus de valeurs par défaut pour les secrets.
+
+</details>
+
+<details>
 <summary>1.0.1 — 2026-10-05</summary>
 
 - NestWiki est désormais un logiciel libre sous licence **GNU AGPL-3.0** (fichier \`LICENSE\` à la racine du dépôt) : vous pouvez l'utiliser, le modifier et le redistribuer, à condition de publier sous la même licence le code source de toute version modifiée, y compris lorsqu'elle est seulement proposée en ligne.
