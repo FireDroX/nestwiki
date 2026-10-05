@@ -1,5 +1,18 @@
 export const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export const MIN_PASSWORD_LENGTH = 8;
+export const MIN_JWT_SECRET_LENGTH = 32;
+export const KNOWN_DEFAULT_SECRETS: readonly string[] = [
+  'changeme',
+  'change-me',
+  'minioadmin',
+  'password',
+  'password123',
+  'secret',
+  'admin',
+  'root',
+  'ci-access-secret',
+  'ci-refresh-secret',
+];
 export const PASSWORD_COMPLEXITY_REGEX =
   /^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$/;
 export const DISPLAY_NAME_MIN_LENGTH = 2;
