@@ -12,6 +12,8 @@ import { usePage } from '#hooks/usePage'
 import { usePermissions } from '#hooks/usePermissions'
 import { useVersions } from '#hooks/useVersions'
 import { formatDateTime } from '#utils/relative-time'
+import { PAGE_PADDING } from '#utils/page-layout'
+import { cn } from '#lib/utils'
 
 function pathFromParam(param: string | undefined): string[] {
   return (param ?? '').split('/').filter(Boolean)
@@ -80,7 +82,7 @@ export function PageHistory() {
 
   if (status === 'loading') {
     return (
-      <div className="space-y-6 p-8">
+      <div className={cn(PAGE_PADDING, 'space-y-6')}>
         <Skeleton className="h-4 w-40" />
         <Skeleton className="h-8 w-2/3" />
         <Skeleton className="h-96 w-full" />
@@ -90,7 +92,7 @@ export function PageHistory() {
 
   if (status !== 'success' || !page) {
     return (
-      <div className="space-y-4 p-8">
+      <div className={cn(PAGE_PADDING, 'space-y-4')}>
         <h1 className="text-2xl font-semibold">{t('pageHistory.notFoundTitle')}</h1>
         <p className="text-muted-foreground">{t('pageHistory.notFoundDescription')}</p>
         <Button asChild>
@@ -103,7 +105,7 @@ export function PageHistory() {
   const returnPath = `/pages/${pathSegments.join('/')}`
 
   return (
-    <div className="flex h-full flex-col gap-6 p-8">
+    <div className={cn(PAGE_PADDING, 'flex h-full flex-col gap-6')}>
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" asChild>
           <Link to={returnPath}>

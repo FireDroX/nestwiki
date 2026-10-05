@@ -7,6 +7,7 @@ import { CreateApiKeyDialog } from '#components/AdminMcpKeys/CreateApiKeyDialog'
 import { McpApiKeysTable } from '#components/AdminMcpKeys/McpApiKeysTable'
 import { listApiKeys, revokeApiKey, type McpApiKeyCreated, type McpApiKeySummary } from '#api/admin-mcp'
 import { extractErrorMessage } from '#lib/api-errors'
+import { PAGE_PADDING } from '#utils/page-layout'
 
 type Status = 'loading' | 'ready' | 'error'
 
@@ -62,7 +63,7 @@ export function AdminMcpKeys() {
   }
 
   return (
-    <div className="p-8">
+    <div className={PAGE_PADDING}>
       <AdminNav />
       <div className="mt-5 mb-4 flex items-center justify-between">
         <p className="text-sm text-muted-foreground">{t('admin.mcpKeys.description')}</p>

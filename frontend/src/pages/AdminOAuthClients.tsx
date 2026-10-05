@@ -5,6 +5,7 @@ import { AdminNav } from '#components/AdminNav'
 import { OAuthClientsTable } from '#components/AdminOAuthClients/OAuthClientsTable'
 import { listOAuthClients, revokeOAuthToken, type OAuthClientSummary } from '#api/admin-oauth'
 import { extractErrorMessage } from '#lib/api-errors'
+import { PAGE_PADDING } from '#utils/page-layout'
 
 type Status = 'loading' | 'ready' | 'error'
 
@@ -55,7 +56,7 @@ export function AdminOAuthClients() {
   }
 
   return (
-    <div className="p-8">
+    <div className={PAGE_PADDING}>
       <AdminNav />
       <div className="mt-5 mb-4">
         <p className="text-sm text-muted-foreground">{t('admin.oauthClients.description')}</p>

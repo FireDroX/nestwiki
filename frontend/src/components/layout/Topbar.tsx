@@ -51,7 +51,7 @@ export function Topbar({ onOpenSidebar }: TopbarProps) {
             <Search />
           </InputGroupAddon>
           <InputGroupInput placeholder={t('topbar.searchPlaceholder')} readOnly tabIndex={-1} />
-          <InputGroupAddon align="inline-end">
+          <InputGroupAddon align="inline-end" className="hidden sm:flex">
             <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
               Ctrl K
             </kbd>

@@ -31,6 +31,8 @@ import { usePermissions } from '#hooks/usePermissions'
 import { extractErrorMessage } from '#lib/api-errors'
 import { findPathToNode } from '#utils/page-tree'
 import { createPageMetadataSchema, type PageMetadataFormValues } from '#schemas/page-metadata.schema'
+import { PAGE_PADDING } from '#utils/page-layout'
+import { cn } from '#lib/utils'
 
 function pathFromParam(param: string | undefined): string[] {
   return (param ?? '').split('/').filter(Boolean)
@@ -38,7 +40,7 @@ function pathFromParam(param: string | undefined): string[] {
 
 function PageEditorSkeleton() {
   return (
-    <div className="max-w-3xl space-y-6 p-8">
+    <div className={cn(PAGE_PADDING, 'max-w-3xl space-y-6')}>
       <Skeleton className="h-4 w-40" />
       <Skeleton className="h-9 w-2/3" />
       <Skeleton className="h-96 w-full" />
@@ -195,7 +197,7 @@ export function PageEditor() {
 
   if (status !== 'success' || !page) {
     return (
-      <div className="max-w-3xl space-y-4 p-8">
+      <div className={cn(PAGE_PADDING, 'max-w-3xl space-y-4')}>
         <h1 className="text-2xl font-semibold">{t('pageEditor.notFoundTitle')}</h1>
         <p className="text-muted-foreground">{t('pageEditor.notFoundDescription')}</p>
         <Button onClick={() => navigate('/')}>{t('pageView.backHome')}</Button>
@@ -205,7 +207,7 @@ export function PageEditor() {
 
   if (!canOnPage(page, 'page.edit')) {
     return (
-      <div className="max-w-3xl space-y-4 p-8">
+      <div className={cn(PAGE_PADDING, 'max-w-3xl space-y-4')}>
         <h1 className="text-2xl font-semibold">{t('pageEditor.forbiddenTitle')}</h1>
         <p className="text-muted-foreground">{t('pageEditor.forbiddenDescription')}</p>
         <Button onClick={() => navigate('/')}>{t('pageView.backHome')}</Button>

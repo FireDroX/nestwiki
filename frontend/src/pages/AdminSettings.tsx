@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '#
 import { updateSetting } from '#api/settings'
 import { extractErrorMessage } from '#lib/api-errors'
 import i18n from '#lib/i18n'
+import { PAGE_PADDING } from '#utils/page-layout'
 
 export function AdminSettings() {
   const { t } = useTranslation()
@@ -34,7 +35,7 @@ export function AdminSettings() {
   }
 
   return (
-    <div className="p-8">
+    <div className={PAGE_PADDING}>
       <AdminNav />
       <Field className="mt-5 max-w-sm">
         <FieldLabel>{t('admin.settings.localeLabel')}</FieldLabel>
