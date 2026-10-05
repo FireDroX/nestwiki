@@ -11,6 +11,8 @@ import {
 } from './settings.controller.js';
 import { AdminAuditLogService } from './services/admin-audit-log.service.js';
 import { SystemSettingsService } from './services/system-settings.service.js';
+import { VersionCheckService } from './services/version-check.service.js';
+import { AdminVersionController } from './version.controller.js';
 
 @Module({
   imports: [TypeOrmModule.forFeature([SystemSetting, AdminAuditLog])],
@@ -18,6 +20,7 @@ import { SystemSettingsService } from './services/system-settings.service.js';
     SettingsController,
     AdminSettingsController,
     AdminAuditLogController,
+    AdminVersionController,
   ],
   providers: [
     {
@@ -30,6 +33,7 @@ import { SystemSettingsService } from './services/system-settings.service.js';
     },
     SystemSettingsService,
     AdminAuditLogService,
+    VersionCheckService,
   ],
   exports: [AdminAuditLogService],
 })

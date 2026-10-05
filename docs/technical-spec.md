@@ -374,6 +374,7 @@ Voir aussi `/pages/*path` et `/pages/tree`, qui exposent respectivement `permiss
 | ------- | ------------------------ | ----- | -------------------------------------- |
 | GET     | /settings                | non   | Réglages publics (ex. langue de l'UI) |
 | PATCH   | /admin/settings/:key     | admin | Modifier un réglage système           |
+| GET     | /admin/version           | admin | Version installée et dernière release GitHub (cache 6 h, `UPDATE_CHECK=false` pour désactiver) |
 
 ---
 
