@@ -153,4 +153,8 @@ export class TypeormUserRepository implements UserRepository {
   countActiveAdmins(): Promise<number> {
     return this.repository.count({ where: { role: 'admin', isActive: true } });
   }
+
+  countAdmins(): Promise<number> {
+    return this.repository.count({ where: { role: 'admin' } });
+  }
 }

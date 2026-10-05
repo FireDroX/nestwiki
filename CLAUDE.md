@@ -42,7 +42,7 @@ pnpm run start:prod          # node dist/main (build requis avant)
 pnpm run migration:run       # applique les migrations TypeORM en attente
 pnpm run migration:revert    # annule la dernière migration
 pnpm run migration:generate  # diff entities vs DB (via tsx, hors contexte Nest)
-pnpm run seed:dev            # crée l'utilisateur admin de dev (dev uniquement, jamais en prod)
+pnpm run seed:admin          # crée le premier admin depuis ADMIN_EMAIL/ADMIN_PASSWORD/ADMIN_DISPLAY_NAME s'il n'existe aucun admin (idempotent, lancé par entrypoint.sh ; Nest fait la même vérification au démarrage)
 pnpm run seed:content        # (re)seed la page arborescence documentation/notes-de-version/faq (safe en prod, à rejouer à chaque déploiement)
 pnpm run backfill:avatars    # rattache aux comptes sans avatar_extension le fichier avatars/{id}/avatar.* encore présent dans Minio (idempotent ; déjà exécuté une fois automatiquement par la migration 1790300000000, à relancer à la main seulement si elle a été sautée faute de Minio joignable)
 ```
@@ -87,7 +87,7 @@ Base de données : MySQL 8 via `@nestjs/typeorm`, tous les changements de schém
 
 Deux scripts `tsx` standalone comme `data-source.ts`, hors contexte Nest, idempotents :
 
-- `src/database/dev-seed.ts` (`pnpm run seed:dev`) crée l'utilisateur admin de dev (skip s'il existe déjà par email). **Usage dev uniquement, jamais exécuté en prod/CI.**
+- `src/database/run-admin-seed.ts` (`pnpm run seed:admin`) crée le premier admin depuis `ADMIN_*` quand la base n'a aucun admin (`ensureDefaultAdmin` de `src/database/default-admin.ts`, aussi appelé au démarrage de Nest par `DefaultAdminInitializer`). Ne modifie jamais un compte existant.
 - `src/database/content-seed.ts` (`pnpm run seed:content`) crée/met à jour l'arborescence de pages de contenu (documentation sur 3 niveaux, notes de version, FAQ) — une page existante dont le contenu a changé reçoit une nouvelle `PageVersion` (jamais de skip silencieux d'un contenu modifié), attribuée au plus ancien utilisateur de la base. **Safe à rejouer en prod, prévu pour tourner à chaque déploiement** afin de garder la doc et les notes de version à jour.
 
 Stockage médias : Minio (S3-compatible) via `storage/services/storage.service.ts`, bucket auto-créé au démarrage (`onModuleInit`) si absent.

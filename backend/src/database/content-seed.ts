@@ -197,8 +197,8 @@ NestWiki est un monorepo pnpm avec deux packages : \`backend/\` (NestJS + TypeOR
 <div class="step-card">
 <div class="step-number">4</div>
 <div>
-<h3>Compte de test</h3>
-<p>Optionnel, développement uniquement : <code>pnpm run seed:dev</code>.</p>
+<h3>Compte administrateur</h3>
+<p>Renseignez <code>ADMIN_EMAIL</code>, <code>ADMIN_PASSWORD</code> et <code>ADMIN_DISPLAY_NAME</code> dans <code>backend/.env</code> : le premier admin est créé automatiquement au premier démarrage.</p>
 </div>
 </div>
 
@@ -281,7 +281,7 @@ pnpm install
 
 cd backend
 pnpm run migration:run    # crée le schéma
-pnpm run seed:dev         # utilisateur admin de dev
+pnpm run seed:admin       # premier admin (ADMIN_* de backend/.env), aussi créé au démarrage
 pnpm run seed:content     # arborescence de doc/notes de version/FAQ
 cd ..
 
@@ -954,6 +954,17 @@ $$
         content: `# Notes de version
 
 ## Version 1.0
+
+<details>
+<summary>1.0.3 — 2026-10-05</summary>
+
+- Premier administrateur créé automatiquement : renseignez \`ADMIN_EMAIL\`, \`ADMIN_PASSWORD\` et \`ADMIN_DISPLAY_NAME\` dans \`backend/.env\`, et le compte est créé au premier démarrage quand la base ne contient encore aucun administrateur. Avant, une installation neuve n'avait aucun moyen documenté d'obtenir un compte admin.
+- Le compte n'est créé qu'une fois et n'est **jamais modifié ensuite** : changer \`ADMIN_PASSWORD\` après coup n'a aucun effet, le mot de passe se change depuis l'application. Si l'adresse appartient déjà à un compte non administrateur, le démarrage s'arrête avec un message clair plutôt que de promouvoir ce compte en silence.
+- Le mot de passe suit les mêmes règles qu'une inscription (8 caractères minimum, avec une majuscule, un chiffre et un symbole) et ne peut pas être une valeur par défaut connue.
+- Au démarrage du conteneur, \`pnpm run seed:admin\` s'exécute désormais entre les migrations et \`seed:content\` : sur une installation neuve, la documentation et les notes de version sont créées dès le premier démarrage (le seed de contenu échouait jusqu'ici faute d'auteur). Le script \`seed:dev\` et son compte de test sont supprimés.
+- Une instance qui a déjà un administrateur n'a rien à faire : les variables \`ADMIN_*\` ne sont lues que tant qu'aucun admin n'existe.
+
+</details>
 
 <details>
 <summary>1.0.2 — 2026-10-05</summary>
