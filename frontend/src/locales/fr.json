@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "OpenWiki",
+    "appName": "NestWiki",
     "cancel": "Annuler",
     "delete": "Supprimer",
     "back": "Retour",
@@ -33,7 +33,7 @@
   },
   "oauthConsent": {
     "title": "Autoriser l'accès",
-    "description": "{{name}} souhaite se connecter à OpenWiki en votre nom.",
+    "description": "{{name}} souhaite se connecter à NestWiki en votre nom.",
     "allow": "Autoriser",
     "deny": "Refuser",
     "notAdmin": "Seul un compte administrateur peut autoriser cette connexion."
@@ -79,13 +79,13 @@
     },
     "visitor": {
       "eyebrow": "Wiki auto-hébergé",
-      "description": "OpenWiki est un wiki auto-hébergé pour organiser et partager les connaissances de votre équipe.",
+      "description": "NestWiki est un wiki auto-hébergé pour organiser et partager les connaissances de votre équipe.",
       "loadError": "Impossible de charger les statistiques publiques.",
       "ctaTitle": "Rejoignez ce wiki",
       "ctaDescription": "Créez un compte sur cette instance pour lire l'intégralité des pages, commenter et contribuer.",
       "createAccount": "Créer un compte",
       "signIn": "Se connecter",
-      "selfHost": "Héberger votre propre OpenWiki"
+      "selfHost": "Héberger votre propre NestWiki"
     }
   },
   "pageView": {

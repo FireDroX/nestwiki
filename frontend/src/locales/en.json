@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "OpenWiki",
+    "appName": "NestWiki",
     "cancel": "Cancel",
     "delete": "Delete",
     "back": "Back",
@@ -33,7 +33,7 @@
   },
   "oauthConsent": {
     "title": "Authorize access",
-    "description": "{{name}} would like to connect to OpenWiki on your behalf.",
+    "description": "{{name}} would like to connect to NestWiki on your behalf.",
     "allow": "Authorize",
     "deny": "Deny",
     "notAdmin": "Only an administrator account can authorize this connection."
@@ -79,13 +79,13 @@
     },
     "visitor": {
       "eyebrow": "Self-hosted wiki",
-      "description": "OpenWiki is a self-hosted wiki for organizing and sharing your team's knowledge.",
+      "description": "NestWiki is a self-hosted wiki for organizing and sharing your team's knowledge.",
       "loadError": "Could not load the public statistics.",
       "ctaTitle": "Join this wiki",
       "ctaDescription": "Create an account on this instance to read every page, comment, and contribute.",
       "createAccount": "Create account",
       "signIn": "Sign in",
-      "selfHost": "Host your own OpenWiki"
+      "selfHost": "Host your own NestWiki"
     }
   },
   "pageView": {
