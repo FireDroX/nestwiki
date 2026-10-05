@@ -2,6 +2,14 @@
 
 All notable changes to NestWiki are documented here, newest first, one `## <version> — <date>` section per release. This file is the single source for the in-app "Notes de version" page, which groups releases by minor version (`1.0`, `0.31`…). Entries up to 0.31.10 were written in French, the project's original language.
 
+## 1.0.4 — 2026-10-05
+
+- Les notes de version vivent désormais dans `CHANGELOG.md`, à la racine du dépôt : c'est la source unique de cette page, des releases GitHub et de l'historique lisible directement sur GitHub. Chaque version a sa propre section `## x.y.z — date`.
+- Nouvelle page « Notes de version » : un sélecteur affiche une version mineure à la fois (1.0, 0.31…) avec toutes ses mises à jour, au lieu d'une longue liste de blocs dépliants. Le sélecteur fonctionne sans JavaScript, au clavier et sur mobile.
+- Images Docker publiées avec le numéro de version : `ghcr.io/firedrox/nestwiki-backend:1.0.4`, `:1.0` et `:latest` (idem pour le frontend). Vous pouvez maintenant épingler une version précise. Chaque version publiée a aussi son tag git `vX.Y.Z` et sa release GitHub.
+- Nouveau README en anglais (présentation, installation Docker, configuration, mise à jour), guide de contribution, code de conduite, politique de sécurité et modèles d'issues et de pull requests. La spécification technique et l'exemple de déploiement continu sont déplacés dans `docs/`.
+- Le déploiement automatique ne se déclenche plus sur les forks du dépôt.
+
 ## 1.0.3 — 2026-10-05
 
 - Premier administrateur créé automatiquement : renseignez `ADMIN_EMAIL`, `ADMIN_PASSWORD` et `ADMIN_DISPLAY_NAME` dans `backend/.env`, et le compte est créé au premier démarrage quand la base ne contient encore aucun administrateur. Avant, une installation neuve n'avait aucun moyen documenté d'obtenir un compte admin.

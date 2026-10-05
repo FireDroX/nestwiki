@@ -62,13 +62,13 @@ services:
     networks:
       - mariadb-network
 
-  # Application containers (production deploy — see README §9). Not
+  # Application containers (production deploy — see README.md). Not
   # needed for local dev, where the backend/frontend run via `pnpm run
   # start:dev` / `pnpm run dev` against these same mysql/minio services.
   #
   # backend/.env on the server must point DB_HOST/MINIO_ENDPOINT at the
   # `mysql`/`minio` service names below (not `localhost`, unlike the
-  # local-dev default in backend/.env.example) — see README §9.
+  # local-dev default in backend/.env.example) — see README.md.
   backend:
     build:
       context: .
