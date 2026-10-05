@@ -25,12 +25,12 @@ function ActivityItem({ item, actionLabels, actionCategories, categoryLabels }: 
   const content = metadataTitle(item.metadata) ?? actionLabels[item.action] ?? item.action
 
   return (
-    <li className="flex items-center gap-4 py-3 first:pt-0">
-      <span className="w-28 shrink-0 text-xs font-semibold tracking-wide text-primary uppercase">
+    <li className="flex flex-wrap items-center gap-x-4 gap-y-1 py-3 first:pt-0 sm:flex-nowrap">
+      <span className="shrink-0 text-xs font-semibold tracking-wide text-primary uppercase sm:w-28">
         {categoryLabel}
       </span>
-      <span className="min-w-0 flex-1 truncate">{content}</span>
-      <span className="shrink-0 text-xs text-muted-foreground">{formatRelativeTime(item.createdAt)}</span>
+      <span className="order-last min-w-0 basis-full truncate sm:order-none sm:flex-1 sm:basis-auto">{content}</span>
+      <span className="ml-auto shrink-0 text-xs text-muted-foreground sm:ml-0">{formatRelativeTime(item.createdAt)}</span>
     </li>
   )
 }
@@ -47,7 +47,7 @@ export function ActivityFeed() {
   const categoryLabels = t('profile.activityCategories', { returnObjects: true }) as Record<string, string>
 
   return (
-    <div className="rounded-lg border border-border bg-card p-6">
+    <div className="rounded-lg border border-border bg-card p-4 sm:p-6">
       {status === 'loading' && <p className="text-sm text-muted-foreground">{t('common.loading')}</p>}
       {status === 'error' && (
         <p className="text-sm text-destructive">{t('profile.activityLoadError')}</p>

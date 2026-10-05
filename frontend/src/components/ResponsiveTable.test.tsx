@@ -126,6 +126,24 @@ describe('ResponsiveTable', () => {
     }
   })
 
+  it('can label the actions column and leave out the select-all checkbox', () => {
+    setViewport(true)
+
+    render(
+      <ResponsiveTable
+        columns={COLUMNS}
+        rows={FRUITS}
+        rowKey={(fruit) => fruit.id}
+        actionsHeader="Actions"
+        actions={() => <button type="button">Open</button>}
+        selection={{ selectedKeys: [], onSelectedChange: vi.fn(), selectRowLabel: (fruit) => `Pick ${fruit.name}` }}
+      />,
+    )
+
+    expect(screen.getByRole('columnheader', { name: 'Actions' })).toBeInTheDocument()
+    expect(screen.getAllByRole('checkbox')).toHaveLength(2)
+  })
+
   it('shows the empty state instead of an empty table', () => {
     setViewport(true)
 

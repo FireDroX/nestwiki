@@ -99,9 +99,9 @@ export function AvatarUploader({ user, onUpdate }: AvatarUploaderProps) {
   return (
     <div className="flex shrink-0 flex-col items-center gap-2">
       <div className="relative">
-        <Avatar className="size-40">
+        <Avatar className="size-28 sm:size-40">
           <AvatarImage src={displayedAvatarUrl} alt={user.displayName} />
-          <AvatarFallback className="text-4xl">{toInitials(user.displayName)}</AvatarFallback>
+          <AvatarFallback className="text-3xl sm:text-4xl">{toInitials(user.displayName)}</AvatarFallback>
         </Avatar>
         {!pendingFile && (
           <button

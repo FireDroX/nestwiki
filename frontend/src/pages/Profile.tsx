@@ -62,14 +62,14 @@ export function Profile() {
         </TabsList>
 
         <TabsContent value="profile" className="flex flex-col gap-6">
-          <div className="flex items-center gap-8 rounded-lg border border-border bg-card p-6">
+          <div className="flex flex-col items-center gap-5 rounded-lg border border-border bg-card p-4 sm:flex-row sm:gap-8 sm:p-6">
             <AvatarUploader user={profile} onUpdate={handleUpdate} />
             <ProfileSummary user={profile} />
           </div>
 
           <ProfileStats user={profile} />
 
-          <div className="rounded-lg border border-border bg-card p-6">
+          <div className="rounded-lg border border-border bg-card p-4 sm:p-6">
             <ProfileForm user={profile} onUpdate={handleUpdate} />
           </div>
         </TabsContent>

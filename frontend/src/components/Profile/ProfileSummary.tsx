@@ -16,10 +16,10 @@ export function ProfileSummary({ user }: ProfileSummaryProps) {
   }
 
   return (
-    <div className="flex min-w-0 flex-col gap-1.5">
-      <h2 className="truncate font-heading text-xl font-semibold">{user.displayName}</h2>
-      <p className="truncate text-sm text-muted-foreground">{user.email}</p>
-      <div className="flex flex-wrap items-center gap-2 pt-1">
+    <div className="flex w-full min-w-0 flex-col items-center gap-1.5 text-center sm:w-auto sm:items-start sm:text-left">
+      <h2 className="max-w-full truncate font-heading text-xl font-semibold">{user.displayName}</h2>
+      <p className="max-w-full truncate text-sm text-muted-foreground">{user.email}</p>
+      <div className="flex flex-wrap items-center justify-center gap-2 pt-1 sm:justify-start">
         <Badge variant="secondary">{roleLabels[user.role]}</Badge>
         {user.groups?.map((group) => (
           <Badge key={group.id} variant="outline">
