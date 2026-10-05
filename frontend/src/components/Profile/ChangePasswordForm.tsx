@@ -47,7 +47,7 @@ export function ChangePasswordForm() {
   }
 
   return (
-    <div className="rounded-lg border border-border bg-card p-6">
+    <div className="rounded-lg border border-border bg-card p-4 sm:p-6">
       <h2 className="font-heading text-lg font-semibold">{t('profile.security.passwordTitle')}</h2>
       <form onSubmit={handleSubmit(onSubmit)} noValidate className="mt-4 flex max-w-sm flex-col gap-4">
         <Controller

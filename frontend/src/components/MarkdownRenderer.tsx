@@ -80,7 +80,7 @@ interface MarkdownRendererProps {
 }
 
 const MARKDOWN_BODY_CLASSES = cn(
-  'max-w-none space-y-4 text-sm leading-relaxed',
+  'max-w-none space-y-4 text-sm leading-relaxed break-words',
   '[&_h1]:text-2xl [&_h1]:font-semibold [&_h1]:mt-6',
   '[&_h2]:text-xl [&_h2]:font-semibold [&_h2]:mt-6',
   '[&_h3]:text-lg [&_h3]:font-semibold [&_h3]:mt-4',
@@ -119,7 +119,7 @@ const markdownComponents = {
       return <CodeBlock language={match[1]} code={String(children).replace(/\n$/, '')} />
     }
     return (
-      <code className={cn('rounded bg-muted px-1 py-0.5 text-sm', className)} {...rest}>
+      <code className={cn('rounded bg-muted px-1 py-0.5 text-sm [overflow-wrap:anywhere]', className)} {...rest}>
         {children}
       </code>
     )

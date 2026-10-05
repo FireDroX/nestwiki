@@ -209,6 +209,7 @@
     "columnAuthor": "Author",
     "columnDate": "Date",
     "columnSummary": "Summary",
+    "selectVersion": "Select the version of {{date}}",
     "columnActions": "Actions",
     "you": "You",
     "noSummary": "—"

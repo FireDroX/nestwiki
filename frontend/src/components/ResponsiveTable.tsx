@@ -15,7 +15,7 @@ export interface ResponsiveColumn<Row> {
 export interface ResponsiveTableSelection<Row> {
   selectedKeys: string[]
   onSelectedChange: (keys: string[]) => void
-  selectAllLabel: string
+  selectAllLabel?: string
   selectRowLabel: (row: Row) => string
 }
 
@@ -25,6 +25,7 @@ interface ResponsiveTableProps<Row> {
   rowKey: (row: Row) => string
   rowClassName?: (row: Row) => string | undefined
   actions?: (row: Row) => ReactNode
+  actionsHeader?: ReactNode
   onRowClick?: (row: Row) => void
   selection?: ResponsiveTableSelection<Row>
   empty?: ReactNode
@@ -57,6 +58,7 @@ export function ResponsiveTable<Row>({
   rowKey,
   rowClassName,
   actions,
+  actionsHeader,
   onRowClick,
   selection,
   empty,
@@ -75,17 +77,19 @@ export function ResponsiveTable<Row>({
           <TableRow>
             {selection && (
               <TableHead className="w-10">
-                <Checkbox
-                  aria-label={selection.selectAllLabel}
-                  checked={allSelected}
-                  onCheckedChange={(checked) => toggleAll(checked === true)}
-                />
+                {selection.selectAllLabel && (
+                  <Checkbox
+                    aria-label={selection.selectAllLabel}
+                    checked={allSelected}
+                    onCheckedChange={(checked) => toggleAll(checked === true)}
+                  />
+                )}
               </TableHead>
             )}
             {columns.map((column) => (
               <TableHead key={column.id}>{column.header}</TableHead>
             ))}
-            {actions && <TableHead className="w-px" />}
+            {actions && <TableHead className="w-px text-right">{actionsHeader}</TableHead>}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -126,7 +130,7 @@ export function ResponsiveTable<Row>({
 
   return (
     <div className="flex flex-col gap-3">
-      {selection && rows.length > 0 && (
+      {selection?.selectAllLabel && rows.length > 0 && (
         <label className="flex min-h-10 items-center gap-3 px-3 text-sm text-muted-foreground">
           <Checkbox
             aria-label={selection.selectAllLabel}

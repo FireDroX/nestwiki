@@ -2,6 +2,15 @@
 
 All notable changes to NestWiki are documented here, newest first, one `## <version> — <date>` section per release. This file is the single source for the in-app "Notes de version" page, which groups releases by minor version (`1.0`, `0.31`…). Entries up to 0.31.10 were written in French, the project's original language.
 
+## 1.0.7 — 2026-10-05
+
+- Correctif : sur téléphone, l'éditeur de page était inutilisable — le panneau des propriétés (titre, chemin, visibilité, tags…) occupait tout l'écran et la zone de saisie du contenu avait une hauteur nulle. L'éditeur s'affiche désormais en premier, les propriétés en dessous, et la barre du haut (Annuler / Enregistrer) reste visible pendant le défilement. Même chose à la création d'une page.
+- La barre d'outils de l'éditeur passe à la ligne au lieu de déborder de l'écran.
+- Historique des versions : la liste devient des cartes sur mobile et tablette (sélection pour comparer, voir, restaurer), au lieu d'un tableau qui cachait les actions hors de l'écran.
+- Contenu des pages : les longs mots et identifiants en code (`TUNNEL_SERVICE_TOKEN_SECRET`…) passent à la ligne au lieu d'élargir la page.
+- Profil : carte d'identité empilée et avatar plus petit sur mobile, statistiques et journal d'activité compacts.
+- L'ensemble de l'application a été vérifié sans défilement horizontal à 375, 768 et 1 280 px de large ; l'affichage sur ordinateur est inchangé.
+
 ## 1.0.6 — 2026-10-05
 
 - Administration utilisable sur mobile et tablette : les 7 tableaux (utilisateurs, groupes, clés API MCP, clients OAuth, journal MCP, journal d'audit, journal d'activité) deviennent des cartes empilées sous 1 024 px — titre en tête, chaque information avec son libellé, actions en pied de carte avec des boutons de 40 px. Sur ordinateur, les tableaux restent identiques.
