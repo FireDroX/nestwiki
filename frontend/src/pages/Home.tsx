@@ -9,6 +9,8 @@ import { getFollowedPages, getPopularPages, getPublicStats, getStats } from '#ap
 import type { DashboardStats, FollowedPage, PopularPage, PublicStats } from '#api/stats'
 import { useAuth } from '#hooks/useAuth'
 import { useDocumentTitle } from '#hooks/useDocumentTitle'
+import { PAGE_PADDING } from '#utils/page-layout'
+import { cn } from '#lib/utils'
 
 function VisitorHome() {
   const { t } = useTranslation()
@@ -32,7 +34,7 @@ function VisitorHome() {
   }, [])
 
   return (
-    <main className="flex flex-col gap-6 p-8">
+    <main className={cn(PAGE_PADDING, 'flex flex-col gap-6')}>
       <div className="flex flex-col gap-3">
         <p className="text-sm font-semibold text-primary uppercase">{t('home.visitor.eyebrow')}</p>
         <h1 className="font-heading text-3xl font-bold">{t('common.appName')}</h1>
@@ -109,7 +111,7 @@ export function Home() {
   }
 
   return (
-    <main className="flex flex-col gap-6 p-8">
+    <main className={cn(PAGE_PADDING, 'flex flex-col gap-6')}>
       <h1 className="font-heading text-2xl font-bold">{t('home.title')}</h1>
 
       {loadError ? (

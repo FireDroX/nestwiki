@@ -2,6 +2,13 @@
 
 All notable changes to NestWiki are documented here, newest first, one `## <version> — <date>` section per release. This file is the single source for the in-app "Notes de version" page, which groups releases by minor version (`1.0`, `0.31`…). Entries up to 0.31.10 were written in French, the project's original language.
 
+## 1.0.5 — 2026-10-05
+
+- Première étape de l'interface adaptée au mobile et à la tablette : marges des pages réduites sur petit écran (16 px sur mobile, 24 px sur tablette, 32 px sur ordinateur) au lieu de 32 px partout.
+- Administration : la barre d'onglets défile horizontalement sur mobile et tablette au lieu de déborder de l'écran, et l'onglet actif reste toujours visible.
+- La barre de recherche du haut n'affiche plus le raccourci clavier « Ctrl K » sur mobile, où il ne sert à rien et mangeait la place du texte.
+- Nouveau composant de liste pour les tableaux : tableau classique sur grand écran, cartes empilées sur mobile et tablette. Les pages d'administration l'adoptent dans la prochaine version.
+
 ## 1.0.4 — 2026-10-05
 
 - Les notes de version vivent désormais dans `CHANGELOG.md`, à la racine du dépôt : c'est la source unique de cette page, des releases GitHub et de l'historique lisible directement sur GitHub. Chaque version a sa propre section `## x.y.z — date`.

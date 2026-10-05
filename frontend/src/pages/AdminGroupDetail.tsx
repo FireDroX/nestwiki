@@ -10,6 +10,7 @@ import { PageAccessTreeSelector } from '#components/PageAccessTreeSelector/PageA
 import { getGroupDetail, setGroupMembers, type GroupDetail } from '#api/groups'
 import { setGlobalPermissions } from '#api/access-rules'
 import type { GlobalPermission } from '#api/permissions'
+import { PAGE_PADDING } from '#utils/page-layout'
 
 type Status = 'loading' | 'ready' | 'error'
 
@@ -62,7 +63,7 @@ export function AdminGroupDetail() {
   }
 
   return (
-    <div className="p-8">
+    <div className={PAGE_PADDING}>
       <AdminNav />
       <div className="mt-5 mb-4">
         <Link to="/admin/groups" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">

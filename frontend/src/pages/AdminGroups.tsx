@@ -6,6 +6,7 @@ import { GroupsTable } from '#components/AdminGroups/GroupsTable'
 import { CreateGroupDialog } from '#components/AdminGroups/CreateGroupDialog'
 import { deleteGroup, listGroups, type GroupSummary } from '#api/groups'
 import { extractErrorMessage } from '#lib/api-errors'
+import { PAGE_PADDING } from '#utils/page-layout'
 
 type Status = 'loading' | 'ready' | 'error'
 
@@ -54,7 +55,7 @@ export function AdminGroups() {
   }
 
   return (
-    <div className="p-8">
+    <div className={PAGE_PADDING}>
       <AdminNav />
       <div className="mt-5 mb-4 flex items-center justify-between">
         <div />

@@ -7,6 +7,7 @@ import { AdminAuditLogTable } from '#components/AdminAuditLog/AdminAuditLogTable
 import { Button } from '#components/ui/button'
 import { listAuditLog, type AdminAuditLogItem } from '#api/admin-audit-log'
 import { listUsers, type AdminUser } from '#api/users'
+import { PAGE_PADDING } from '#utils/page-layout'
 
 const PAGE_LIMIT = 50
 
@@ -91,7 +92,7 @@ export function AdminAuditLog() {
   const totalPages = Math.max(1, Math.ceil(total / PAGE_LIMIT))
 
   return (
-    <div className="p-8">
+    <div className={PAGE_PADDING}>
       <AdminNav />
       <div className="mt-5 mb-4">
         <AdminAuditLogFilters

@@ -11,6 +11,7 @@ import { deleteUser, listUsers, type AdminUser } from '#api/users'
 import { listGroups, type GroupSummary } from '#api/groups'
 import { useAuth } from '#hooks/useAuth'
 import { extractErrorMessage } from '#lib/api-errors'
+import { PAGE_PADDING } from '#utils/page-layout'
 
 type Status = 'loading' | 'ready' | 'error'
 const PAGE_LIMIT = 20
@@ -94,7 +95,7 @@ export function AdminUsers() {
   const totalPages = Math.max(1, Math.ceil(total / PAGE_LIMIT))
 
   return (
-    <div className="p-8">
+    <div className={PAGE_PADDING}>
       <AdminNav />
       <div className="mt-5 mb-4 flex items-center justify-between gap-3">
         <UsersFilters value={filters} groups={groups} onChange={setFilters} />

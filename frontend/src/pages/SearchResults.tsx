@@ -6,6 +6,8 @@ import { Skeleton } from '#components/ui/skeleton'
 import { SearchResultsList } from '#components/SearchResults/SearchResultsList'
 import { useDocumentTitle } from '#hooks/useDocumentTitle'
 import { SEARCH_RESULTS_LIMIT, useSearchResults } from '#hooks/useSearchResults'
+import { PAGE_PADDING } from '#utils/page-layout'
+import { cn } from '#lib/utils'
 
 function parsePage(raw: string | null): number {
   const parsed = Number(raw)
@@ -29,7 +31,7 @@ export function SearchResults() {
   }
 
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-6 p-8">
+    <div className={cn(PAGE_PADDING, 'mx-auto flex max-w-2xl flex-col gap-6')}>
       <div>
         <h1 className="text-xl font-semibold">{t('search.resultsTitle')}</h1>
         {trimmed.length >= 2 && (

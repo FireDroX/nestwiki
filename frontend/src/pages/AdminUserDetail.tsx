@@ -10,6 +10,7 @@ import { UserPermissionsTab } from '#components/AdminUsers/UserPermissionsTab'
 import { UserAccessTab } from '#components/AdminUsers/UserAccessTab'
 import { EffectivePermissionsTab } from '#components/AdminUsers/EffectivePermissionsTab'
 import { getUserDetail, type AdminUserDetail as AdminUserDetailType } from '#api/users'
+import { PAGE_PADDING } from '#utils/page-layout'
 
 type Status = 'loading' | 'ready' | 'error'
 
@@ -43,7 +44,7 @@ export function AdminUserDetail() {
   }, [id])
 
   return (
-    <div className="p-8">
+    <div className={PAGE_PADDING}>
       <AdminNav />
       <div className="mt-5 mb-4">
         <Link to="/admin/users" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">

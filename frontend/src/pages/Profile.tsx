@@ -11,6 +11,8 @@ import { getMe } from '#api/users'
 import type { AuthUser } from '#api/auth'
 import { useAuth } from '#hooks/useAuth'
 import { useDocumentTitle } from '#hooks/useDocumentTitle'
+import { PAGE_PADDING } from '#utils/page-layout'
+import { cn } from '#lib/utils'
 
 export function Profile() {
   const { t } = useTranslation()
@@ -47,11 +49,11 @@ export function Profile() {
   }
 
   if (status === 'loading' || !profile) {
-    return <div className="p-8" />
+    return <div className={PAGE_PADDING} />
   }
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-6 p-8">
+    <div className={cn(PAGE_PADDING, 'mx-auto flex max-w-3xl flex-col gap-6')}>
       <Tabs defaultValue="profile" className="gap-6">
         <TabsList variant="line">
           <TabsTrigger value="profile">{t('profile.tabProfile')}</TabsTrigger>

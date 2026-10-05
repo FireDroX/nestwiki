@@ -18,10 +18,12 @@ import { usePageRoom } from '#hooks/usePageRoom'
 import { usePageTags } from '#hooks/usePageTags'
 import { usePermissions } from '#hooks/usePermissions'
 import { getRealtimeSocket } from '#lib/realtime-client'
+import { PAGE_PADDING } from '#utils/page-layout'
+import { cn } from '#lib/utils'
 
 function PageViewSkeleton() {
   return (
-    <div className="space-y-6 p-8">
+    <div className={cn(PAGE_PADDING, 'space-y-6')}>
       <div className="space-y-2">
         <div className="flex items-start justify-between gap-4">
           <Skeleton className="h-4 w-40" />
@@ -53,7 +55,7 @@ interface PageStatusMessageProps {
 function PageStatusMessage({ title, description }: PageStatusMessageProps) {
   const { t } = useTranslation()
   return (
-    <div className="flex max-w-3xl flex-col items-start gap-4 p-8">
+    <div className={cn(PAGE_PADDING, 'flex max-w-3xl flex-col items-start gap-4')}>
       <h1 className="text-2xl font-semibold">{title}</h1>
       <p className="text-muted-foreground">{description}</p>
       <Button asChild>
@@ -132,7 +134,7 @@ export function PageView() {
   }
 
   return (
-    <article className="space-y-6 p-8">
+    <article className={cn(PAGE_PADDING, 'space-y-6')}>
       <div className="space-y-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
           <PageBreadcrumb title={page.title} parentId={page.parentId} />

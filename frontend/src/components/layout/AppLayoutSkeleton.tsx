@@ -1,4 +1,6 @@
 import { Skeleton } from '#components/ui/skeleton'
+import { PAGE_PADDING } from '#utils/page-layout'
+import { cn } from '#lib/utils'
 
 export function AppLayoutSkeleton() {
   return (
@@ -15,7 +17,7 @@ export function AppLayoutSkeleton() {
           <Skeleton className="h-8 w-3/4" />
           <Skeleton className="h-8 w-full" />
         </aside>
-        <main className="min-w-0 flex-1 overflow-y-auto p-8">
+        <main className={cn(PAGE_PADDING, 'min-w-0 flex-1 overflow-y-auto')}>
           <Skeleton className="h-8 w-48" />
         </main>
       </div>
