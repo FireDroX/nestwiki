@@ -9,6 +9,7 @@ import { PermissionsModule } from '../permissions/permissions.module.js';
 import { StorageModule } from '../storage/storage.module.js';
 import { User } from './entities/user.entity.js';
 import { TypeormUserRepository } from './persistence/typeorm.user.repository.js';
+import { DefaultAdminInitializer } from './services/default-admin.initializer.js';
 import { UsersService } from './services/users.service.js';
 import { AdminUsersController, UsersController } from './users.controller.js';
 
@@ -32,6 +33,7 @@ import { AdminUsersController, UsersController } from './users.controller.js';
         config.get<string>('MINIO_BUCKET')!,
     },
     UsersService,
+    DefaultAdminInitializer,
   ],
   exports: [UsersService],
 })

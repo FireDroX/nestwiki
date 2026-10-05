@@ -39,4 +39,5 @@ export interface UserRepository {
   lockAccount(id: string, lockedUntil: Date): Promise<User>;
   resetFailedLoginAttempts(id: string): Promise<User>;
   countActiveAdmins(): Promise<number>;
+  countAdmins(): Promise<number>;
 }

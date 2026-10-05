@@ -26,11 +26,23 @@ describe('TypeormUserRepository', () => {
   let ormRepository: {
     update: ReturnType<typeof vi.fn>;
     findOneBy: ReturnType<typeof vi.fn>;
+    count: ReturnType<typeof vi.fn>;
   };
 
   beforeEach(() => {
-    ormRepository = { update: vi.fn(), findOneBy: vi.fn() };
+    ormRepository = { update: vi.fn(), findOneBy: vi.fn(), count: vi.fn() };
     repository = new TypeormUserRepository(ormRepository as never);
+  });
+
+  describe('countAdmins', () => {
+    it('counts every admin, deactivated ones included', async () => {
+      ormRepository.count.mockResolvedValue(3);
+
+      await expect(repository.countAdmins()).resolves.toBe(3);
+      expect(ormRepository.count).toHaveBeenCalledWith({
+        where: { role: 'admin' },
+      });
+    });
   });
 
   describe('update', () => {

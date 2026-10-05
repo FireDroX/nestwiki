@@ -402,7 +402,7 @@ pnpm install
 
 cd backend
 pnpm run migration:run    # crée le schéma
-pnpm run seed:dev         # utilisateur admin de dev
+pnpm run seed:admin       # premier admin (ADMIN_* de backend/.env), aussi créé au démarrage
 pnpm run seed:content     # arborescence de doc/notes de version/FAQ
 cd ..
 

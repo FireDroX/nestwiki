@@ -101,6 +101,7 @@ describe('UsersService', () => {
       lockAccount: vi.fn(),
       resetFailedLoginAttempts: vi.fn(),
       countActiveAdmins: vi.fn().mockResolvedValue(2),
+      countAdmins: vi.fn().mockResolvedValue(2),
     };
     adminAuditLogService = { record: vi.fn().mockResolvedValue(undefined) };
     storageService = {
