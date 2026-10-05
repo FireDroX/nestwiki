@@ -84,6 +84,7 @@ There are three `.env` files, each with a commented `.env.example` next to it.
 | `MINIO_ENDPOINT`, `MINIO_PORT`, `MINIO_USE_SSL`, `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`, `MINIO_BUCKET` | S3-compatible storage used for media. The bucket is created on start if missing. |
 | `MINIO_PUBLIC_ENDPOINT`, `MINIO_PUBLIC_PORT`, `MINIO_PUBLIC_USE_SSL` | Optional public host used to sign media URLs when `MINIO_ENDPOINT` is only reachable inside Docker. |
 | `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` | Optional Cloudflare Turnstile keys. |
+| `UPDATE_CHECK` | Set to `false` to stop checking GitHub for new releases (see [Updating](#updating)). |
 
 **`frontend/.env`** — the web app in development: `VITE_API_URL` (e.g. `http://localhost:3000/api`) and the optional `VITE_TURNSTILE_SITE_KEY`.
 
@@ -96,7 +97,9 @@ git pull
 docker compose up -d --build
 ```
 
-Migrations run automatically when the backend container starts. Read the [changelog](CHANGELOG.md) before upgrading: entries flagged with ⚠️ need an action on your side. Pre-built images are also published as `ghcr.io/firedrox/nestwiki-backend` and `ghcr.io/firedrox/nestwiki-frontend`, tagged `latest`, `X.Y` and `X.Y.Z`.
+Migrations run automatically when the backend container starts.
+
+Admins are told when a newer release exists: the API asks GitHub's public API for the latest NestWiki release (at most every 6 hours, nothing about your instance is sent) and the web app shows a notice to administrators until they update or ignore that version. Set `UPDATE_CHECK=false` in `backend/.env` to disable this outbound request. Read the [changelog](CHANGELOG.md) before upgrading: entries flagged with ⚠️ need an action on your side. Pre-built images are also published as `ghcr.io/firedrox/nestwiki-backend` and `ghcr.io/firedrox/nestwiki-frontend`, tagged `latest`, `X.Y` and `X.Y.Z`.
 
 ![Release notes, grouped by version](docs/screenshots/release-notes.jpg)
 

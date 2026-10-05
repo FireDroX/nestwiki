@@ -1,6 +1,11 @@
 export const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export const MIN_PASSWORD_LENGTH = 8;
 export const MIN_JWT_SECRET_LENGTH = 32;
+export const LATEST_RELEASE_URL =
+  'https://api.github.com/repos/FireDroX/nestwiki/releases/latest';
+export const LATEST_RELEASE_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+export const LATEST_RELEASE_FAILURE_CACHE_TTL_MS = 30 * 60 * 1000;
+export const LATEST_RELEASE_TIMEOUT_MS = 5000;
 export const KNOWN_DEFAULT_SECRETS: readonly string[] = [
   'changeme',
   'change-me',

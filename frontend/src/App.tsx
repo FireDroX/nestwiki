@@ -5,6 +5,7 @@ import { GlobalSearchCommand } from '#components/GlobalSearchCommand'
 import { ProtectedRoute } from '#components/ProtectedRoute'
 import { UserRole } from '#api/auth'
 import { useAuth } from '#hooks/useAuth'
+import { useUpdateNotification } from '#hooks/useUpdateNotification'
 import { AdminActivityLog } from '#pages/AdminActivityLog'
 import { AdminAuditLog } from '#pages/AdminAuditLog'
 import { AdminGroupDetail } from '#pages/AdminGroupDetail'
@@ -27,6 +28,7 @@ import { SearchResults } from '#pages/SearchResults'
 
 export function App() {
   const { status } = useAuth()
+  useUpdateNotification()
 
   if (status === 'loading') {
     return <AppLayoutSkeleton />

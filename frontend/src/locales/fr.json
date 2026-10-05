@@ -231,6 +231,12 @@
     "pagesGroup": "Pages",
     "viewAll": "Voir tous les résultats pour « {{query}} »"
   },
+  "updateNotice": {
+    "title": "NestWiki {{latest}} est disponible",
+    "description": "Cette instance utilise la version {{current}}.",
+    "viewRelease": "Voir la release",
+    "ignore": "Ignorer"
+  },
   "admin": {
     "usersTab": "Utilisateurs",
     "groupsTab": "Groupes",
