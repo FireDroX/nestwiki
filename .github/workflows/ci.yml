@@ -9,8 +9,8 @@ on:
 env:
   NODE_VERSION: '22'
   REGISTRY: ghcr.io
-  BACKEND_IMAGE: ${{ github.repository_owner }}/openwiki-backend
-  FRONTEND_IMAGE: ${{ github.repository_owner }}/openwiki-frontend
+  BACKEND_IMAGE: ${{ github.repository_owner }}/nestwiki-backend
+  FRONTEND_IMAGE: ${{ github.repository_owner }}/nestwiki-frontend
 
 jobs:
   lint:
@@ -38,7 +38,7 @@ jobs:
         image: mysql:8
         env:
           MYSQL_ROOT_PASSWORD: root
-          MYSQL_DATABASE: openwiki
+          MYSQL_DATABASE: nestwiki
         ports:
           - 3306:3306
         options: >-
@@ -51,12 +51,12 @@ jobs:
       DB_PORT: 3306
       DB_USERNAME: root
       DB_PASSWORD: root
-      DB_DATABASE: openwiki
+      DB_DATABASE: nestwiki
       MINIO_ENDPOINT: localhost
       MINIO_PORT: 9000
       MINIO_ACCESS_KEY: minioadmin
       MINIO_SECRET_KEY: minioadmin
-      MINIO_BUCKET: openwiki
+      MINIO_BUCKET: nestwiki
       MINIO_USE_SSL: 'false'
       JWT_ACCESS_SECRET: ci-access-secret
       JWT_REFRESH_SECRET: ci-refresh-secret
