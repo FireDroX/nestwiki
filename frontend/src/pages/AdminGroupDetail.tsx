@@ -79,7 +79,7 @@ export function AdminGroupDetail() {
           <h1 className="mb-4 text-xl font-semibold">{group.name}</h1>
 
           <Tabs defaultValue="members" className="gap-6">
-            <TabsList variant="line">
+            <TabsList variant="line" className="max-w-full justify-start overflow-x-auto [scrollbar-width:none]">
               <TabsTrigger value="members">{t('admin.groups.tabMembers')}</TabsTrigger>
               <TabsTrigger value="permissions">{t('admin.groups.tabPermissions')}</TabsTrigger>
               <TabsTrigger value="access">{t('admin.groups.tabAccess')}</TabsTrigger>

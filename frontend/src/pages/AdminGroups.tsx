@@ -57,7 +57,7 @@ export function AdminGroups() {
   return (
     <div className={PAGE_PADDING}>
       <AdminNav />
-      <div className="mt-5 mb-4 flex items-center justify-between">
+      <div className="mt-5 mb-4 flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div />
         <CreateGroupDialog onCreated={(group) => setGroups((current) => [...current, group])} />
       </div>

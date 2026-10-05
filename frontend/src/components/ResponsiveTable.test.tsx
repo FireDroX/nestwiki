@@ -110,6 +110,22 @@ describe('ResponsiveTable', () => {
     }
   })
 
+  it('opens a row when it is clicked, as a table row or as a card', async () => {
+    const user = userEvent.setup()
+
+    for (const desktop of [true, false]) {
+      setViewport(desktop)
+      const onRowClick = vi.fn()
+      const { unmount } = render(
+        <ResponsiveTable columns={COLUMNS} rows={FRUITS} rowKey={(fruit) => fruit.id} onRowClick={onRowClick} />,
+      )
+
+      await user.click(screen.getByText('Yellow'))
+      expect(onRowClick).toHaveBeenCalledWith(FRUITS[1])
+      unmount()
+    }
+  })
+
   it('shows the empty state instead of an empty table', () => {
     setViewport(true)
 

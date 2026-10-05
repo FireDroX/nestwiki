@@ -13,7 +13,7 @@ import {
 } from '#components/ui/alert-dialog'
 import { Badge } from '#components/ui/badge'
 import { Button } from '#components/ui/button'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '#components/ui/table'
+import { ResponsiveTable, type ResponsiveColumn } from '#components/ResponsiveTable'
 import type { McpApiKeySummary } from '#api/admin-mcp'
 import { cn } from '#lib/utils'
 import { formatRelativeTime } from '#utils/relative-time'
@@ -24,76 +24,85 @@ interface McpApiKeysTableProps {
   onRevoke: (key: McpApiKeySummary) => void
 }
 
+interface RevokeKeyButtonProps {
+  apiKey: McpApiKeySummary
+  pending: boolean
+  onRevoke: (key: McpApiKeySummary) => void
+}
+
+function RevokeKeyButton({ apiKey, pending, onRevoke }: RevokeKeyButtonProps) {
+  const { t } = useTranslation()
+  const isRevoked = apiKey.revokedAt !== null
+
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <Button type="button" variant="ghost" size="icon-sm" disabled={isRevoked || pending}>
+          <Ban />
+          <span className="sr-only">{t('admin.mcpKeys.revokeSr', { name: apiKey.name })}</span>
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{t('admin.mcpKeys.revokeConfirmTitle')}</AlertDialogTitle>
+          <AlertDialogDescription>
+            {t('admin.mcpKeys.revokeConfirmDescription', { name: apiKey.name })}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+          <AlertDialogAction variant="destructive" onClick={() => onRevoke(apiKey)}>
+            {t('admin.mcpKeys.revokeConfirmAction')}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  )
+}
+
 export function McpApiKeysTable({ keys, pendingKeyId, onRevoke }: McpApiKeysTableProps) {
   const { t } = useTranslation()
 
+  const columns: ResponsiveColumn<McpApiKeySummary>[] = [
+    { id: 'name', header: t('admin.mcpKeys.columnName'), primary: true, className: 'font-medium', cell: (key) => key.name },
+    {
+      id: 'scopes',
+      header: t('admin.mcpKeys.columnScopes'),
+      cell: (key) => (
+        <div className="flex flex-wrap gap-1">
+          {key.scopes.map((scope) => (
+            <Badge key={scope} variant="secondary" className="font-mono">
+              {scope}
+            </Badge>
+          ))}
+        </div>
+      ),
+    },
+    {
+      id: 'lastUsed',
+      header: t('admin.mcpKeys.columnLastUsed'),
+      className: 'text-muted-foreground',
+      cell: (key) => (key.lastUsedAt ? formatRelativeTime(key.lastUsedAt) : t('admin.mcpKeys.neverUsed')),
+    },
+    {
+      id: 'status',
+      header: t('admin.mcpKeys.columnStatus'),
+      cell: (key) =>
+        key.revokedAt !== null ? (
+          <Badge variant="destructive">{t('admin.mcpKeys.statusRevoked')}</Badge>
+        ) : (
+          <Badge variant="outline">{t('admin.mcpKeys.statusActive')}</Badge>
+        ),
+    },
+  ]
+
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>{t('admin.mcpKeys.columnName')}</TableHead>
-          <TableHead>{t('admin.mcpKeys.columnScopes')}</TableHead>
-          <TableHead>{t('admin.mcpKeys.columnLastUsed')}</TableHead>
-          <TableHead>{t('admin.mcpKeys.columnStatus')}</TableHead>
-          <TableHead className="w-10" />
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {keys.map((key) => {
-          const isRevoked = key.revokedAt !== null
-          const isPending = pendingKeyId === key.id
-          return (
-            <TableRow key={key.id} className={cn(isRevoked && 'opacity-50')}>
-              <TableCell className="font-medium">{key.name}</TableCell>
-              <TableCell>
-                <div className="flex flex-wrap gap-1">
-                  {key.scopes.map((scope) => (
-                    <Badge key={scope} variant="secondary" className="font-mono">
-                      {scope}
-                    </Badge>
-                  ))}
-                </div>
-              </TableCell>
-              <TableCell className="text-muted-foreground">
-                {key.lastUsedAt ? formatRelativeTime(key.lastUsedAt) : t('admin.mcpKeys.neverUsed')}
-              </TableCell>
-              <TableCell>
-                {isRevoked ? (
-                  <Badge variant="destructive">{t('admin.mcpKeys.statusRevoked')}</Badge>
-                ) : (
-                  <Badge variant="outline">{t('admin.mcpKeys.statusActive')}</Badge>
-                )}
-              </TableCell>
-              <TableCell>
-                <div className="flex justify-end">
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button type="button" variant="ghost" size="icon-sm" disabled={isRevoked || isPending}>
-                        <Ban />
-                        <span className="sr-only">{t('admin.mcpKeys.revokeSr', { name: key.name })}</span>
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>{t('admin.mcpKeys.revokeConfirmTitle')}</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          {t('admin.mcpKeys.revokeConfirmDescription', { name: key.name })}
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
-                        <AlertDialogAction variant="destructive" onClick={() => onRevoke(key)}>
-                          {t('admin.mcpKeys.revokeConfirmAction')}
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </div>
-              </TableCell>
-            </TableRow>
-          )
-        })}
-      </TableBody>
-    </Table>
+    <ResponsiveTable
+      columns={columns}
+      rows={keys}
+      rowKey={(key) => key.id}
+      rowClassName={(key) => cn(key.revokedAt !== null && 'opacity-50')}
+      actions={(key) => <RevokeKeyButton apiKey={key} pending={pendingKeyId === key.id} onRevoke={onRevoke} />}
+    />
   )
 }

@@ -60,7 +60,7 @@ export function AdminUserDetail() {
           <h1 className="mb-4 text-xl font-semibold">{user.displayName}</h1>
 
           <Tabs defaultValue="info" className="gap-6">
-            <TabsList variant="line">
+            <TabsList variant="line" className="max-w-full justify-start overflow-x-auto [scrollbar-width:none]">
               <TabsTrigger value="info">{t('admin.users.tabInfo')}</TabsTrigger>
               <TabsTrigger value="groups">{t('admin.groups.tabMembers')}</TabsTrigger>
               <TabsTrigger value="permissions">{t('admin.groups.tabPermissions')}</TabsTrigger>

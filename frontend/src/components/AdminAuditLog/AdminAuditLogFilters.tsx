@@ -55,12 +55,12 @@ export function AdminAuditLogFilters({
   const { t } = useTranslation()
 
   return (
-    <div className="flex flex-wrap gap-3">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:flex lg:flex-wrap">
       <Select
         value={adminId ?? ALL_VALUE}
         onValueChange={(value) => onChange({ adminId: value === ALL_VALUE ? undefined : value })}
       >
-        <SelectTrigger className="w-64">
+        <SelectTrigger className="w-full lg:w-64">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -76,7 +76,7 @@ export function AdminAuditLogFilters({
         value={action ?? ALL_VALUE}
         onValueChange={(value) => onChange({ action: value === ALL_VALUE ? undefined : value })}
       >
-        <SelectTrigger className="w-64">
+        <SelectTrigger className="w-full lg:w-64">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -90,19 +90,19 @@ export function AdminAuditLogFilters({
       </Select>
       <Input
         type="date"
-        className="w-40"
+        className="w-full lg:w-40"
         value={dateFrom ?? ''}
         onChange={(event) => onChange({ dateFrom: event.target.value || undefined })}
       />
       <Input
         type="date"
-        className="w-40"
+        className="w-full lg:w-40"
         value={dateTo ?? ''}
         onChange={(event) => onChange({ dateTo: event.target.value || undefined })}
       />
       <Input
         type="text"
-        className="w-64"
+        className="w-full lg:w-64"
         placeholder={t('admin.auditLog.searchPlaceholder')}
         value={search ?? ''}
         onChange={(event) => onChange({ search: event.target.value || undefined })}

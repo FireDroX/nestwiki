@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '#components/ui/table'
+import { ResponsiveTable, type ResponsiveColumn } from '#components/ResponsiveTable'
 import type { UserActivityLogItem } from '#api/user-activity-log'
 import { formatRelativeTime } from '#utils/relative-time'
 
@@ -10,31 +10,28 @@ interface AdminActivityLogTableProps {
 export function AdminActivityLogTable({ items }: AdminActivityLogTableProps) {
   const { t } = useTranslation()
 
-  return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>{t('admin.activityLog.columnDate')}</TableHead>
-          <TableHead>{t('admin.activityLog.columnUser')}</TableHead>
-          <TableHead>{t('admin.activityLog.columnAction')}</TableHead>
-          <TableHead>{t('admin.activityLog.columnTarget')}</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {items.map((item) => (
-          <TableRow key={item.id}>
-            <TableCell className="text-muted-foreground">{formatRelativeTime(item.createdAt)}</TableCell>
-            <TableCell>{item.userDisplayName}</TableCell>
-            <TableCell className="font-mono">
-              {t(`admin.activityLog.actions.${item.action}`, { defaultValue: item.action })}
-            </TableCell>
-            <TableCell className="font-mono text-muted-foreground">
-              {item.targetType}
-              {item.targetId ? ` · ${item.targetId}` : ''}
-            </TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
-  )
+  const columns: ResponsiveColumn<UserActivityLogItem>[] = [
+    {
+      id: 'date',
+      header: t('admin.activityLog.columnDate'),
+      className: 'text-muted-foreground',
+      cell: (item) => formatRelativeTime(item.createdAt),
+    },
+    { id: 'user', header: t('admin.activityLog.columnUser'), cell: (item) => item.userDisplayName },
+    {
+      id: 'action',
+      header: t('admin.activityLog.columnAction'),
+      primary: true,
+      className: 'font-mono',
+      cell: (item) => t(`admin.activityLog.actions.${item.action}`, { defaultValue: item.action }),
+    },
+    {
+      id: 'target',
+      header: t('admin.activityLog.columnTarget'),
+      className: 'font-mono text-muted-foreground',
+      cell: (item) => `${item.targetType}${item.targetId ? ` · ${item.targetId}` : ''}`,
+    },
+  ]
+
+  return <ResponsiveTable columns={columns} rows={items} rowKey={(item) => item.id} />
 }

@@ -97,7 +97,7 @@ export function AdminUsers() {
   return (
     <div className={PAGE_PADDING}>
       <AdminNav />
-      <div className="mt-5 mb-4 flex items-center justify-between gap-3">
+      <div className="mt-5 mb-4 flex flex-col-reverse items-start gap-3 lg:flex-row lg:justify-between">
         <UsersFilters value={filters} groups={groups} onChange={setFilters} />
         <CreateUserDialog onCreated={() => reload()} />
       </div>

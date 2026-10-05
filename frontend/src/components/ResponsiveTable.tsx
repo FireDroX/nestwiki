@@ -25,6 +25,7 @@ interface ResponsiveTableProps<Row> {
   rowKey: (row: Row) => string
   rowClassName?: (row: Row) => string | undefined
   actions?: (row: Row) => ReactNode
+  onRowClick?: (row: Row) => void
   selection?: ResponsiveTableSelection<Row>
   empty?: ReactNode
 }
@@ -56,6 +57,7 @@ export function ResponsiveTable<Row>({
   rowKey,
   rowClassName,
   actions,
+  onRowClick,
   selection,
   empty,
 }: ResponsiveTableProps<Row>) {
@@ -81,16 +83,18 @@ export function ResponsiveTable<Row>({
               </TableHead>
             )}
             {columns.map((column) => (
-              <TableHead key={column.id} className={column.className}>
-                {column.header}
-              </TableHead>
+              <TableHead key={column.id}>{column.header}</TableHead>
             ))}
             {actions && <TableHead className="w-px" />}
           </TableRow>
         </TableHeader>
         <TableBody>
           {rows.map((row) => (
-            <TableRow key={rowKey(row)} className={rowClassName?.(row)}>
+            <TableRow
+              key={rowKey(row)}
+              className={cn(onRowClick && 'cursor-pointer', rowClassName?.(row))}
+              onClick={onRowClick && (() => onRowClick(row))}
+            >
               {selection && (
                 <TableCell>
                   <Checkbox
@@ -136,7 +140,12 @@ export function ResponsiveTable<Row>({
         {rows.map((row) => (
           <li
             key={rowKey(row)}
-            className={cn('rounded-lg border border-border bg-card p-3 text-sm', rowClassName?.(row))}
+            className={cn(
+              'rounded-lg border border-border bg-card p-3 text-sm',
+              onRowClick && 'cursor-pointer',
+              rowClassName?.(row),
+            )}
+            onClick={onRowClick && (() => onRowClick(row))}
           >
             <div className="flex items-start gap-3">
               {selection && (
@@ -166,7 +175,9 @@ export function ResponsiveTable<Row>({
               </dl>
             )}
             {actions && (
-              <div className="mt-3 flex justify-end gap-1 border-t border-border pt-2">{actions(row)}</div>
+              <div className="mt-3 flex justify-end gap-1 border-t border-border pt-2 [&_[data-slot=button]]:min-h-10 [&_[data-slot=button]]:min-w-10">
+                {actions(row)}
+              </div>
             )}
           </li>
         ))}
