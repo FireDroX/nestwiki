@@ -95,7 +95,7 @@ describe('MetaService', () => {
     expect(tagsService.listTagsOfAlreadyAuthorizedPage).toHaveBeenCalledWith(
       'install',
     );
-    expect(meta.title).toBe('Installation — OpenWiki');
+    expect(meta.title).toBe('Installation — NestWiki');
     expect(meta.description).toBe(
       'Documentation › Installation · 2 tags · 1 240 vues',
     );

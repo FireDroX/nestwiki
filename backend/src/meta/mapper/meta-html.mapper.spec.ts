@@ -6,7 +6,7 @@ const LINE_SEPARATOR = String.fromCharCode(0x2028);
 
 function buildMeta(overrides: Partial<PageMetaDto> = {}): PageMetaDto {
   return {
-    title: 'Guide — OpenWiki',
+    title: 'Guide — NestWiki',
     description: 'Documentation › Guide',
     url: 'https://wiki.example.com/pages/docs/guide',
     imageUrl: 'https://wiki.example.com/og-image.png',
@@ -20,7 +20,7 @@ describe('MetaHtmlMapper', () => {
     const html = MetaHtmlMapper.toHtml(buildMeta());
 
     expect(html).toContain(
-      '<meta property="og:title" content="Guide — OpenWiki" />',
+      '<meta property="og:title" content="Guide — NestWiki" />',
     );
     expect(html).toContain(
       '<meta property="og:url" content="https://wiki.example.com/pages/docs/guide" />',

@@ -15,7 +15,7 @@ import {
 } from '../registry/mcp-tools.registry.js';
 import type { McpAuthContext } from './api-keys.service.js';
 
-const SERVER_NAME = 'openwiki-mcp';
+const SERVER_NAME = 'nestwiki-mcp';
 const SERVER_VERSION = '1.0.0';
 
 @Injectable()

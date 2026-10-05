@@ -12,9 +12,9 @@ const JSON_BODY_LIMIT = '30mb';
 
 function setupSwagger(app: INestApplication): void {
   const config = new DocumentBuilder()
-    .setTitle('OpenWiki API')
+    .setTitle('NestWiki API')
     .setDescription(
-      'Documentation interactive de tous les endpoints exposés par le backend OpenWiki.',
+      'Documentation interactive de tous les endpoints exposés par le backend NestWiki.',
     )
     .setVersion('1.0')
     .addBearerAuth()
