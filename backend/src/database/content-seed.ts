@@ -953,6 +953,17 @@ $$
         tags: ['changelog'],
         content: `# Notes de version
 
+## Version 1.0
+
+<details>
+<summary>1.0.0 — 2026-10-05</summary>
+
+- Le projet s'appelle désormais **NestWiki** (anciennement OpenWiki), pour éviter la confusion avec un autre projet open source du même nom. Nom affiché, logo, favicon, image d'aperçu, titre de l'API et nom du serveur MCP (\`nestwiki-mcp\`) sont mis à jour.
+- Images Docker renommées : \`ghcr.io/firedrox/nestwiki-backend\` et \`ghcr.io/firedrox/nestwiki-frontend\` (les anciennes \`openwiki-*\` ne reçoivent plus de mises à jour). Une instance qui référence les images directement doit mettre à jour leur nom ; \`docker-compose.external.yml\` est déjà à jour.
+- Aucune action côté base de données ni stockage : seules les valeurs par défaut des \`.env.example\` passent à \`nestwiki\`, les \`.env\` existants continuent de fonctionner tels quels.
+
+</details>
+
 ## Version 0.31
 
 <details>
