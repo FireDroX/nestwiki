@@ -956,6 +956,14 @@ $$
 ## Version 1.0
 
 <details>
+<summary>1.0.1 — 2026-10-05</summary>
+
+- NestWiki est désormais un logiciel libre sous licence **GNU AGPL-3.0** (fichier \`LICENSE\` à la racine du dépôt) : vous pouvez l'utiliser, le modifier et le redistribuer, à condition de publier sous la même licence le code source de toute version modifiée, y compris lorsqu'elle est seulement proposée en ligne.
+- Métadonnées des paquets complétées (description, auteur, dépôt, page d'accueil, suivi des bugs, mots-clés).
+
+</details>
+
+<details>
 <summary>1.0.0 — 2026-10-05</summary>
 
 - Le projet s'appelle désormais **NestWiki** (anciennement OpenWiki), pour éviter la confusion avec un autre projet open source du même nom. Nom affiché, logo, favicon, image d'aperçu, titre de l'API et nom du serveur MCP (\`nestwiki-mcp\`) sont mis à jour.

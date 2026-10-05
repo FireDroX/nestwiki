@@ -1,10 +1,25 @@
 {
   "name": "backend",
-  "version": "1.0.0",
-  "description": "",
-  "author": "",
+  "version": "1.0.1",
+  "description": "NestWiki API: NestJS + TypeORM (MySQL) backend with object storage, real-time updates and an MCP server.",
+  "keywords": [
+    "wiki",
+    "self-hosted",
+    "nestjs",
+    "mcp"
+  ],
+  "homepage": "https://github.com/FireDroX/nestwiki#readme",
+  "bugs": {
+    "url": "https://github.com/FireDroX/nestwiki/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/FireDroX/nestwiki.git",
+    "directory": "backend"
+  },
+  "author": "FireDroX <contact@addrien.fr>",
   "private": true,
-  "license": "UNLICENSED",
+  "license": "AGPL-3.0-only",
   "type": "module",
   "scripts": {
     "build": "nest build",
