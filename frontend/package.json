@@ -1,7 +1,24 @@
 {
   "name": "frontend",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.1",
+  "description": "NestWiki web client: React + TypeScript + Vite single-page app.",
+  "keywords": [
+    "wiki",
+    "self-hosted",
+    "react"
+  ],
+  "homepage": "https://github.com/FireDroX/nestwiki#readme",
+  "bugs": {
+    "url": "https://github.com/FireDroX/nestwiki/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/FireDroX/nestwiki.git",
+    "directory": "frontend"
+  },
+  "license": "AGPL-3.0-only",
+  "author": "FireDroX <contact@addrien.fr>",
   "type": "module",
   "imports": {
     "#*": "./src/*"

@@ -1,6 +1,25 @@
 {
   "name": "nestwiki",
-  "version": "1.0.0",
+  "version": "1.0.1",
+  "description": "Self-hosted collaborative wiki: page tree, version history, granular permissions, search, media and an MCP server for AI assistants.",
+  "keywords": [
+    "wiki",
+    "self-hosted",
+    "knowledge-base",
+    "nestjs",
+    "react",
+    "mcp"
+  ],
+  "homepage": "https://github.com/FireDroX/nestwiki#readme",
+  "bugs": {
+    "url": "https://github.com/FireDroX/nestwiki/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/FireDroX/nestwiki.git"
+  },
+  "license": "AGPL-3.0-only",
+  "author": "FireDroX <contact@addrien.fr>",
   "private": true,
   "packageManager": "pnpm@11.24.0",
   "scripts": {
