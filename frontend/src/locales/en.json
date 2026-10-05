@@ -286,6 +286,8 @@
       "noGroupFound": "No group found.",
       "removeGroupSr": "Remove from {{name}}",
       "selectedCount": "{{count}} selected",
+      "selectAll": "Select all",
+      "selectUser": "Select {{name}}",
       "bulkAddToGroup": "Add to a group",
       "bulkCreateGroup": "Create a group from selection",
       "bulkCreateGroupDescription": "The {{count}} selected users will be added to this new group.",

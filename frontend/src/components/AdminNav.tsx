@@ -27,7 +27,7 @@ export function AdminNav() {
   return (
     <nav
       ref={navRef}
-      className="-mx-4 flex gap-1 overflow-x-auto border-b border-border px-4 [scrollbar-width:none] sm:-mx-6 sm:px-6 lg:mx-0 lg:flex-wrap lg:gap-x-4 lg:gap-y-1 lg:overflow-visible lg:px-0 [&::-webkit-scrollbar]:hidden"
+      className="-mx-4 flex scroll-px-4 gap-1 overflow-x-auto border-b border-border px-4 sm:scroll-px-6 [scrollbar-width:none] sm:-mx-6 sm:px-6 lg:mx-0 lg:flex-wrap lg:gap-x-4 lg:gap-y-1 lg:overflow-visible lg:px-0 [&::-webkit-scrollbar]:hidden"
     >
       {links.map((link) => (
         <NavLink

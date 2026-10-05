@@ -16,7 +16,7 @@ export function UsersBulkActionsBar({ selectedUserIds, onDone }: UsersBulkAction
   if (selectedUserIds.length === 0) return null
 
   return (
-    <div className="flex items-center gap-3 rounded-md border bg-muted/40 px-3 py-2">
+    <div className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/40 px-3 py-2 sm:gap-3">
       <p className="text-sm font-medium">{t('admin.users.selectedCount', { count: selectedUserIds.length })}</p>
       <Button type="button" variant="outline" size="sm" onClick={() => setAddToGroupOpen(true)}>
         {t('admin.users.bulkAddToGroup')}

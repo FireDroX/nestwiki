@@ -65,7 +65,7 @@ export function AdminMcpKeys() {
   return (
     <div className={PAGE_PADDING}>
       <AdminNav />
-      <div className="mt-5 mb-4 flex items-center justify-between">
+      <div className="mt-5 mb-4 flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-muted-foreground">{t('admin.mcpKeys.description')}</p>
         <CreateApiKeyDialog onCreated={handleCreated} />
       </div>

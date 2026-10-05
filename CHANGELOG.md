@@ -2,6 +2,13 @@
 
 All notable changes to NestWiki are documented here, newest first, one `## <version> — <date>` section per release. This file is the single source for the in-app "Notes de version" page, which groups releases by minor version (`1.0`, `0.31`…). Entries up to 0.31.10 were written in French, the project's original language.
 
+## 1.0.6 — 2026-10-05
+
+- Administration utilisable sur mobile et tablette : les 7 tableaux (utilisateurs, groupes, clés API MCP, clients OAuth, journal MCP, journal d'audit, journal d'activité) deviennent des cartes empilées sous 1 024 px — titre en tête, chaque information avec son libellé, actions en pied de carte avec des boutons de 40 px. Sur ordinateur, les tableaux restent identiques.
+- Les filtres (recherche, listes déroulantes, dates) occupent toute la largeur sur mobile et se rangent sur deux colonnes sur tablette, au lieu de déborder de l'écran ; le bouton de création passe au-dessus des filtres.
+- Fiches utilisateur et groupe : les onglets défilent horizontalement quand ils ne tiennent pas sur une ligne.
+- La barre de sélection groupée des utilisateurs passe à la ligne sur petit écran.
+
 ## 1.0.5 — 2026-10-05
 
 - Première étape de l'interface adaptée au mobile et à la tablette : marges des pages réduites sur petit écran (16 px sur mobile, 24 px sur tablette, 32 px sur ordinateur) au lieu de 32 px partout.

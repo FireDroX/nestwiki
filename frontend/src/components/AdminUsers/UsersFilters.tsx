@@ -24,8 +24,8 @@ export function UsersFilters({ value, groups, onChange }: UsersFiltersProps) {
   const { t } = useTranslation()
 
   return (
-    <div className="flex flex-wrap items-center gap-3">
-      <InputGroup className="max-w-[280px]">
+    <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-3 lg:flex lg:w-auto lg:flex-wrap lg:items-center">
+      <InputGroup className="sm:col-span-3 lg:max-w-[280px]">
         <InputGroupAddon>
           <Search />
         </InputGroupAddon>
@@ -40,7 +40,7 @@ export function UsersFilters({ value, groups, onChange }: UsersFiltersProps) {
         value={value.role ?? ALL_VALUE}
         onValueChange={(role) => onChange({ ...value, role: role === ALL_VALUE ? undefined : (role as UserRole) })}
       >
-        <SelectTrigger className="w-40">
+        <SelectTrigger className="w-full lg:w-40">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -54,7 +54,7 @@ export function UsersFilters({ value, groups, onChange }: UsersFiltersProps) {
         value={value.groupId ?? ALL_VALUE}
         onValueChange={(groupId) => onChange({ ...value, groupId: groupId === ALL_VALUE ? undefined : groupId })}
       >
-        <SelectTrigger className="w-48">
+        <SelectTrigger className="w-full lg:w-48">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -71,7 +71,7 @@ export function UsersFilters({ value, groups, onChange }: UsersFiltersProps) {
         value={value.active === undefined ? ALL_VALUE : String(value.active)}
         onValueChange={(active) => onChange({ ...value, active: active === ALL_VALUE ? undefined : active === 'true' })}
       >
-        <SelectTrigger className="w-40">
+        <SelectTrigger className="w-full lg:w-40">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
