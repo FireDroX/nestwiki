@@ -81,14 +81,14 @@ const PAGE_TREE_SEED: PageSeed[] = [
 </style>
 
 <div class="doc-hero">
-  <h1>Documentation OpenWiki</h1>
-  <p>Tout ce qu'il faut pour installer, configurer, déployer et utiliser OpenWiki — utilisez l'arborescence à gauche pour naviguer, ou les raccourcis ci-dessous.</p>
+  <h1>Documentation NestWiki</h1>
+  <p>Tout ce qu'il faut pour installer, configurer, déployer et utiliser NestWiki — utilisez l'arborescence à gauche pour naviguer, ou les raccourcis ci-dessous.</p>
 </div>
 
 <div class="doc-link-grid">
   <a class="doc-link-card" href="/pages/documentation/guide-demarrage">
     <strong>Guide de démarrage</strong>
-    <span>Installer, configurer et lancer OpenWiki en local</span>
+    <span>Installer, configurer et lancer NestWiki en local</span>
   </a>
   <a class="doc-link-card" href="/pages/documentation/guide-demarrage/deploiement">
     <strong>Déploiement</strong>
@@ -160,11 +160,11 @@ const PAGE_TREE_SEED: PageSeed[] = [
 
 # Guide de démarrage
 
-Ce guide couvre l'installation locale, la configuration, et le déploiement en production d'OpenWiki, de bout en bout.
+Ce guide couvre l'installation locale, la configuration, et le déploiement en production de NestWiki, de bout en bout.
 
 ## Vue d'ensemble
 
-OpenWiki est un monorepo pnpm avec deux packages : \`backend/\` (NestJS + TypeORM + MySQL) et \`frontend/\` (React + Vite). Les pages [Installation](/pages/documentation/guide-demarrage/installation), [Configuration](/pages/documentation/guide-demarrage/configuration) et [Déploiement](/pages/documentation/guide-demarrage/deploiement) détaillent chaque étape ; ce qui suit résume le parcours local complet.
+NestWiki est un monorepo pnpm avec deux packages : \`backend/\` (NestJS + TypeORM + MySQL) et \`frontend/\` (React + Vite). Les pages [Installation](/pages/documentation/guide-demarrage/installation), [Configuration](/pages/documentation/guide-demarrage/configuration) et [Déploiement](/pages/documentation/guide-demarrage/deploiement) détaillent chaque étape ; ce qui suit résume le parcours local complet.
 
 ## Étapes
 
@@ -225,7 +225,7 @@ OpenWiki est un monorepo pnpm avec deux packages : \`backend/\` (NestJS + TypeOR
 - Créez votre première page depuis le bouton "Nouvelle page" de la barre latérale.
 - Consultez [Marquages disponibles](/pages/documentation/marquages-disponibles) pour écrire du Markdown, du HTML/CSS ou des formules LaTeX dans vos pages.
 - Consultez la page [Endpoints](/pages/documentation/endpoints) pour la référence complète de l'API.
-- Pour mettre OpenWiki en production, voir [Déploiement](/pages/documentation/guide-demarrage/deploiement).`,
+- Pour mettre NestWiki en production, voir [Déploiement](/pages/documentation/guide-demarrage/deploiement).`,
         children: [
           {
             slug: 'installation',
@@ -378,8 +378,8 @@ Deux versions du \`docker-compose\` sont disponibles :
 **Sur le serveur, une seule fois (version complète) :**
 
 \`\`\`bash
-git clone <url-du-dépôt> /chemin/vers/openwiki
-cd /chemin/vers/openwiki
+git clone <url-du-dépôt> /chemin/vers/nestwiki
+cd /chemin/vers/nestwiki
 cp .env.example .env               # MYSQL_*, MINIO_*, VITE_*
 cp backend/.env.example backend/.env
 cp frontend/.env.example frontend/.env
@@ -392,8 +392,8 @@ docker compose up -d --build
 **Version allégée (mariadb/minio déjà existants) :**
 
 \`\`\`bash
-git clone <url-du-dépôt> /chemin/vers/openwiki
-cd /chemin/vers/openwiki
+git clone <url-du-dépôt> /chemin/vers/nestwiki
+cd /chemin/vers/nestwiki
 cp .env.example .env               # seul VITE_* est lu par cette version
 cp backend/.env.example backend/.env
 cp frontend/.env.example frontend/.env
@@ -438,7 +438,7 @@ Le backend construit les URLs absolues de la carte (\`og:url\`, boutons) à part
 Le déploiement passe par un tunnel Cloudflare (\`cloudflared\`) plutôt que d'exposer SSH publiquement — sans application Access devant (pas de service token à gérer). À configurer une fois, côté [Cloudflare Zero Trust](https://one.dash.cloudflare.com/) :
 
 1. **Tunnel** — créer un tunnel \`cloudflared\` sur le serveur, avec une route publique (Public Hostname) vers \`ssh://localhost:22\`.
-2. **Clé SSH** — générer une paire de clés dédiée au déploiement (\`ssh-keygen -t ed25519 -C "openwiki-deploy"\`, sans passphrase) et ajouter la clé **publique** à \`~/.ssh/authorized_keys\` de l'utilisateur de déploiement sur le serveur.
+2. **Clé SSH** — générer une paire de clés dédiée au déploiement (\`ssh-keygen -t ed25519 -C "nestwiki-deploy"\`, sans passphrase) et ajouter la clé **publique** à \`~/.ssh/authorized_keys\` de l'utilisateur de déploiement sur le serveur.
 
 Puis, secrets du dépôt GitHub (Settings → Secrets and variables → Actions) :
 
@@ -447,7 +447,7 @@ Puis, secrets du dépôt GitHub (Settings → Secrets and variables → Actions)
 | \`DEPLOY_SSH_PRIVATE_KEY\` | Clé **privée** générée à l'étape 2 |
 | \`DEPLOY_SSH_HOSTNAME\` | Hostname public du tunnel (étape 1) |
 | \`DEPLOY_SSH_USER\` | Utilisateur SSH sur le serveur |
-| \`DEPLOY_PATH\` | Chemin absolu du clone git sur le serveur (ex. \`/opt/openwiki\`) |
+| \`DEPLOY_PATH\` | Chemin absolu du clone git sur le serveur (ex. \`/opt/nestwiki\`) |
 
 Si une application Access protège un jour ce hostname (service token), \`deploy.yml\` sait déjà où l'ajouter : \`TUNNEL_SERVICE_TOKEN_ID\`/\`TUNNEL_SERVICE_TOKEN_SECRET\` en env du job \`deploy\`, lus automatiquement par \`cloudflared access ssh\`.
 
@@ -471,7 +471,7 @@ La documentation ci-dessous est générée automatiquement à partir des routes 
         tags: ['documentation'],
         content: `# Aperçus de liens
 
-Quand vous collez le lien d'une page du wiki dans Discord, Slack, X, WhatsApp ou Telegram, la plateforme affiche un aperçu propre à cette page plutôt que la carte générique d'OpenWiki.
+Quand vous collez le lien d'une page du wiki dans Discord, Slack, X, WhatsApp ou Telegram, la plateforme affiche un aperçu propre à cette page plutôt que la carte générique de NestWiki.
 
 ## Ce que montre l'aperçu
 
@@ -486,11 +486,11 @@ Sur **Discord**, une carte aux couleurs du wiki :
 
 Le bouton « Modifier » est affiché à tout le monde, mais il mène à l'éditeur, qui vérifie toujours les droits : un visiteur sans le droit \`page.edit\` sur la page ne pourra pas la modifier (connexion demandée s'il n'est pas connecté).
 
-Les **autres plateformes** utilisent les balises Open Graph : titre de la page, une description du type \`Documentation › Installation · 2 tags · 1 240 vues\` (la partie tags disparaît quand la page n'en a aucun) et l'image habituelle d'OpenWiki.
+Les **autres plateformes** utilisent les balises Open Graph : titre de la page, une description du type \`Documentation › Installation · 2 tags · 1 240 vues\` (la partie tags disparaît quand la page n'en a aucun) et l'image habituelle de NestWiki.
 
 ## Pages privées
 
-Seules les pages **publiques** ont un aperçu détaillé. Le lien d'une page privée (ou d'une page qui n'existe pas) affiche la carte générique d'OpenWiki : ni son titre, ni ses tags, ni ses statistiques ne sont divulgués, même si la personne qui colle le lien y a accès. De même, le fil d'Ariane d'une page publique n'affiche jamais ses pages parentes privées.
+Seules les pages **publiques** ont un aperçu détaillé. Le lien d'une page privée (ou d'une page qui n'existe pas) affiche la carte générique de NestWiki : ni son titre, ni ses tags, ni ses statistiques ne sont divulgués, même si la personne qui colle le lien y a accès. De même, le fil d'Ariane d'une page publique n'affiche jamais ses pages parentes privées.
 
 ## Fonctionnement
 
@@ -539,7 +539,7 @@ Les statistiques de la carte viennent du même calcul que l'endpoint \`GET /api/
 
 # Intégration MCP
 
-OpenWiki expose un serveur [MCP](https://modelcontextprotocol.io/) (Model Context Protocol) permettant à un assistant IA compatible (Claude Desktop, Claude Code, etc.) de piloter le wiki directement : créer et modifier des pages, gérer des tags, des utilisateurs, uploader des médias et lancer des recherches.
+NestWiki expose un serveur [MCP](https://modelcontextprotocol.io/) (Model Context Protocol) permettant à un assistant IA compatible (Claude Desktop, Claude Code, etc.) de piloter le wiki directement : créer et modifier des pages, gérer des tags, des utilisateurs, uploader des médias et lancer des recherches.
 
 ## 1. Créer une clé API
 
@@ -585,7 +585,7 @@ Le serveur écoute sur \`POST/GET/DELETE /api/mcp\` (transport HTTP streamable, 
 **Avec Claude Code** (CLI \`claude mcp add\`) :
 
 \`\`\`bash
-claude mcp add --transport http openwiki http://localhost:3000/api/mcp \\
+claude mcp add --transport http nestwiki http://localhost:3000/api/mcp \\
   --header "Authorization: Bearer <votre-clé-api-mcp>"
 \`\`\`
 
@@ -594,7 +594,7 @@ claude mcp add --transport http openwiki http://localhost:3000/api/mcp \\
 \`\`\`json
 {
   "mcpServers": {
-    "openwiki": {
+    "nestwiki": {
       "url": "http://localhost:3000/api/mcp",
       "headers": {
         "Authorization": "Bearer <votre-clé-api-mcp>"
@@ -676,7 +676,7 @@ Chaque appel de tool (succès ou échec) est tracé — clé utilisée, tool, en
 
 # Gérer les utilisateurs, groupes et accès
 
-OpenWiki n'a que deux rôles globaux : **admin** (accès à tout, sans exception) et **membre**. Tout le reste — qui peut créer des tags, uploader des médias, modérer les commentaires, gérer les autres utilisateurs, ou lire/éditer telle page précise — est accordé au cas par cas, directement à un utilisateur ou à un groupe.
+NestWiki n'a que deux rôles globaux : **admin** (accès à tout, sans exception) et **membre**. Tout le reste — qui peut créer des tags, uploader des médias, modérer les commentaires, gérer les autres utilisateurs, ou lire/éditer telle page précise — est accordé au cas par cas, directement à un utilisateur ou à un groupe.
 
 <div class="callout">
   <span class="callout-icon">💡</span>
