@@ -4,7 +4,7 @@ import { DataSource } from 'typeorm';
 import { User } from '../users/entities/user.entity.js';
 
 const SALT_ROUNDS = 10;
-const DEV_ADMIN_EMAIL = 'dev@openwiki.local';
+const DEV_ADMIN_EMAIL = 'dev@nestwiki.local';
 const DEV_ADMIN_PASSWORD = 'password123';
 
 const dataSource = new DataSource({

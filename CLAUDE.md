@@ -13,7 +13,7 @@ Ce dépôt a un graphe de connaissance à `graphify-out/` :
 
 ## Projet
 
-**OpenWiki** — wiki collaboratif auto-hébergé (clone de WikiJS). pnpm workspace avec deux packages à la racine : `backend/` (NestJS + TypeORM + MySQL 8) et `frontend/` (React + TypeScript + Vite — scaffoldé, TailwindCSS/shadcn-ui restent à configurer, voir EPIC-10/FE-002). `README.md` est le cahier des charges complet et le backlog (voir §6/§7). La branche courante (`EPIC-10`) correspond au 3ème epic réellement implémenté du backlog (Frontend : Setup & Layout). Le numéro de version ne suit pas le numéro d'EPIC affiché dans le backlog, et chaque ticket terminé s'accompagne aussi d'une entrée dans la page "Notes de version" — voir §Versioning & changelog.
+**NestWiki** — wiki collaboratif auto-hébergé (clone de WikiJS). pnpm workspace avec deux packages à la racine : `backend/` (NestJS + TypeORM + MySQL 8) et `frontend/` (React + TypeScript + Vite — scaffoldé, TailwindCSS/shadcn-ui restent à configurer, voir EPIC-10/FE-002). `README.md` est le cahier des charges complet et le backlog (voir §6/§7). La branche courante (`EPIC-10`) correspond au 3ème epic réellement implémenté du backlog (Frontend : Setup & Layout). Le numéro de version ne suit pas le numéro d'EPIC affiché dans le backlog, et chaque ticket terminé s'accompagne aussi d'une entrée dans la page "Notes de version" — voir §Versioning & changelog.
 
 ## Commandes
 

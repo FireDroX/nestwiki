@@ -60,7 +60,7 @@ function VisitorHome() {
             </Button>
           </div>
           <a
-            href="https://github.com/FireDroX/openwiki"
+            href="https://github.com/FireDroX/nestwiki"
             target="_blank"
             rel="noreferrer"
             className="text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground"

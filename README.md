@@ -1,4 +1,4 @@
-# OpenWiki — Documentation technique
+# NestWiki — Documentation technique
 
 Clone de WikiJS — NestJS / TypeORM / MySQL / React / TypeScript / Tailwind / shadcn / Minio
 
@@ -6,7 +6,7 @@ Clone de WikiJS — NestJS / TypeORM / MySQL / React / TypeScript / Tailwind / s
 
 ## 1. Présentation du projet
 
-**OpenWiki** est une plateforme de wiki collaboratif auto-hébergée. Les utilisateurs créent des pages organisées en arborescence, chaque édition est versionnée, les médias sont stockés sur Minio.
+**NestWiki** est une plateforme de wiki collaboratif auto-hébergée. Les utilisateurs créent des pages organisées en arborescence, chaque édition est versionnée, les médias sont stockés sur Minio.
 
 ### Objectifs fonctionnels
 
@@ -36,7 +36,7 @@ Clone de WikiJS — NestJS / TypeORM / MySQL / React / TypeScript / Tailwind / s
 ## 3. Architecture globale
 
 ```
-openwiki/
+nestwiki/
 ├── backend/           (NestJS)
 │   ├── src/
 │   │   ├── auth/
@@ -415,7 +415,7 @@ pnpm run front:dev  # terminal 2 — frontend sur :5173
 Deux versions du `docker-compose` sont disponibles :
 
 - **`docker-compose.yml`** — version complète (`mysql`, `minio`, `backend`, `frontend`), pour un serveur vierge qui n'a encore ni base de données ni stockage objet. Usage manuel uniquement (`docker compose up -d --build`), non branché sur le déploiement continu.
-- **`docker-compose.external.yml`** — version allégée (`backend`, `frontend` seulement), pour réutiliser un MariaDB/MySQL et un Minio déjà existants sur le serveur (ex. mutualisés avec d'autres apps) plutôt que d'en relancer une paire dédiée. Rejoint le réseau Docker **externe** `mariadb-network` où vivent déjà ces conteneurs, au lieu d'en créer un nouveau — adaptez le nom du réseau dans le fichier si le vôtre s'appelle différemment. **C'est celle-ci qu'utilise `.github/workflows/deploy.yml`** (`docker compose -f docker-compose.external.yml pull && docker compose -f docker-compose.external.yml up -d`) — pas de `--build` : les images `backend`/`frontend` y sont référencées par leur tag GHCR (`ghcr.io/firedrox/openwiki-{backend,frontend}:latest`, poussées par `ci.yml` à chaque push sur `main`), le serveur les pull plutôt que de rebuild depuis les sources. Le déploiement continu part donc du principe que le mariadb/minio cible existe déjà sur le serveur ; adapter le workflow si un déploiement doit un jour repartir de la version complète.
+- **`docker-compose.external.yml`** — version allégée (`backend`, `frontend` seulement), pour réutiliser un MariaDB/MySQL et un Minio déjà existants sur le serveur (ex. mutualisés avec d'autres apps) plutôt que d'en relancer une paire dédiée. Rejoint le réseau Docker **externe** `mariadb-network` où vivent déjà ces conteneurs, au lieu d'en créer un nouveau — adaptez le nom du réseau dans le fichier si le vôtre s'appelle différemment. **C'est celle-ci qu'utilise `.github/workflows/deploy.yml`** (`docker compose -f docker-compose.external.yml pull && docker compose -f docker-compose.external.yml up -d`) — pas de `--build` : les images `backend`/`frontend` y sont référencées par leur tag GHCR (`ghcr.io/firedrox/nestwiki-{backend,frontend}:latest`, poussées par `ci.yml` à chaque push sur `main`), le serveur les pull plutôt que de rebuild depuis les sources. Le déploiement continu part donc du principe que le mariadb/minio cible existe déjà sur le serveur ; adapter le workflow si un déploiement doit un jour repartir de la version complète.
 
 `backend`/`frontend` se construisent depuis `backend/Dockerfile`/`frontend/Dockerfile` (contexte = racine du dépôt, pour le workspace pnpm) dans les deux cas — `docker-compose.yml` les build localement, `docker-compose.external.yml` référence les images déjà construites par `ci.yml`. `backend/Dockerfile` exécute `backend/entrypoint.sh` au démarrage du conteneur : `pnpm run migration:run` puis `pnpm run seed:content` puis `node dist/main.js` — si une migration échoue, le conteneur ne démarre pas (`set -e`), plutôt que de tourner sur un schéma incohérent. Le seed de contenu, lui, échoue sans bloquer le démarrage (`|| echo ...`, pas de `set -e` dessus) — utile sur le tout premier déploiement, où aucun utilisateur n'existe encore pour lui servir d'auteur ; il repasse au déploiement suivant, une fois le premier admin créé. Les deux sont idempotents : redémarrer sans changement ne fait rien.
 
@@ -424,8 +424,8 @@ Deux versions du `docker-compose` sont disponibles :
 **Sur le serveur, une seule fois (version complète) :**
 
 ```bash
-git clone <url-du-dépôt> /chemin/vers/openwiki
-cd /chemin/vers/openwiki
+git clone <url-du-dépôt> /chemin/vers/nestwiki
+cd /chemin/vers/nestwiki
 cp .env.example .env               # MYSQL_*, MINIO_*, VITE_*
 cp backend/.env.example backend/.env
 cp frontend/.env.example frontend/.env
@@ -438,8 +438,8 @@ docker compose up -d --build
 **Version allégée (mariadb/minio déjà existants) :**
 
 ```bash
-git clone <url-du-dépôt> /chemin/vers/openwiki
-cd /chemin/vers/openwiki
+git clone <url-du-dépôt> /chemin/vers/nestwiki
+cd /chemin/vers/nestwiki
 cp .env.example .env               # seul VITE_* est lu par cette version
 cp backend/.env.example backend/.env
 cp frontend/.env.example frontend/.env
@@ -475,13 +475,13 @@ Ces trois fichiers `.env` ne sont **jamais commités** (`.gitignore`) : sur un p
 
 ### CI/CD
 
-- `.github/workflows/ci.yml` — lint + tests (backend + frontend) sur chaque PR vers `main` ; sur chaque push vers `main` en plus, le job `build-and-push-images` build les deux images Docker et les pousse sur GHCR (`ghcr.io/firedrox/openwiki-{backend,frontend}`, tags `latest` + `sha-<commit>`). Voir la Note de version 0.17.4 pour le détail des jobs.
+- `.github/workflows/ci.yml` — lint + tests (backend + frontend) sur chaque PR vers `main` ; sur chaque push vers `main` en plus, le job `build-and-push-images` build les deux images Docker et les pousse sur GHCR (`ghcr.io/firedrox/nestwiki-{backend,frontend}`, tags `latest` + `sha-<commit>`). Voir la Note de version 0.17.4 pour le détail des jobs.
 - `.github/workflows/deploy.yml` — se déclenche uniquement quand `ci.yml` vient de réussir sur `main` (`workflow_run`, jamais sur une PR) : se connecte en SSH au serveur via un tunnel Cloudflare, se log in à GHCR, puis `git pull && docker compose pull && docker compose up -d` — pull les images déjà construites par `ci.yml`, jamais de rebuild sur le serveur.
 
 Le déploiement passe par un tunnel Cloudflare (`cloudflared`) plutôt que d'exposer SSH publiquement — sans application Access devant (pas de service token à gérer). À configurer une fois, côté [Cloudflare Zero Trust](https://one.dash.cloudflare.com/) :
 
 1. **Tunnel** — créer un tunnel `cloudflared` sur le serveur, avec une route publique (Public Hostname) vers `ssh://localhost:22`.
-2. **Clé SSH** — générer une paire de clés dédiée au déploiement (`ssh-keygen -t ed25519 -C "openwiki-deploy"`, sans passphrase) et ajouter la clé **publique** à `~/.ssh/authorized_keys` de l'utilisateur de déploiement sur le serveur.
+2. **Clé SSH** — générer une paire de clés dédiée au déploiement (`ssh-keygen -t ed25519 -C "nestwiki-deploy"`, sans passphrase) et ajouter la clé **publique** à `~/.ssh/authorized_keys` de l'utilisateur de déploiement sur le serveur.
 
 Puis, secrets du dépôt GitHub (Settings → Secrets and variables → Actions) :
 
@@ -490,7 +490,7 @@ Puis, secrets du dépôt GitHub (Settings → Secrets and variables → Actions)
 | `DEPLOY_SSH_PRIVATE_KEY` | Clé **privée** générée à l'étape 2 |
 | `DEPLOY_SSH_HOSTNAME` | Hostname public du tunnel (étape 1) |
 | `DEPLOY_SSH_USER` | Utilisateur SSH sur le serveur |
-| `DEPLOY_PATH` | Chemin absolu du clone git sur le serveur (ex. `/opt/openwiki`) |
+| `DEPLOY_PATH` | Chemin absolu du clone git sur le serveur (ex. `/opt/nestwiki`) |
 
 Si une application Access protège un jour ce hostname (service token), `deploy.yml` sait déjà où l'ajouter : `TUNNEL_SERVICE_TOKEN_ID`/`TUNNEL_SERVICE_TOKEN_SECRET` en env du job `deploy`, lus automatiquement par `cloudflared access ssh`.
 

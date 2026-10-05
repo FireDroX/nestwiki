@@ -36,7 +36,7 @@ export function Topbar({ onOpenSidebar }: TopbarProps) {
         <span className="sr-only">{t('topbar.openSidebar')}</span>
       </Button>
       <Link to="/" className="flex shrink-0 items-center">
-        <img src="/openwiki-logo.svg" alt={t('common.appName')} className="h-7 w-auto" />
+        <img src="/nestwiki-logo.svg" alt={t('common.appName')} className="h-7 w-auto" />
       </Link>
       <button
         type="button"

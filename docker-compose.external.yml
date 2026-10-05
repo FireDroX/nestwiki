@@ -18,10 +18,10 @@
 # build-and-push-images, poussé sur GHCR à chaque push sur main) —
 # pas de `build:` ici, le serveur ne rebuild jamais depuis les
 # sources. Nom d'image en minuscules : GHCR l'exige, alors que
-# github.repository (FireDroX/wiki) ne l'est pas.
+# github.repository (FireDroX/nestwiki) ne l'est pas.
 services:
   backend:
-    image: ghcr.io/firedrox/openwiki-backend:latest
+    image: ghcr.io/firedrox/nestwiki-backend:latest
     restart: unless-stopped
     env_file:
       - backend/.env
@@ -31,7 +31,7 @@ services:
       - mariadb-network
 
   frontend:
-    image: ghcr.io/firedrox/openwiki-frontend:latest
+    image: ghcr.io/firedrox/nestwiki-frontend:latest
     restart: unless-stopped
     ports:
       - "8080:80"

@@ -3,6 +3,6 @@
   <rect x="18" y="16" width="34" height="10" fill="#201e1d"></rect>
   <rect x="18" y="54" width="34" height="10" fill="#201e1d"></rect>
   <rect x="34" y="36" width="18" height="8" fill="#ec3013"></rect>
-  <text x="58" y="35" font-family="Archivo, Arial, sans-serif" font-weight="800" font-size="20" letter-spacing="0.5" fill="#201e1d">OPEN</text>
+  <text x="58" y="35" font-family="Archivo, Arial, sans-serif" font-weight="800" font-size="20" letter-spacing="0.5" fill="#201e1d">NEST</text>
   <text x="58" y="55" font-family="Archivo, Arial, sans-serif" font-weight="800" font-size="20" letter-spacing="0.5" fill="#ec3013">WIKI</text>
 </svg>

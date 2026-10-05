@@ -5,7 +5,7 @@ import mysql from 'mysql2/promise';
 function resolveTestDatabaseName() {
   return (
     process.env.DB_DATABASE_TEST ??
-    `${process.env.DB_DATABASE ?? 'openwiki'}_test`
+    `${process.env.DB_DATABASE ?? 'nestwiki'}_test`
   );
 }
 
