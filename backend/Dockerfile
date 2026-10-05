@@ -50,6 +50,7 @@ COPY backend/src ./backend/src
 COPY backend/scripts ./backend/scripts
 COPY backend/tsconfig.json ./backend/tsconfig.json
 COPY backend/entrypoint.sh ./backend/entrypoint.sh
+COPY CHANGELOG.md ./CHANGELOG.md
 RUN chmod +x ./backend/entrypoint.sh
 
 WORKDIR /app/backend
