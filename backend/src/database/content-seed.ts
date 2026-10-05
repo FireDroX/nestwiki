@@ -956,6 +956,14 @@ $$
 ## Version 0.31
 
 <details>
+<summary>0.31.10 — 2026-10-05</summary>
+
+- Correctif : après 15 minutes d'inactivité (expiration du token d'accès), l'arborescence, l'ouverture d'une page ou la recherche étaient servies comme à un visiteur anonyme — arbre réduit aux pages publiques, « Accès refusé » sur une page privée ou à l'ouverture de l'éditeur — jusqu'au rechargement. Ces routes à authentification facultative répondent désormais 401 quand une session existe encore (cookie de rafraîchissement présent), ce qui déclenche le rafraîchissement automatique du token puis rejoue la requête avec les bons droits.
+- Correctif : l'arborescence n'est plus chargée avant que la session soit vérifiée, et se recharge à la connexion/déconnexion — plus besoin de recharger la page après s'être connecté.
+
+</details>
+
+<details>
 <summary>0.31.9 — 2026-10-04</summary>
 
 - Correctif : le temps réel (bandeau « nouvelle version disponible », fusion en direct dans l'éditeur, arbre et commentaires mis à jour sans recharger) ne fonctionnait pas en production. Le nginx du frontend ne relayait pas \`/socket.io/\` vers le backend : ces requêtes recevaient la page HTML de l'application et la connexion temps réel n'aboutissait jamais. \`frontend/nginx.conf\` proxifie désormais \`/socket.io/\` vers le backend, upgrade WebSocket compris.
