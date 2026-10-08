@@ -2,6 +2,10 @@
 
 All notable changes to NestWiki are documented here, newest first, one `## <version> — <date>` section per release. This file is the single source for the in-app "Notes de version" page, which groups releases by minor version (`1.0`, `0.31`…). Entries up to 0.31.10 were written in French, the project's original language.
 
+## 1.0.9 — 2026-10-08
+
+- Le panneau de l'arborescence des pages peut être réduit sur ordinateur et tablette grâce à un bouton à droite du champ de filtre, pour lire une page sur toute la largeur de l'écran. Il laisse une fine barre avec un bouton pour le rouvrir. Le choix est mémorisé dans le navigateur ; sur mobile, le menu latéral est inchangé.
+
 ## 1.0.8 — 2026-10-05
 
 - Les administrateurs sont prévenus quand une nouvelle version de NestWiki est publiée : une notification rouge en haut de l'écran indique la version disponible et celle installée, avec un lien vers la release GitHub. « Ignorer » la masque jusqu'à la version suivante.

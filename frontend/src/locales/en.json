@@ -49,7 +49,9 @@
   "sidebar": {
     "filterPlaceholder": "Filter pages...",
     "newPage": "New page",
-    "navLabel": "Navigation"
+    "navLabel": "Navigation",
+    "collapse": "Collapse sidebar",
+    "expand": "Expand sidebar"
   },
   "pageTree": {
     "loadError": "Unable to load pages.",
