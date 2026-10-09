@@ -1,5 +1,5 @@
 import { Link, useParams } from 'react-router'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { History, Pencil } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '#components/ui/button'
@@ -10,15 +10,20 @@ import { CommentThread } from '#components/PageView/CommentThread'
 import { ContributorsList } from '#components/PageView/ContributorsList'
 import { FollowButton } from '#components/PageView/FollowButton'
 import { PageTagList } from '#components/PageView/PageTagList'
+import { TableOfContentsCollapsible, TableOfContentsSidebar } from '#components/PageView/TableOfContents'
 import { PageAccessPanel } from '#components/PageAccessPanel/PageAccessPanel'
+import { useActiveHeading } from '#hooks/useActiveHeading'
 import { useAuth } from '#hooks/useAuth'
 import { useDocumentTitle } from '#hooks/useDocumentTitle'
 import { usePage } from '#hooks/usePage'
 import { usePageRoom } from '#hooks/usePageRoom'
 import { usePageTags } from '#hooks/usePageTags'
 import { usePermissions } from '#hooks/usePermissions'
+import { useScrollToHash } from '#hooks/useScrollToHash'
+import { useTableOfContents } from '#hooks/useTableOfContents'
 import { getRealtimeSocket } from '#lib/realtime-client'
 import { PAGE_PADDING } from '#utils/page-layout'
+import { shouldShowTableOfContents } from '#utils/table-of-contents'
 import { cn } from '#lib/utils'
 
 function PageViewSkeleton() {
@@ -78,6 +83,10 @@ export function PageView() {
   const canEdit = canOnPage(page, 'page.edit')
   const canManageAccess = canOnPage(page, 'page.manage_permissions')
   useDocumentTitle(page?.title)
+  const contentRef = useRef<HTMLDivElement>(null)
+  const headings = useTableOfContents(contentRef, page?.content)
+  const activeHeadingId = useActiveHeading(headings)
+  useScrollToHash(page?.content)
 
   useEffect(() => {
     setHasNewVersion(false)
@@ -96,6 +105,8 @@ export function PageView() {
       socket.off('page:version-created', handleVersionCreated)
     }
   }, [page])
+
+  const hasTableOfContents = shouldShowTableOfContents(headings)
 
   async function handleReload() {
     await refresh()
@@ -165,9 +176,25 @@ export function PageView() {
           </Button>
         </div>
       )}
-      <MarkdownRenderer content={page.content} mode="full" />
-      {page.commentsEnabled && <CommentThread pageId={page.id} />}
-      <ContributorsList pageId={page.id} />
+      <div className="xl:flex xl:gap-10">
+        <div className="min-w-0 flex-1 space-y-6">
+          {hasTableOfContents && (
+            <div className="xl:hidden">
+              <TableOfContentsCollapsible headings={headings} activeId={activeHeadingId} />
+            </div>
+          )}
+          <div ref={contentRef}>
+            <MarkdownRenderer content={page.content} mode="full" />
+          </div>
+          {page.commentsEnabled && <CommentThread pageId={page.id} />}
+          <ContributorsList pageId={page.id} />
+        </div>
+        {hasTableOfContents && (
+          <aside className="hidden w-56 shrink-0 xl:block">
+            <TableOfContentsSidebar headings={headings} activeId={activeHeadingId} />
+          </aside>
+        )}
+      </div>
     </article>
   )
 }

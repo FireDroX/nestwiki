@@ -2,6 +2,11 @@
 
 All notable changes to NestWiki are documented here, newest first, one `## <version> — <date>` section per release. This file is the single source for the in-app "Notes de version" page, which groups releases by minor version (`1.0`, `0.31`…). Entries up to 0.31.10 were written in French, the project's original language.
 
+## 1.1.1 — 2026-10-09
+
+- Chaque titre d'une page a désormais une ancre : au survol, une icône de lien permet de copier l'adresse de la section (ex. `/pages/documentation/guide-demarrage#installation`), et ouvrir un tel lien fait défiler la page jusqu'à la section.
+- Sommaire automatique dès qu'une page compte au moins deux titres : colonne à droite sur grand écran, avec la section en cours de lecture mise en évidence, ou bloc repliable « Sommaire » au-dessus du contenu sur les écrans plus petits.
+
 ## 1.1.0 — 2026-10-09
 
 - Encadrés dans les pages et les commentaires : une citation qui commence par `[!NOTE]`, `[!TIP]`, `[!IMPORTANT]`, `[!WARNING]` ou `[!CAUTION]` (même syntaxe que GitHub) s'affiche comme un encadré coloré avec une icône et un titre (« Remarque », « Astuce », « Important », « Attention », « Danger »). Le texte écrit après le marqueur remplace le titre, ex. `> [!WARNING] Migration requise`.

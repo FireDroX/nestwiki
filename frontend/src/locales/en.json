@@ -762,6 +762,8 @@
       "important": "Important",
       "warning": "Warning",
       "caution": "Caution"
-    }
+    },
+    "toc": "On this page",
+    "headingLink": "Link to this section"
   }
 }

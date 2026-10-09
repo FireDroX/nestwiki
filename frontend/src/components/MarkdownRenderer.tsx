@@ -8,8 +8,10 @@ import remarkMath from 'remark-math'
 import 'katex/dist/katex.min.css'
 import { ApiReferenceViewer } from '#components/ApiReferenceViewer'
 import { MarkdownCallout } from '#components/MarkdownCallout'
+import { MarkdownHeading } from '#components/MarkdownHeading'
 import { PdfPreview } from '#components/PdfPreview'
 import { CALLOUT_TAG_NAME, rehypeCallouts } from '#lib/markdown-callouts'
+import { rehypeHeadingIds } from '#lib/markdown-headings'
 import { rehypeHardenFullMode } from '#lib/markdown-sanitize'
 import { rehypeScopeStyles } from '#lib/markdown-css-scope'
 import { cn } from '#lib/utils'
@@ -103,6 +105,12 @@ const markdownComponents = {
   },
   'api-reference': () => <ApiReferenceViewer />,
   [CALLOUT_TAG_NAME]: MarkdownCallout,
+  h1: (props: ComponentProps<'h1'>) => <MarkdownHeading level={1} {...props} />,
+  h2: (props: ComponentProps<'h2'>) => <MarkdownHeading level={2} {...props} />,
+  h3: (props: ComponentProps<'h3'>) => <MarkdownHeading level={3} {...props} />,
+  h4: (props: ComponentProps<'h4'>) => <MarkdownHeading level={4} {...props} />,
+  h5: (props: ComponentProps<'h5'>) => <MarkdownHeading level={5} {...props} />,
+  h6: (props: ComponentProps<'h6'>) => <MarkdownHeading level={6} {...props} />,
   a({ href, children, node: _node, ...rest }: ComponentProps<'a'> & { node?: unknown }) {
     if (href && isPdfUrl(href)) {
       const filename = toPlainText(children) || href.split('/').pop() || href
@@ -135,7 +143,7 @@ export function MarkdownRenderer({ content, mode = 'restricted' }: MarkdownRende
     mode === 'full' ? [remarkGfm, [remarkMath, { singleDollarTextMath: false }]] : [remarkGfm]
   const rehypePlugins: Array<unknown> =
     mode === 'full'
-      ? [rehypeRaw, rehypeHardenFullMode, [rehypeScopeStyles, scopeId], rehypeKatex, rehypeCallouts]
+      ? [rehypeRaw, rehypeHardenFullMode, [rehypeScopeStyles, scopeId], rehypeHeadingIds, rehypeKatex, rehypeCallouts]
       : [rehypeRaw, [rehypeSanitize, MARKDOWN_SANITIZE_SCHEMA], rehypeCallouts]
 
   return (

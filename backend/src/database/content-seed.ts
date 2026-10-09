@@ -826,6 +826,12 @@ La syntaxe [CommonMark](https://commonmark.org/) + [GFM](https://github.github.c
 </div>
 </div>
 
+## Ancres et sommaire <span class="mode-badge pages-only">Pages uniquement</span>
+
+Chaque titre d'une page reçoit une ancre dérivée de son texte : \`## Guide de démarrage\` devient \`#guide-de-démarrage\` (minuscules, espaces remplacés par des tirets, ponctuation retirée ; un titre en double reçoit \`-1\`, \`-2\`…). Survolez un titre et cliquez sur l'icône de lien qui apparaît pour obtenir l'adresse de la section, à partager ou à utiliser dans un lien : \`[voir l'installation](#installation)\`. Un \`id\` écrit à la main dans un titre HTML (\`<h2 id="mon-ancre">\`) est conservé.
+
+Dès qu'une page compte au moins deux titres de niveau 1 à 3, un **sommaire** est généré automatiquement : dans une colonne à droite sur grand écran, avec la section en cours de lecture mise en évidence, ou dans un bloc repliable au-dessus du contenu sur les écrans plus petits.
+
 ## Encadrés
 
 Une citation qui commence par \`[!NOTE]\`, \`[!TIP]\`, \`[!IMPORTANT]\`, \`[!WARNING]\` ou \`[!CAUTION]\` devient un encadré coloré (même syntaxe que GitHub). Le texte écrit après le marqueur, sur la même ligne, remplace le titre par défaut. Fonctionne aussi dans les commentaires.
@@ -970,6 +976,7 @@ $$
 | --- | --- | --- |
 | Markdown / GFM | ✅ | ✅ |
 | Encadrés (\`> [!NOTE]\`…) | ✅ | ✅ |
+| Ancres sur les titres et sommaire | ✅ | ❌ |
 | HTML arbitraire (sauf balises interdites) | ✅ | ❌ (HTML très restreint) |
 | CSS (\`<style>\`, scopé) | ✅ | ❌ |
 | LaTeX (\`$$...$$\`) | ✅ | ❌ |`,

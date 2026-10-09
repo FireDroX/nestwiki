@@ -203,6 +203,41 @@ describe('MarkdownRenderer', () => {
     })
   })
 
+  describe('heading anchors', () => {
+    it('gives each heading an id derived from its text, with a link to it', () => {
+      const { container } = render(
+        <MarkdownRenderer content={'# Guide de démarrage\n\n## Installation'} mode="full" />,
+      )
+      const heading = container.querySelector('h1')
+      expect(heading?.id).toBe('guide-de-démarrage')
+      expect(heading?.querySelector('a')?.getAttribute('href')).toBe('#guide-de-démarrage')
+      expect(heading?.querySelector('a')).toHaveAccessibleName('Lien vers cette section')
+      expect(container.querySelector('h2')?.id).toBe('installation')
+    })
+
+    it('suffixes duplicate headings', () => {
+      const { container } = render(
+        <MarkdownRenderer content={'## Exemple\n\n## Exemple'} mode="full" />,
+      )
+      const ids = Array.from(container.querySelectorAll('h2')).map((heading) => heading.id)
+      expect(ids).toEqual(['exemple', 'exemple-1'])
+    })
+
+    it('keeps an id written by hand in raw HTML', () => {
+      const { container } = render(
+        <MarkdownRenderer content={'<h2 id="perso">Titre</h2>\n\n## Perso'} mode="full" />,
+      )
+      const ids = Array.from(container.querySelectorAll('h2')).map((heading) => heading.id)
+      expect(ids).toEqual(['perso', 'perso-1'])
+    })
+
+    it('does not add ids or anchor links in restricted mode', () => {
+      const { container } = render(<MarkdownRenderer content="## Installation" />)
+      expect(container.querySelector('h2')?.id).toBe('')
+      expect(container.querySelector('h2 a')).toBeNull()
+    })
+  })
+
   describe('callouts', () => {
     it.each([
       ['NOTE', 'note', 'Remarque'],
