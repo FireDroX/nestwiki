@@ -613,6 +613,14 @@ Une fois connecté, le client peut lister les tools disponibles (\`tools/list\`)
 
 ## 4. Tools disponibles
 
+**Formatage** (aucun scope requis)
+
+| Tool | Rôle |
+| --- | --- |
+| \`wiki_get_formatting_guide\` | Renvoyer le guide complet du formatage supporté dans les pages ([Marquages disponibles](/pages/documentation/marquages-disponibles)) |
+
+Ce même guide est envoyé dans les instructions du serveur à la connexion : la plupart des clients le donnent directement à l'IA, qui sait alors quelle syntaxe utiliser (encadrés, Mermaid, LaTeX, liens internes, images…).
+
 **Pages** (\`pages:read\`/\`pages:write\`)
 
 | Tool | Rôle |
@@ -645,7 +653,7 @@ Une fois connecté, le client peut lister les tools disponibles (\`tools/list\`)
 
 | Tool | Rôle |
 | --- | --- |
-| \`wiki_upload_image\` | Uploader une image (transmise en base64) sur une page |
+| \`wiki_upload_image\` | Uploader une image (transmise en base64) sur une page ; renvoie \`embedUrl\`, l'adresse stable à écrire dans le contenu |
 | \`wiki_get_media_url\` | Obtenir une URL présignée pour un média existant |
 
 **Recherche** (\`search:read\` ou \`pages:read\`)
@@ -832,7 +840,7 @@ La syntaxe [CommonMark](https://commonmark.org/) + [GFM](https://github.github.c
 
 Chaque titre d'une page reçoit une ancre dérivée de son texte : \`## Guide de démarrage\` devient \`#guide-de-démarrage\` (minuscules, espaces remplacés par des tirets, ponctuation retirée ; un titre en double reçoit \`-1\`, \`-2\`…). Survolez un titre et cliquez sur l'icône de lien qui apparaît pour obtenir l'adresse de la section, à partager ou à utiliser dans un lien : \`[voir l'installation](#installation)\`. Un \`id\` écrit à la main dans un titre HTML (\`<h2 id="mon-ancre">\`) est conservé.
 
-Dès qu'une page compte au moins deux titres de niveau 1 à 3, un **sommaire** est généré automatiquement : dans une colonne à droite sur grand écran, avec la section en cours de lecture mise en évidence, ou dans un bloc repliable au-dessus du contenu sur les écrans plus petits.
+Dès qu'une page compte au moins deux titres de niveau 1 à 3, un **sommaire** « Sur cette page » est généré automatiquement, présenté en arborescence : dans une colonne à droite sur grand écran, avec la section en cours de lecture mise en évidence, ou dans un bloc repliable au-dessus du contenu sur les écrans plus petits.
 
 ## Encadrés
 

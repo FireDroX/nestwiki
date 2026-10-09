@@ -2,6 +2,11 @@
 
 All notable changes to NestWiki are documented here, newest first, one `## <version> — <date>` section per release. This file is the single source for the in-app "Notes de version" page, which groups releases by minor version (`1.0`, `0.31`…). Entries up to 0.31.10 were written in French, the project's original language.
 
+## 1.1.3 — 2026-10-09
+
+- Intégration MCP : le serveur décrit désormais aux IA connectées tout le formatage supporté dans les pages (Markdown, encadrés, ancres et sommaire, LaTeX, Mermaid, HTML/CSS, liens internes par chemin complet, images). Le guide est envoyé dans les instructions du serveur à la connexion, et le nouvel outil `wiki_get_formatting_guide` le renvoie à la demande ; `wiki_create_page` et `wiki_update_page` y renvoient.
+- `wiki_upload_image` renvoie aussi `embedUrl` (`/api/media/<id>/raw`), l'adresse stable à utiliser pour afficher l'image dans une page : l'`url` déjà renvoyée est présignée et expire.
+
 ## 1.1.2 — 2026-10-09
 
 - Diagrammes Mermaid dans les pages : un bloc de code de langage `mermaid` est dessiné comme un diagramme (organigramme, séquence, classes, états, entité-relation, Gantt…), en thème clair ou sombre selon l'application. Une syntaxe invalide affiche l'erreur avec le code source. Dans les commentaires, le bloc reste un bloc de code.
@@ -11,7 +16,7 @@ All notable changes to NestWiki are documented here, newest first, one `## <vers
 ## 1.1.1 — 2026-10-09
 
 - Chaque titre d'une page a désormais une ancre : au survol, une icône de lien permet de copier l'adresse de la section (ex. `/pages/documentation/guide-demarrage#installation`), et ouvrir un tel lien fait défiler la page jusqu'à la section.
-- Sommaire automatique dès qu'une page compte au moins deux titres : colonne à droite sur grand écran, avec la section en cours de lecture mise en évidence, ou bloc repliable « Sommaire » au-dessus du contenu sur les écrans plus petits.
+- Sommaire « Sur cette page » automatique, en arborescence, dès qu'une page compte au moins deux titres : colonne à droite sur grand écran, avec la section en cours de lecture mise en évidence, ou bloc repliable « Sommaire » au-dessus du contenu sur les écrans plus petits.
 
 ## 1.1.0 — 2026-10-09
 

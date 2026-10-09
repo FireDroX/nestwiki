@@ -14,6 +14,7 @@ import {
   McpToolsRegistry,
 } from '../registry/mcp-tools.registry.js';
 import type { McpAuthContext } from './api-keys.service.js';
+import { PAGE_FORMATTING_GUIDE } from '../constants/page-formatting.guide.js';
 
 const SERVER_NAME = 'nestwiki-mcp';
 const SERVER_VERSION = '1.0.0';
@@ -26,10 +27,10 @@ export class McpServerService {
   ) {}
 
   createServer(auth: McpAuthContext): McpServer {
-    const server = new McpServer({
-      name: SERVER_NAME,
-      version: SERVER_VERSION,
-    });
+    const server = new McpServer(
+      { name: SERVER_NAME, version: SERVER_VERSION },
+      { instructions: PAGE_FORMATTING_GUIDE },
+    );
 
     server.server.registerCapabilities({ tools: {} });
 
