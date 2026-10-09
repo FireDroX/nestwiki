@@ -17,6 +17,7 @@ import { McpExceptionFilter } from './filter/mcp.exception.filter.js';
 import type { McpAuthenticatedRequest } from './guards/mcp-api-key.guard.js';
 import { McpOAuthGuard } from './guards/mcp-oauth.guard.js';
 import { McpServerService } from './services/mcp-server.service.js';
+import { resolveRequestBaseUrl } from './utils/request-base-url.util.js';
 
 const SESSION_ID_HEADER = 'mcp-session-id';
 
@@ -64,7 +65,10 @@ export class McpController {
         }
       };
 
-      const server = this.mcpServerService.createServer(req.mcpAuth);
+      const server = this.mcpServerService.createServer(
+        req.mcpAuth,
+        resolveRequestBaseUrl(req),
+      );
       await server.connect(transport);
     }
 

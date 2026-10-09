@@ -16,15 +16,22 @@ import { buildMediaTools } from '../tools/media.tools.js';
 import { buildPagesTools } from '../tools/pages.tools.js';
 import { McpServerService } from './mcp-server.service.js';
 
+const PUBLIC_BASE_URL = 'https://wiki.example.com';
+
 describe('McpServerService', () => {
   let service: McpServerService;
   let registry: McpToolsRegistry;
   let uploadFile: ReturnType<typeof vi.fn>;
+  let getPresignedUrl: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
     uploadFile = vi.fn().mockResolvedValue({
       attachment: { id: 'media-1', filename: 'schema.png' },
       url: 'https://storage.example/presigned?X-Amz-Expires=900',
+    });
+    getPresignedUrl = vi.fn().mockResolvedValue({
+      url: 'https://storage.example/presigned?X-Amz-Expires=900',
+      expiresIn: 900,
     });
     const moduleRef = await Test.createTestingModule({
       providers: [
@@ -49,7 +56,7 @@ describe('McpServerService', () => {
     registry.register(
       ...buildPagesTools({} as PagesService, {} as UsersService),
       ...buildMediaTools(
-        { uploadFile } as unknown as MediaService,
+        { uploadFile, getPresignedUrl } as unknown as MediaService,
         {
           findById: vi.fn().mockResolvedValue({ id: 'user-1', role: 'admin' }),
         } as unknown as UsersService,
@@ -61,11 +68,10 @@ describe('McpServerService', () => {
   });
 
   async function connect(scopes: string[]): Promise<Client> {
-    const server = service.createServer({
-      apiKeyId: 'key-1',
-      scopes,
-      createdById: 'user-1',
-    });
+    const server = service.createServer(
+      { apiKeyId: 'key-1', scopes, createdById: 'user-1' },
+      PUBLIC_BASE_URL,
+    );
     const [clientTransport, serverTransport] =
       InMemoryTransport.createLinkedPair();
     await server.connect(serverTransport);
@@ -104,7 +110,7 @@ describe('McpServerService', () => {
     }
   });
 
-  it('returns a stable embedUrl when uploading an image', async () => {
+  it('returns only a permanent, absolute embedUrl when uploading an image', async () => {
     const client = await connect(['media:write']);
     const result = await client.callTool({
       name: 'wiki_upload_image',
@@ -115,9 +121,24 @@ describe('McpServerService', () => {
       },
     });
     const [content] = result.content as { type: string; text: string }[];
-    expect(JSON.parse(content.text)).toMatchObject({
+    expect(JSON.parse(content.text)).toEqual({
       id: 'media-1',
-      embedUrl: '/api/media/media-1/raw',
+      embedUrl: 'https://wiki.example.com/api/media/media-1/raw',
+      filename: 'schema.png',
+    });
+  });
+
+  it('returns the permanent embedUrl alongside the presigned url of a media', async () => {
+    const client = await connect(['media:read']);
+    const result = await client.callTool({
+      name: 'wiki_get_media_url',
+      arguments: { attachmentId: 'media-1' },
+    });
+    const [content] = result.content as { type: string; text: string }[];
+    expect(JSON.parse(content.text)).toEqual({
+      url: 'https://storage.example/presigned?X-Amz-Expires=900',
+      expiresIn: 900,
+      embedUrl: 'https://wiki.example.com/api/media/media-1/raw',
     });
   });
 });

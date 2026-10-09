@@ -2,6 +2,11 @@
 
 All notable changes to NestWiki are documented here, newest first, one `## <version> — <date>` section per release. This file is the single source for the in-app "Notes de version" page, which groups releases by minor version (`1.0`, `0.31`…). Entries up to 0.31.10 were written in French, the project's original language.
 
+## 1.1.4 — 2026-10-09
+
+- Intégration MCP : l'`embedUrl` d'un média est maintenant une adresse complète (ex. `https://wiki.example.com/api/media/<id>/raw`), construite à partir de l'adresse par laquelle le client joint l'API. Les images écrites par une IA s'affichent donc aussi quand le site et l'API ne sont pas sur la même adresse (en développement, ou avec une API sur son propre domaine).
+- ⚠️ `wiki_upload_image` ne renvoie plus l'`url` présignée, qui expirait et cassait les images quand elle était écrite dans une page : seulement `id`, `embedUrl` et `filename`. Un client MCP qui lisait `url` doit utiliser `embedUrl`, ou appeler `wiki_get_media_url` pour obtenir une URL de téléchargement temporaire. `wiki_get_media_url` renvoie désormais aussi `embedUrl`.
+
 ## 1.1.3 — 2026-10-09
 
 - Intégration MCP : le serveur décrit désormais aux IA connectées tout le formatage supporté dans les pages (Markdown, encadrés, ancres et sommaire, LaTeX, Mermaid, HTML/CSS, liens internes par chemin complet, images). Le guide est envoyé dans les instructions du serveur à la connexion, et le nouvel outil `wiki_get_formatting_guide` le renvoie à la demande ; `wiki_create_page` et `wiki_update_page` y renvoient.

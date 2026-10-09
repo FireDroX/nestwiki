@@ -19,7 +19,7 @@ Le contenu d'une page (champ \`content\` de wiki_create_page / wiki_update_page)
 ## Liens et médias
 - Lien vers une autre page du wiki : chemin complet depuis la racine, ex. \`[Installation](/pages/documentation/guide-demarrage/installation)\`. Jamais le slug seul : une page non racine serait introuvable.
 - Lien vers une section : \`[voir](#installation)\` dans la même page, ou \`/pages/<chemin>#<ancre>\` vers une autre page.
-- Image : \`![texte alternatif](<embedUrl>)\` avec l'\`embedUrl\` renvoyée par wiki_upload_image (\`/api/media/<id>/raw\`). Ne jamais écrire l'\`url\` présignée : elle expire.
+- Image : \`![texte alternatif](<embedUrl>)\` avec l'\`embedUrl\` renvoyée par wiki_upload_image (ou wiki_get_media_url pour un média existant), une adresse complète et permanente de la forme \`https://<instance>/api/media/<id>/raw\`. Ne jamais écrire dans une page l'\`url\` présignée de wiki_get_media_url : elle expire.
 - Un lien vers un fichier \`.pdf\` est affiché comme un lecteur PDF intégré.
 
 ## Encadrés

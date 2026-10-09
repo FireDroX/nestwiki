@@ -26,7 +26,7 @@ export class McpServerService {
     private readonly auditInterceptor: McpAuditInterceptor,
   ) {}
 
-  createServer(auth: McpAuthContext): McpServer {
+  createServer(auth: McpAuthContext, publicBaseUrl: string): McpServer {
     const server = new McpServer(
       { name: SERVER_NAME, version: SERVER_VERSION },
       { instructions: PAGE_FORMATTING_GUIDE },
@@ -45,6 +45,7 @@ export class McpServerService {
         request.params.name,
         (request.params.arguments as Record<string, unknown>) ?? {},
         auth,
+        publicBaseUrl,
       ),
     );
 
@@ -55,13 +56,14 @@ export class McpServerService {
     name: string,
     args: Record<string, unknown>,
     auth: McpAuthContext,
+    publicBaseUrl: string,
   ): Promise<CallToolResult> {
     try {
       const output = await this.auditInterceptor.wrap(
         auth.apiKeyId,
         name,
         args,
-        () => this.executeTool(name, args, auth),
+        () => this.executeTool(name, args, auth, publicBaseUrl),
       );
       return { content: [{ type: 'text', text: JSON.stringify(output) }] };
     } catch (error) {
@@ -75,6 +77,7 @@ export class McpServerService {
     name: string,
     args: Record<string, unknown>,
     auth: McpAuthContext,
+    publicBaseUrl: string,
   ): Promise<unknown> {
     const tool = this.toolsRegistry.findByName(name);
     if (!tool) {
@@ -95,6 +98,7 @@ export class McpServerService {
     return tool.handler(parsed.data, {
       scopes: auth.scopes,
       userId: auth.createdById,
+      publicBaseUrl,
     });
   }
 

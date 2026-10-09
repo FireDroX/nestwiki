@@ -20,8 +20,8 @@ const MEDIA_READ_SCOPE = 'media:read';
 const MEDIA_WRITE_SCOPE = 'media:write';
 const BASE64_REGEX = /^[A-Za-z0-9+/]+={0,2}$/;
 
-function toEmbedUrl(attachmentId: string): string {
-  return `/api/media/${attachmentId}/raw`;
+function toEmbedUrl(publicBaseUrl: string, attachmentId: string): string {
+  return `${publicBaseUrl}/api/media/${attachmentId}/raw`;
 }
 
 function decodeBase64OrThrow(content: string): Buffer {
@@ -40,7 +40,7 @@ export function buildMediaTools(
     defineMcpTool({
       name: 'wiki_upload_image',
       description:
-        "Uploader une image (transmise en base64) sur une page. Pour l'afficher dans une page, utiliser embedUrl : ![texte alternatif](embedUrl). Ne pas écrire url dans une page, c'est une URL présignée qui expire.",
+        "Uploader une image (transmise en base64) sur une page. Renvoie embedUrl, l'adresse permanente à écrire dans le contenu : ![texte alternatif](embedUrl).",
       inputSchema: {
         pageId: z.string().optional(),
         filename: z.string(),
@@ -60,7 +60,7 @@ export function buildMediaTools(
           buffer,
         };
 
-        const { attachment, url } = await mediaService.uploadFile(
+        const { attachment } = await mediaService.uploadFile(
           file,
           { pageId: input.pageId },
           ctx.userId,
@@ -68,22 +68,29 @@ export function buildMediaTools(
 
         return {
           id: attachment.id,
-          url,
-          embedUrl: toEmbedUrl(attachment.id),
+          embedUrl: toEmbedUrl(ctx.publicBaseUrl, attachment.id),
           filename: attachment.filename,
         };
       },
     }),
     defineMcpTool({
       name: 'wiki_get_media_url',
-      description: 'Obtenir une URL présignée pour un média',
+      description:
+        "Obtenir l'adresse d'un média : embedUrl (permanente, à écrire dans le contenu d'une page) et url (présignée, temporaire, pour télécharger le fichier ; ne jamais l'écrire dans une page)",
       inputSchema: { attachmentId: z.string() },
       requiredScopes: [MEDIA_READ_SCOPE],
       handler: async (input, ctx) => {
         const user = toAuthenticatedUser(
           await resolveMcpUser(usersService, ctx),
         );
-        return mediaService.getPresignedUrl(input.attachmentId, user);
+        const presigned = await mediaService.getPresignedUrl(
+          input.attachmentId,
+          user,
+        );
+        return {
+          ...presigned,
+          embedUrl: toEmbedUrl(ctx.publicBaseUrl, input.attachmentId),
+        };
       },
     }),
   ];
