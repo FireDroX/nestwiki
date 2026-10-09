@@ -79,7 +79,10 @@ jobs:
   # every PR (never pushed) so a broken Dockerfile shows up before the
   # merge, and on main only the immutable `sha-<commit>` tag is pushed
   # here. `latest`/`X.Y.Z`/`X.Y` are added by `release`, once every
-  # test job has passed.
+  # test job (and the backend smoke test) has passed.
+  #
+  # Only main writes the layer cache: a PR's cache scope can't be read
+  # by other PRs, while every PR can read main's.
   image:
     name: image (${{ matrix.image }})
     runs-on: ubuntu-latest
@@ -116,19 +119,28 @@ jobs:
           tags: type=sha,format=long
           labels: org.opencontainers.image.version=${{ steps.version.outputs.version }}
 
-      - name: Build the image
+      - name: Log in to the Container registry
+        if: env.PUSH == 'true'
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build the image (and push its sha-<commit> tag on main)
         uses: docker/build-push-action@v6
         with:
           context: .
           file: ${{ matrix.image }}/Dockerfile
-          load: true
+          load: ${{ matrix.image == 'backend' }}
+          push: ${{ env.PUSH == 'true' }}
           build-args: |
             VITE_API_URL=${{ vars.VITE_API_URL }}
             VITE_TURNSTILE_SITE_KEY=${{ vars.VITE_TURNSTILE_SITE_KEY }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=${{ matrix.image }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+          cache-to: ${{ env.PUSH == 'true' && format('type=gha,mode=max,scope={0}', matrix.image) || '' }}
 
       - name: Smoke test the backend image (migrations, seeds, /api/health)
         if: matrix.image == 'backend'
@@ -160,28 +172,6 @@ jobs:
           docker logs backend
           echo "The backend image did not answer /api/health" >&2
           exit 1
-
-      - name: Log in to the Container registry
-        if: env.PUSH == 'true'
-        uses: docker/login-action@v4
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Push the sha-<commit> tag
-        if: env.PUSH == 'true'
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: ${{ matrix.image }}/Dockerfile
-          push: true
-          build-args: |
-            VITE_API_URL=${{ vars.VITE_API_URL }}
-            VITE_TURNSTILE_SITE_KEY=${{ vars.VITE_TURNSTILE_SITE_KEY }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha,scope=${{ matrix.image }}
 
   release:
     name: release
