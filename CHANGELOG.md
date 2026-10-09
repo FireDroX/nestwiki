@@ -2,6 +2,11 @@
 
 All notable changes to NestWiki are documented here, newest first, one `## <version> — <date>` section per release. This file is the single source for the in-app "Notes de version" page, which groups releases by minor version (`1.0`, `0.31`…). Entries up to 0.31.10 were written in French, the project's original language.
 
+## 1.1.0 — 2026-10-09
+
+- Encadrés dans les pages et les commentaires : une citation qui commence par `[!NOTE]`, `[!TIP]`, `[!IMPORTANT]`, `[!WARNING]` ou `[!CAUTION]` (même syntaxe que GitHub) s'affiche comme un encadré coloré avec une icône et un titre (« Remarque », « Astuce », « Important », « Attention », « Danger »). Le texte écrit après le marqueur remplace le titre, ex. `> [!WARNING] Migration requise`.
+- La page de documentation « Marquages disponibles » présente cette syntaxe et l'utilise pour ses propres encadrés.
+
 ## 1.0.10 — 2026-10-09
 
 - Sécurité : mise à jour des dépendances concernées par 6 alertes Dependabot — `proxy-addr` 2.0.8 (critique : usurpation d'adresse IP via une adresse IPv6 mappée IPv4 dans un sous-réseau de confiance), `@modelcontextprotocol/sdk` 1.32.1 (envoi possible d'identifiants OAuth vers un serveur d'autorisation choisi par le serveur MCP), `source-map-js` 1.2.2, `postcss-selector-parser` 7.1.6 et `katex` 0.18.11 (le rendu des formules mathématiques est inchangé).

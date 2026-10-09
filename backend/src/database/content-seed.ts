@@ -773,23 +773,6 @@ Toutes ces actions sont tracées dans le [journal d'audit](/admin/audit-log).`,
   background: var(--primary);
   color: var(--primary-foreground);
 }
-.callout {
-  display: flex;
-  gap: 0.75rem;
-  border: 1px solid var(--border);
-  border-left: 4px solid var(--primary);
-  border-radius: var(--radius);
-  background: var(--card);
-  padding: 0.9rem 1.1rem;
-  margin: 1.1rem 0;
-}
-.callout-icon {
-  font-size: 1.1rem;
-  line-height: 1.4;
-}
-.callout strong {
-  color: var(--primary);
-}
 .deny-list {
   display: flex;
   flex-wrap: wrap;
@@ -809,10 +792,8 @@ Toutes ces actions sont tracées dans le [journal d'audit](/admin/audit-log).`,
 
 Le contenu d'une page est écrit en Markdown. Les pages (mais pas les commentaires — voir l'encart ci-dessous) supportent en plus du HTML et du CSS arbitraires, et des formules mathématiques en LaTeX. <span class="mode-badge pages-only">Pages uniquement</span>
 
-<div class="callout">
-  <span class="callout-icon">ℹ️</span>
-  <span>Les fonctionnalités marquées <span class="mode-badge pages-only">Pages uniquement</span> sur cette page (HTML/CSS libre, LaTeX) ne s'appliquent qu'au <strong>contenu des pages</strong>, réservé aux comptes editor/admin. Les <strong>commentaires</strong> restent en Markdown restreint pour tous les utilisateurs authentifiés.</span>
-</div>
+> [!NOTE]
+> Les fonctionnalités marquées <span class="mode-badge pages-only">Pages uniquement</span> sur cette page (HTML/CSS libre, LaTeX) ne s'appliquent qu'au **contenu des pages**, réservé aux comptes editor/admin. Les **commentaires** restent en Markdown restreint pour tous les utilisateurs authentifiés.
 
 ## Markdown de base
 
@@ -844,6 +825,48 @@ La syntaxe [CommonMark](https://commonmark.org/) + [GFM](https://github.github.c
 
 </div>
 </div>
+
+## Encadrés
+
+Une citation qui commence par \`[!NOTE]\`, \`[!TIP]\`, \`[!IMPORTANT]\`, \`[!WARNING]\` ou \`[!CAUTION]\` devient un encadré coloré (même syntaxe que GitHub). Le texte écrit après le marqueur, sur la même ligne, remplace le titre par défaut. Fonctionne aussi dans les commentaires.
+
+<div class="markup-example">
+<div>
+<div class="markup-label">Markdown</div>
+<pre>&gt; [!TIP]
+&gt; Utilisez la recherche pour retrouver une page.
+
+&gt; [!WARNING] Migration requise
+&gt; Lancez la migration avant de redémarrer.</pre>
+</div>
+<div>
+<div class="markup-label">Rendu</div>
+
+> [!TIP]
+> Utilisez la recherche pour retrouver une page.
+
+> [!WARNING] Migration requise
+> Lancez la migration avant de redémarrer.
+
+</div>
+</div>
+
+Les cinq types disponibles :
+
+> [!NOTE]
+> Information utile, même en survolant la page.
+
+> [!TIP]
+> Conseil pour faire mieux ou plus vite.
+
+> [!IMPORTANT]
+> Information indispensable pour réussir.
+
+> [!WARNING]
+> Point qui demande une attention immédiate.
+
+> [!CAUTION]
+> Risque ou conséquence négative d'une action.
 
 ## HTML et balises custom <span class="mode-badge pages-only">Pages uniquement</span>
 
@@ -918,10 +941,8 @@ Un bloc \`<style>\` écrit dans le contenu s'applique — mais uniquement au con
 
 Les formules mathématiques s'écrivent entre doubles dollars : \`$$formule$$\` — en ligne dans une phrase, ou seule sur son propre paragraphe pour un rendu centré en bloc. Rendu via [KaTeX](https://katex.org/).
 
-<div class="callout">
-  <span class="callout-icon">ℹ️</span>
-  <span>Seul le double dollar <code>$$...$$</code> est reconnu — pas de simple dollar <code>$...$</code>, qui n'offre aucune protection fiable contre les faux positifs (un prix comme "5 $ ou 10 $" serait interprété comme une formule).</span>
-</div>
+> [!NOTE]
+> Seul le double dollar \`$$...$$\` est reconnu — pas de simple dollar \`$...$\`, qui n'offre aucune protection fiable contre les faux positifs (un prix comme "5 $ ou 10 $" serait interprété comme une formule).
 
 <div class="markup-example">
 <div>
@@ -948,6 +969,7 @@ $$
 | Marquage | Pages | Commentaires |
 | --- | --- | --- |
 | Markdown / GFM | ✅ | ✅ |
+| Encadrés (\`> [!NOTE]\`…) | ✅ | ✅ |
 | HTML arbitraire (sauf balises interdites) | ✅ | ❌ (HTML très restreint) |
 | CSS (\`<style>\`, scopé) | ✅ | ❌ |
 | LaTeX (\`$$...$$\`) | ✅ | ❌ |`,

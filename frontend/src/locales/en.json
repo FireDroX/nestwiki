@@ -754,5 +754,14 @@
     "generic": "An error occurred, please try again.",
     "tooManyRequests": "Too many requests, try again in {{seconds}} s.",
     "tooManyRequestsNoDelay": "Too many requests, please wait a moment before trying again."
+  },
+  "markdown": {
+    "callout": {
+      "note": "Note",
+      "tip": "Tip",
+      "important": "Important",
+      "warning": "Warning",
+      "caution": "Caution"
+    }
   }
 }

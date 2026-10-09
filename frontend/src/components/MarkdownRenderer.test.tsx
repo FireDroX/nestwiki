@@ -202,4 +202,72 @@ describe('MarkdownRenderer', () => {
       expect(container.querySelector('.katex')).toBeNull()
     })
   })
+
+  describe('callouts', () => {
+    it.each([
+      ['NOTE', 'note', 'Remarque'],
+      ['TIP', 'tip', 'Astuce'],
+      ['IMPORTANT', 'important', 'Important'],
+      ['WARNING', 'warning', 'Attention'],
+      ['CAUTION', 'caution', 'Danger'],
+    ])('renders a [!%s] blockquote as a %s callout', (marker, type, title) => {
+      const { container } = render(
+        <MarkdownRenderer content={`> [!${marker}]\n> Contenu`} mode="full" />,
+      )
+      const callout = container.querySelector(`[data-callout="${type}"]`)
+      expect(callout).not.toBeNull()
+      expect(callout).toHaveTextContent(title)
+      expect(callout).toHaveTextContent('Contenu')
+      expect(callout).not.toHaveTextContent('[!')
+      expect(container.querySelector('blockquote')).toBeNull()
+    })
+
+    it('accepts a lowercase marker', () => {
+      const { container } = render(<MarkdownRenderer content={'> [!tip]\n> Contenu'} mode="full" />)
+      expect(container.querySelector('[data-callout="tip"]')).not.toBeNull()
+    })
+
+    it('uses the text after the marker as a custom title', () => {
+      const { container } = render(
+        <MarkdownRenderer content={'> [!WARNING] Migration requise\n> Lancez les migrations.'} mode="full" />,
+      )
+      const callout = container.querySelector('[data-callout="warning"]')
+      expect(callout).toHaveTextContent('Migration requise')
+      expect(callout).not.toHaveTextContent('Attention')
+      expect(callout).toHaveTextContent('Lancez les migrations.')
+    })
+
+    it('keeps every paragraph of a multi-paragraph callout', () => {
+      const { container } = render(
+        <MarkdownRenderer content={'> [!NOTE]\n>\n> Premier\n>\n> Second'} mode="full" />,
+      )
+      const paragraphs = container.querySelectorAll('[data-callout="note"] > p')
+      expect(paragraphs).toHaveLength(3)
+      expect(paragraphs[1]).toHaveTextContent('Premier')
+      expect(paragraphs[2]).toHaveTextContent('Second')
+    })
+
+    it('leaves a blockquote with an unknown marker untouched', () => {
+      const { container } = render(<MarkdownRenderer content={'> [!FOO]\n> Contenu'} mode="full" />)
+      expect(container.querySelector('[data-callout]')).toBeNull()
+      expect(container.querySelector('blockquote')).toHaveTextContent('[!FOO]')
+    })
+
+    it('leaves a regular blockquote untouched', () => {
+      const { container } = render(<MarkdownRenderer content="> Une citation" mode="full" />)
+      expect(container.querySelector('blockquote')).toHaveTextContent('Une citation')
+    })
+
+    it('renders callouts in restricted mode too', () => {
+      const { container } = render(<MarkdownRenderer content={'> [!CAUTION]\n> Contenu'} />)
+      expect(container.querySelector('[data-callout="caution"]')).toHaveTextContent('Danger')
+    })
+
+    it('does not let restricted mode forge a callout with raw HTML', () => {
+      const { container } = render(
+        <MarkdownRenderer content='<wiki-callout data-callout-type="note">x</wiki-callout>' />,
+      )
+      expect(container.querySelector('[data-callout]')).toBeNull()
+    })
+  })
 })
