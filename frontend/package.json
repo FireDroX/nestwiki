@@ -1,7 +1,7 @@
 {
   "name": "frontend",
   "private": true,
-  "version": "1.1.5",
+  "version": "1.1.6",
   "description": "NestWiki web client: React + TypeScript + Vite single-page app.",
   "keywords": [
     "wiki",
