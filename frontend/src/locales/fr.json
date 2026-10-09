@@ -764,6 +764,7 @@
       "caution": "Danger"
     },
     "toc": "Sommaire",
-    "headingLink": "Lien vers cette section"
+    "headingLink": "Lien vers cette section",
+    "mermaidError": "Diagramme Mermaid invalide :"
   }
 }

@@ -1,4 +1,5 @@
-import { type ComponentProps, type ReactNode, useEffect, useId, useState } from 'react'
+import { type ComponentProps, memo, type ReactNode, useEffect, useId, useState } from 'react'
+import type { Element } from 'hast'
 import ReactMarkdown from 'react-markdown'
 import rehypeKatex from 'rehype-katex'
 import rehypeRaw from 'rehype-raw'
@@ -9,9 +10,11 @@ import 'katex/dist/katex.min.css'
 import { ApiReferenceViewer } from '#components/ApiReferenceViewer'
 import { MarkdownCallout } from '#components/MarkdownCallout'
 import { MarkdownHeading } from '#components/MarkdownHeading'
+import { MermaidDiagram } from '#components/MermaidDiagram'
 import { PdfPreview } from '#components/PdfPreview'
 import { CALLOUT_TAG_NAME, rehypeCallouts } from '#lib/markdown-callouts'
 import { rehypeHeadingIds } from '#lib/markdown-headings'
+import { MERMAID_TAG_NAME, rehypeMermaid } from '#lib/markdown-mermaid'
 import { rehypeHardenFullMode } from '#lib/markdown-sanitize'
 import { rehypeScopeStyles } from '#lib/markdown-css-scope'
 import { cn } from '#lib/utils'
@@ -29,6 +32,15 @@ function toPlainText(node: ReactNode): string {
     return node.map(toPlainText).join('')
   }
   return ''
+}
+
+function isHighlightedCodeBlock(pre: Element | undefined): boolean {
+  const [code] = pre?.children ?? []
+  if (code?.type !== 'element' || code.tagName !== 'code') {
+    return false
+  }
+  const classNames = code.properties?.className
+  return Array.isArray(classNames) && classNames.some((name) => String(name).startsWith('language-'))
 }
 
 const MARKDOWN_SANITIZE_SCHEMA = {
@@ -100,11 +112,22 @@ const MARKDOWN_BODY_CLASSES = cn(
 )
 
 const markdownComponents = {
-  pre({ children }: { children?: ReactNode }) {
-    return <>{children}</>
+  pre({ children, node, className, ...rest }: ComponentProps<'pre'> & { node?: Element }) {
+    if (isHighlightedCodeBlock(node)) {
+      return <>{children}</>
+    }
+    return (
+      <pre
+        className={cn('overflow-x-auto rounded-md bg-muted p-4 text-sm [&>code]:bg-transparent [&>code]:p-0', className)}
+        {...rest}
+      >
+        {children}
+      </pre>
+    )
   },
   'api-reference': () => <ApiReferenceViewer />,
   [CALLOUT_TAG_NAME]: MarkdownCallout,
+  [MERMAID_TAG_NAME]: MermaidDiagram,
   h1: (props: ComponentProps<'h1'>) => <MarkdownHeading level={1} {...props} />,
   h2: (props: ComponentProps<'h2'>) => <MarkdownHeading level={2} {...props} />,
   h3: (props: ComponentProps<'h3'>) => <MarkdownHeading level={3} {...props} />,
@@ -137,13 +160,13 @@ const markdownComponents = {
   },
 }
 
-export function MarkdownRenderer({ content, mode = 'restricted' }: MarkdownRendererProps) {
+export const MarkdownRenderer = memo(function MarkdownRenderer({ content, mode = 'restricted' }: MarkdownRendererProps) {
   const scopeId = useId()
   const remarkPlugins: Array<unknown> =
     mode === 'full' ? [remarkGfm, [remarkMath, { singleDollarTextMath: false }]] : [remarkGfm]
   const rehypePlugins: Array<unknown> =
     mode === 'full'
-      ? [rehypeRaw, rehypeHardenFullMode, [rehypeScopeStyles, scopeId], rehypeHeadingIds, rehypeKatex, rehypeCallouts]
+      ? [rehypeRaw, rehypeHardenFullMode, rehypeMermaid, [rehypeScopeStyles, scopeId], rehypeHeadingIds, rehypeKatex, rehypeCallouts]
       : [rehypeRaw, [rehypeSanitize, MARKDOWN_SANITIZE_SCHEMA], rehypeCallouts]
 
   return (
@@ -157,4 +180,4 @@ export function MarkdownRenderer({ content, mode = 'restricted' }: MarkdownRende
       </ReactMarkdown>
     </div>
   )
-}
+})

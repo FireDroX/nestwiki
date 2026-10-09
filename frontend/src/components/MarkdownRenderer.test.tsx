@@ -203,6 +203,24 @@ describe('MarkdownRenderer', () => {
     })
   })
 
+  describe('preformatted text', () => {
+    it('keeps a fenced code block without language inside a <pre>', () => {
+      const { container } = render(<MarkdownRenderer content={'```\nline1\nline2\n```'} mode="full" />)
+      expect(container.querySelector('pre > code')).toHaveTextContent('line1 line2')
+    })
+
+    it('keeps a raw HTML <pre> block', () => {
+      const { container } = render(<MarkdownRenderer content={'<pre>a\nb</pre>'} mode="full" />)
+      expect(container.querySelector('pre')?.textContent).toBe('a\nb')
+    })
+
+    it('does not wrap block math in a <pre>', () => {
+      const { container } = render(<MarkdownRenderer content={'$$\nx^2\n$$'} mode="full" />)
+      expect(container.querySelector('.katex')).not.toBeNull()
+      expect(container.querySelector('pre')).toBeNull()
+    })
+  })
+
   describe('heading anchors', () => {
     it('gives each heading an id derived from its text, with a link to it', () => {
       const { container } = render(

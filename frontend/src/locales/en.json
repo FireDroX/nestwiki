@@ -764,6 +764,7 @@
       "caution": "Caution"
     },
     "toc": "On this page",
-    "headingLink": "Link to this section"
+    "headingLink": "Link to this section",
+    "mermaidError": "Invalid Mermaid diagram:"
   }
 }

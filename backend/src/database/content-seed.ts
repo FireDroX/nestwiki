@@ -802,7 +802,7 @@ La syntaxe [CommonMark](https://commonmark.org/) + [GFM](https://github.github.c
 <div class="markup-example">
 <div>
 <div class="markup-label">Markdown</div>
-<pre>## Titre
+<pre>#### Titre
 - **gras**, *italique*, ~~barré~~
 - [lien](https://exemple.fr)
 - \`code en ligne\`
@@ -813,7 +813,7 @@ La syntaxe [CommonMark](https://commonmark.org/) + [GFM](https://github.github.c
 <div>
 <div class="markup-label">Rendu</div>
 
-## Titre
+#### Titre
 
 - **gras**, *italique*, ~~barré~~
 - [lien](https://exemple.fr)
@@ -826,7 +826,9 @@ La syntaxe [CommonMark](https://commonmark.org/) + [GFM](https://github.github.c
 </div>
 </div>
 
-## Ancres et sommaire <span class="mode-badge pages-only">Pages uniquement</span>
+## Ancres et sommaire
+
+<span class="mode-badge pages-only">Pages uniquement</span>
 
 Chaque titre d'une page reçoit une ancre dérivée de son texte : \`## Guide de démarrage\` devient \`#guide-de-démarrage\` (minuscules, espaces remplacés par des tirets, ponctuation retirée ; un titre en double reçoit \`-1\`, \`-2\`…). Survolez un titre et cliquez sur l'icône de lien qui apparaît pour obtenir l'adresse de la section, à partager ou à utiliser dans un lien : \`[voir l'installation](#installation)\`. Un \`id\` écrit à la main dans un titre HTML (\`<h2 id="mon-ancre">\`) est conservé.
 
@@ -874,7 +876,9 @@ Les cinq types disponibles :
 > [!CAUTION]
 > Risque ou conséquence négative d'une action.
 
-## HTML et balises custom <span class="mode-badge pages-only">Pages uniquement</span>
+## HTML et balises custom
+
+<span class="mode-badge pages-only">Pages uniquement</span>
 
 N'importe quelle balise HTML peut être écrite directement dans le contenu, y compris des balises custom inconnues (ex. pour styliser un composant maison). Seules ces balises sont retirées, ainsi que tout attribut \`on*\` (\`onclick\`, etc.) et les URLs \`javascript:\` :
 
@@ -909,7 +913,9 @@ N'importe quelle balise HTML peut être écrite directement dans le contenu, y c
 </div>
 </div>
 
-## CSS scopé à la page <span class="mode-badge pages-only">Pages uniquement</span>
+## CSS scopé à la page
+
+<span class="mode-badge pages-only">Pages uniquement</span>
 
 Un bloc \`<style>\` écrit dans le contenu s'applique — mais uniquement au contenu de **cette page**. Techniquement, le CSS est automatiquement enveloppé dans la règle native [\`@scope\`](https://developer.mozilla.org/fr/docs/Web/CSS/@scope), pour qu'un sélecteur générique comme \`p { color: red }\` ne puisse jamais affecter la sidebar, la barre du haut, ou une autre page.
 
@@ -943,7 +949,9 @@ Un bloc \`<style>\` écrit dans le contenu s'applique — mais uniquement au con
 </div>
 </div>
 
-## Formules LaTeX <span class="mode-badge pages-only">Pages uniquement</span>
+## Formules LaTeX
+
+<span class="mode-badge pages-only">Pages uniquement</span>
 
 Les formules mathématiques s'écrivent entre doubles dollars : \`$$formule$$\` — en ligne dans une phrase, ou seule sur son propre paragraphe pour un rendu centré en bloc. Rendu via [KaTeX](https://katex.org/).
 
@@ -970,6 +978,35 @@ $$
 </div>
 </div>
 
+## Diagrammes Mermaid
+
+<span class="mode-badge pages-only">Pages uniquement</span>
+
+Un bloc de code dont le langage est \`mermaid\` est dessiné comme un diagramme : organigramme, séquence, classes, états, entité-relation, Gantt… Voir la [documentation Mermaid](https://mermaid.js.org/intro/) pour la syntaxe de chaque type. Le diagramme suit le thème clair ou sombre, et une syntaxe invalide affiche l'erreur avec le code source. Dans un commentaire, le bloc reste un simple bloc de code.
+
+<div class="markup-example">
+<div>
+<div class="markup-label">Markdown</div>
+<pre>\`\`\`mermaid
+flowchart LR
+  A[Brouillon] --> B{Relu ?}
+  B -- oui --> C[Publié]
+  B -- non --> A
+\`\`\`</pre>
+</div>
+<div>
+<div class="markup-label">Rendu</div>
+
+\`\`\`mermaid
+flowchart LR
+  A[Brouillon] --> B{Relu ?}
+  B -- oui --> C[Publié]
+  B -- non --> A
+\`\`\`
+
+</div>
+</div>
+
 ## Récapitulatif
 
 | Marquage | Pages | Commentaires |
@@ -979,7 +1016,8 @@ $$
 | Ancres sur les titres et sommaire | ✅ | ❌ |
 | HTML arbitraire (sauf balises interdites) | ✅ | ❌ (HTML très restreint) |
 | CSS (\`<style>\`, scopé) | ✅ | ❌ |
-| LaTeX (\`$$...$$\`) | ✅ | ❌ |`,
+| LaTeX (\`$$...$$\`) | ✅ | ❌ |
+| Diagrammes Mermaid | ✅ | ❌ |`,
       },
       {
         slug: 'notes-de-version',

@@ -2,6 +2,12 @@
 
 All notable changes to NestWiki are documented here, newest first, one `## <version> — <date>` section per release. This file is the single source for the in-app "Notes de version" page, which groups releases by minor version (`1.0`, `0.31`…). Entries up to 0.31.10 were written in French, the project's original language.
 
+## 1.1.2 — 2026-10-09
+
+- Diagrammes Mermaid dans les pages : un bloc de code de langage `mermaid` est dessiné comme un diagramme (organigramme, séquence, classes, états, entité-relation, Gantt…), en thème clair ou sombre selon l'application. Une syntaxe invalide affiche l'erreur avec le code source. Dans les commentaires, le bloc reste un bloc de code.
+- La bibliothèque Mermaid n'est téléchargée que lorsqu'une page contient un diagramme : aucun impact sur le chargement des autres pages.
+- Correction : un bloc de code sans langage et une balise HTML `<pre>` conservent de nouveau leurs retours à la ligne au lieu d'être affichés sur une seule ligne.
+
 ## 1.1.1 — 2026-10-09
 
 - Chaque titre d'une page a désormais une ancre : au survol, une icône de lien permet de copier l'adresse de la section (ex. `/pages/documentation/guide-demarrage#installation`), et ouvrir un tel lien fait défiler la page jusqu'à la section.
