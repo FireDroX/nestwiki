@@ -135,7 +135,7 @@ jobs:
         env:
           IMAGE: ${{ steps.meta.outputs.tags }}
           ADMIN_EMAIL: admin@ci.local
-          ADMIN_PASSWORD: ci-admin-password-not-for-production
+          ADMIN_PASSWORD: Ci-Admin-Password-1!
           ADMIN_DISPLAY_NAME: CI Admin
         run: |
           .github/scripts/test-services.sh wait
