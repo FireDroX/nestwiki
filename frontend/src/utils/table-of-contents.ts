@@ -21,3 +21,29 @@ export function collectTocHeadings(root: HTMLElement): TocHeading[] {
 export function shouldShowTableOfContents(headings: TocHeading[]): boolean {
   return headings.length >= TOC_MIN_HEADINGS
 }
+
+export interface TocNode {
+  heading: TocHeading
+  children: TocNode[]
+}
+
+export function buildTocTree(headings: TocHeading[]): TocNode[] {
+  const roots: TocNode[] = []
+  const ancestors: TocNode[] = []
+
+  for (const heading of headings) {
+    const node: TocNode = { heading, children: [] }
+    while (ancestors.length > 0 && ancestors[ancestors.length - 1].heading.level >= heading.level) {
+      ancestors.pop()
+    }
+    const parent = ancestors[ancestors.length - 1]
+    if (parent) {
+      parent.children.push(node)
+    } else {
+      roots.push(node)
+    }
+    ancestors.push(node)
+  }
+
+  return roots
+}

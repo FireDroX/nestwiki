@@ -1,36 +1,49 @@
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChevronDown, ListTree } from 'lucide-react'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '#components/ui/collapsible'
-import type { TocHeading } from '#utils/table-of-contents'
+import { buildTocTree, type TocHeading, type TocNode } from '#utils/table-of-contents'
 import { cn } from '#lib/utils'
-
-const LEVEL_INDENT_CLASSES = ['pl-0', 'pl-3', 'pl-6']
 
 interface TableOfContentsListProps {
   headings: TocHeading[]
   activeId: string | null
 }
 
-function TableOfContentsList({ headings, activeId }: TableOfContentsListProps) {
-  const minLevel = Math.min(...headings.map((heading) => heading.level))
+interface TocBranchProps {
+  nodes: TocNode[]
+  activeId: string | null
+  nested?: boolean
+}
 
+function TocBranch({ nodes, activeId, nested = false }: TocBranchProps) {
   return (
-    <ul className="space-y-1 text-sm">
-      {headings.map((heading) => (
-        <li key={heading.id} className={LEVEL_INDENT_CLASSES[heading.level - minLevel]}>
+    <ul className={cn('flex flex-col gap-[9px]', nested && 'mt-[9px] ml-1 border-l border-border pl-3')}>
+      {nodes.map(({ heading, children }) => (
+        <li key={heading.id}>
           <a
             href={`#${heading.id}`}
             aria-current={heading.id === activeId ? 'location' : undefined}
             className={cn(
-              'block truncate rounded-sm py-0.5 text-muted-foreground transition-colors hover:text-foreground',
-              heading.id === activeId && 'font-medium text-primary hover:text-primary',
+              'block text-foreground opacity-70 transition-opacity hover:opacity-100',
+              heading.id === activeId && 'text-primary opacity-100',
             )}
           >
             {heading.text}
           </a>
+          {children.length > 0 && <TocBranch nodes={children} activeId={activeId} nested />}
         </li>
       ))}
     </ul>
+  )
+}
+
+function TableOfContentsList({ headings, activeId }: TableOfContentsListProps) {
+  const tree = useMemo(() => buildTocTree(headings), [headings])
+  return (
+    <div className="text-[13px]">
+      <TocBranch nodes={tree} activeId={activeId} />
+    </div>
   )
 }
 
@@ -38,8 +51,8 @@ export function TableOfContentsSidebar({ headings, activeId }: TableOfContentsLi
   const { t } = useTranslation()
 
   return (
-    <nav aria-label={t('markdown.toc')} className="sticky top-6 max-h-[calc(100vh-8rem)] space-y-2 overflow-y-auto">
-      <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t('markdown.toc')}</p>
+    <nav aria-label={t('markdown.toc')} className="sticky top-0 max-h-[calc(100vh-3.5rem)] overflow-y-auto px-5 py-7">
+      <p className="mb-2.5 text-[10px] font-semibold tracking-[.1em] text-foreground/55 uppercase">{t('markdown.toc')}</p>
       <TableOfContentsList headings={headings} activeId={activeId} />
     </nav>
   )

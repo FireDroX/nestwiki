@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { collectTocHeadings, shouldShowTableOfContents } from './table-of-contents'
+import { buildTocTree, collectTocHeadings, shouldShowTableOfContents } from './table-of-contents'
 
 function buildRoot(html: string): HTMLElement {
   const root = document.createElement('div')
@@ -32,5 +32,19 @@ describe('shouldShowTableOfContents', () => {
     expect(shouldShowTableOfContents([])).toBe(false)
     expect(shouldShowTableOfContents([heading])).toBe(false)
     expect(shouldShowTableOfContents([heading, { ...heading, id: 'b' }])).toBe(true)
+  })
+})
+
+describe('buildTocTree', () => {
+  it('nests each heading under the closest previous heading of a higher level', () => {
+    const h = (id: string, level: number) => ({ id, text: id, level })
+    const tree = buildTocTree([h('a', 2), h('b', 3), h('c', 3), h('d', 2), h('e', 1), h('f', 3)])
+    const shape = (nodes: ReturnType<typeof buildTocTree>): unknown =>
+      nodes.map((node) => [node.heading.id, shape(node.children)])
+    expect(shape(tree)).toEqual([
+      ['a', [['b', []], ['c', []]]],
+      ['d', []],
+      ['e', [['f', []]]],
+    ])
   })
 })

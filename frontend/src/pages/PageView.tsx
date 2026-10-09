@@ -145,56 +145,54 @@ export function PageView() {
   }
 
   return (
-    <article className={cn(PAGE_PADDING, 'space-y-6')}>
-      <div className="space-y-3">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-          <PageBreadcrumb title={page.title} parentId={page.parentId} />
-          <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
-            {user && <FollowButton key={page.id} pageId={page.id} initialFollowed={page.isFollowed} />}
-            <Button variant="outline" size="sm" asChild>
-              <Link to={`/history/${pathSegments.join('/')}`}>
-                <History /> {t('pageView.history')}
-              </Link>
-            </Button>
-            {canEdit && (
+    <div className="flex min-h-full">
+      <article className={cn(PAGE_PADDING, 'min-w-0 flex-1 space-y-6')}>
+        <div className="space-y-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+            <PageBreadcrumb title={page.title} parentId={page.parentId} />
+            <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
+              {user && <FollowButton key={page.id} pageId={page.id} initialFollowed={page.isFollowed} />}
               <Button variant="outline" size="sm" asChild>
-                <Link to={`/edit/${pathSegments.join('/')}`}>
-                  <Pencil /> {t('pageView.edit')}
+                <Link to={`/history/${pathSegments.join('/')}`}>
+                  <History /> {t('pageView.history')}
                 </Link>
               </Button>
-            )}
-            {canManageAccess && <PageAccessPanel pageId={page.id} availableActions={page.permissions} />}
-          </div>
-        </div>
-        <PageTagList tags={tags} />
-      </div>
-      {hasNewVersion && (
-        <div className="flex items-center justify-between rounded-md border border-primary/30 bg-primary/5 px-4 py-2 text-sm">
-          <span>{t('pageView.newVersionBanner')}</span>
-          <Button size="sm" variant="outline" onClick={handleReload}>
-            {t('pageView.reloadButton')}
-          </Button>
-        </div>
-      )}
-      <div className="xl:flex xl:gap-10">
-        <div className="min-w-0 flex-1 space-y-6">
-          {hasTableOfContents && (
-            <div className="xl:hidden">
-              <TableOfContentsCollapsible headings={headings} activeId={activeHeadingId} />
+              {canEdit && (
+                <Button variant="outline" size="sm" asChild>
+                  <Link to={`/edit/${pathSegments.join('/')}`}>
+                    <Pencil /> {t('pageView.edit')}
+                  </Link>
+                </Button>
+              )}
+              {canManageAccess && <PageAccessPanel pageId={page.id} availableActions={page.permissions} />}
             </div>
-          )}
-          <div ref={contentRef}>
-            <MarkdownRenderer content={page.content} mode="full" />
           </div>
-          {page.commentsEnabled && <CommentThread pageId={page.id} />}
-          <ContributorsList pageId={page.id} />
+          <PageTagList tags={tags} />
         </div>
-        {hasTableOfContents && (
-          <aside className="hidden w-56 shrink-0 xl:block">
-            <TableOfContentsSidebar headings={headings} activeId={activeHeadingId} />
-          </aside>
+        {hasNewVersion && (
+          <div className="flex items-center justify-between rounded-md border border-primary/30 bg-primary/5 px-4 py-2 text-sm">
+            <span>{t('pageView.newVersionBanner')}</span>
+            <Button size="sm" variant="outline" onClick={handleReload}>
+              {t('pageView.reloadButton')}
+            </Button>
+          </div>
         )}
-      </div>
-    </article>
+        {hasTableOfContents && (
+          <div className="xl:hidden">
+            <TableOfContentsCollapsible headings={headings} activeId={activeHeadingId} />
+          </div>
+        )}
+        <div ref={contentRef}>
+          <MarkdownRenderer content={page.content} mode="full" />
+        </div>
+        {page.commentsEnabled && <CommentThread pageId={page.id} />}
+        <ContributorsList pageId={page.id} />
+      </article>
+      {hasTableOfContents && (
+        <aside className="hidden w-[220px] shrink-0 border-l border-border xl:block">
+          <TableOfContentsSidebar headings={headings} activeId={activeHeadingId} />
+        </aside>
+      )}
+    </div>
   )
 }
