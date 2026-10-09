@@ -17,7 +17,7 @@
 ## Features
 
 - **Page tree** — nest pages as deep as you need, move them around, address every page by its full path (`/pages/docs/guides/install`).
-- **Markdown editor with live preview** — GFM tables, syntax-highlighted code, LaTeX math, and sanitized raw HTML with page-scoped `<style>` for richer layouts.
+- **Markdown editor with live preview** — GFM tables, syntax-highlighted code, LaTeX math, Mermaid diagrams, GitHub-style callouts, heading anchors with an automatic table of contents, and sanitized raw HTML with page-scoped `<style>` for richer layouts.
 - **Append-only version history** — every save is a new version; compare any two versions and restore an old one without losing anything.
 - **Real-time collaboration** — live updates of the page tree and comments, plus automatic merging when two people edit the same page.
 - **Permissions that scale** — `admin` / `member` roles, groups, global permissions (`user.manage`, `media.upload`…) and per-page access rules that can cover a whole subtree, with exclusions. Pages are public or private.

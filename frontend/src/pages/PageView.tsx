@@ -1,5 +1,5 @@
 import { Link, useParams } from 'react-router'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { History, Pencil } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '#components/ui/button'
@@ -10,15 +10,20 @@ import { CommentThread } from '#components/PageView/CommentThread'
 import { ContributorsList } from '#components/PageView/ContributorsList'
 import { FollowButton } from '#components/PageView/FollowButton'
 import { PageTagList } from '#components/PageView/PageTagList'
+import { TableOfContentsCollapsible, TableOfContentsSidebar } from '#components/PageView/TableOfContents'
 import { PageAccessPanel } from '#components/PageAccessPanel/PageAccessPanel'
+import { useActiveHeading } from '#hooks/useActiveHeading'
 import { useAuth } from '#hooks/useAuth'
 import { useDocumentTitle } from '#hooks/useDocumentTitle'
 import { usePage } from '#hooks/usePage'
 import { usePageRoom } from '#hooks/usePageRoom'
 import { usePageTags } from '#hooks/usePageTags'
 import { usePermissions } from '#hooks/usePermissions'
+import { useScrollToHash } from '#hooks/useScrollToHash'
+import { useTableOfContents } from '#hooks/useTableOfContents'
 import { getRealtimeSocket } from '#lib/realtime-client'
 import { PAGE_PADDING } from '#utils/page-layout'
+import { shouldShowTableOfContents } from '#utils/table-of-contents'
 import { cn } from '#lib/utils'
 
 function PageViewSkeleton() {
@@ -78,6 +83,10 @@ export function PageView() {
   const canEdit = canOnPage(page, 'page.edit')
   const canManageAccess = canOnPage(page, 'page.manage_permissions')
   useDocumentTitle(page?.title)
+  const contentRef = useRef<HTMLDivElement>(null)
+  const headings = useTableOfContents(contentRef, page?.content)
+  const activeHeadingId = useActiveHeading(headings)
+  useScrollToHash(page?.content)
 
   useEffect(() => {
     setHasNewVersion(false)
@@ -96,6 +105,8 @@ export function PageView() {
       socket.off('page:version-created', handleVersionCreated)
     }
   }, [page])
+
+  const hasTableOfContents = shouldShowTableOfContents(headings)
 
   async function handleReload() {
     await refresh()
@@ -134,40 +145,54 @@ export function PageView() {
   }
 
   return (
-    <article className={cn(PAGE_PADDING, 'space-y-6')}>
-      <div className="space-y-3">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-          <PageBreadcrumb title={page.title} parentId={page.parentId} />
-          <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
-            {user && <FollowButton key={page.id} pageId={page.id} initialFollowed={page.isFollowed} />}
-            <Button variant="outline" size="sm" asChild>
-              <Link to={`/history/${pathSegments.join('/')}`}>
-                <History /> {t('pageView.history')}
-              </Link>
-            </Button>
-            {canEdit && (
+    <div className="flex min-h-full">
+      <article className={cn(PAGE_PADDING, 'min-w-0 flex-1 space-y-6')}>
+        <div className="space-y-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+            <PageBreadcrumb title={page.title} parentId={page.parentId} />
+            <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
+              {user && <FollowButton key={page.id} pageId={page.id} initialFollowed={page.isFollowed} />}
               <Button variant="outline" size="sm" asChild>
-                <Link to={`/edit/${pathSegments.join('/')}`}>
-                  <Pencil /> {t('pageView.edit')}
+                <Link to={`/history/${pathSegments.join('/')}`}>
+                  <History /> {t('pageView.history')}
                 </Link>
               </Button>
-            )}
-            {canManageAccess && <PageAccessPanel pageId={page.id} availableActions={page.permissions} />}
+              {canEdit && (
+                <Button variant="outline" size="sm" asChild>
+                  <Link to={`/edit/${pathSegments.join('/')}`}>
+                    <Pencil /> {t('pageView.edit')}
+                  </Link>
+                </Button>
+              )}
+              {canManageAccess && <PageAccessPanel pageId={page.id} availableActions={page.permissions} />}
+            </div>
           </div>
+          <PageTagList tags={tags} />
         </div>
-        <PageTagList tags={tags} />
-      </div>
-      {hasNewVersion && (
-        <div className="flex items-center justify-between rounded-md border border-primary/30 bg-primary/5 px-4 py-2 text-sm">
-          <span>{t('pageView.newVersionBanner')}</span>
-          <Button size="sm" variant="outline" onClick={handleReload}>
-            {t('pageView.reloadButton')}
-          </Button>
+        {hasNewVersion && (
+          <div className="flex items-center justify-between rounded-md border border-primary/30 bg-primary/5 px-4 py-2 text-sm">
+            <span>{t('pageView.newVersionBanner')}</span>
+            <Button size="sm" variant="outline" onClick={handleReload}>
+              {t('pageView.reloadButton')}
+            </Button>
+          </div>
+        )}
+        {hasTableOfContents && (
+          <div className="xl:hidden">
+            <TableOfContentsCollapsible headings={headings} activeId={activeHeadingId} />
+          </div>
+        )}
+        <div ref={contentRef}>
+          <MarkdownRenderer content={page.content} mode="full" />
         </div>
+        {page.commentsEnabled && <CommentThread pageId={page.id} />}
+        <ContributorsList pageId={page.id} />
+      </article>
+      {hasTableOfContents && (
+        <aside className="hidden w-[220px] shrink-0 border-l border-border xl:block">
+          <TableOfContentsSidebar headings={headings} activeId={activeHeadingId} />
+        </aside>
       )}
-      <MarkdownRenderer content={page.content} mode="full" />
-      {page.commentsEnabled && <CommentThread pageId={page.id} />}
-      <ContributorsList pageId={page.id} />
-    </article>
+    </div>
   )
 }

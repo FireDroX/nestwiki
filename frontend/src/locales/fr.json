@@ -754,5 +754,17 @@
     "generic": "Une erreur est survenue, veuillez réessayer.",
     "tooManyRequests": "Trop de requêtes, réessayez dans {{seconds}} s.",
     "tooManyRequestsNoDelay": "Trop de requêtes, patientez un instant avant de réessayer."
+  },
+  "markdown": {
+    "callout": {
+      "note": "Remarque",
+      "tip": "Astuce",
+      "important": "Important",
+      "warning": "Attention",
+      "caution": "Danger"
+    },
+    "toc": "Sur cette page",
+    "headingLink": "Lien vers cette section",
+    "mermaidError": "Diagramme Mermaid invalide :"
   }
 }

@@ -3,6 +3,11 @@ import { PagesService } from '../../pages/services/pages.service.js';
 import { PAGE_VISIBILITIES } from '../../pages/entities/page.entity.js';
 import { UsersService } from '../../users/services/users.service.js';
 import {
+  FORMATTING_GUIDE_TOOL_NAME,
+  PAGE_CONTENT_SUMMARY,
+  PAGE_FORMATTING_GUIDE,
+} from '../constants/page-formatting.guide.js';
+import {
   defineMcpTool,
   McpToolDefinition,
 } from '../registry/mcp-tools.registry.js';
@@ -17,9 +22,16 @@ export function buildPagesTools(
 ): McpToolDefinition[] {
   return [
     defineMcpTool({
-      name: 'wiki_create_page',
+      name: FORMATTING_GUIDE_TOOL_NAME,
       description:
-        'Créer une nouvelle page dans le wiki. Le contenu est du Markdown (GFM) pouvant inclure du HTML brut (sera assaini) et des formules LaTeX, uniquement entre $$ ... $$ (le $ simple ne déclenche pas de rendu mathématique)',
+        'Obtenir le guide complet du formatage supporté dans le contenu des pages (Markdown, encadrés, ancres, LaTeX, Mermaid, HTML/CSS, liens internes, images). À consulter avant de créer ou modifier une page.',
+      inputSchema: {},
+      requiredScopes: [],
+      handler: () => Promise.resolve({ guide: PAGE_FORMATTING_GUIDE }),
+    }),
+    defineMcpTool({
+      name: 'wiki_create_page',
+      description: `Créer une nouvelle page dans le wiki. ${PAGE_CONTENT_SUMMARY}`,
       inputSchema: {
         slug: z.string(),
         title: z.string(),
@@ -49,8 +61,7 @@ export function buildPagesTools(
     }),
     defineMcpTool({
       name: 'wiki_update_page',
-      description:
-        "Modifier le titre, le contenu ou créer une nouvelle version d'une page existante. Le contenu est du Markdown (GFM) pouvant inclure du HTML brut (sera assaini) et des formules LaTeX, uniquement entre $$ ... $$ (le $ simple ne déclenche pas de rendu mathématique)",
+      description: `Modifier le titre, le contenu ou créer une nouvelle version d'une page existante. ${PAGE_CONTENT_SUMMARY}`,
       inputSchema: {
         pageId: z.string(),
         title: z.string().optional(),

@@ -202,4 +202,125 @@ describe('MarkdownRenderer', () => {
       expect(container.querySelector('.katex')).toBeNull()
     })
   })
+
+  describe('preformatted text', () => {
+    it('keeps a fenced code block without language inside a <pre>', () => {
+      const { container } = render(<MarkdownRenderer content={'```\nline1\nline2\n```'} mode="full" />)
+      expect(container.querySelector('pre > code')).toHaveTextContent('line1 line2')
+    })
+
+    it('keeps a raw HTML <pre> block', () => {
+      const { container } = render(<MarkdownRenderer content={'<pre>a\nb</pre>'} mode="full" />)
+      expect(container.querySelector('pre')?.textContent).toBe('a\nb')
+    })
+
+    it('does not wrap block math in a <pre>', () => {
+      const { container } = render(<MarkdownRenderer content={'$$\nx^2\n$$'} mode="full" />)
+      expect(container.querySelector('.katex')).not.toBeNull()
+      expect(container.querySelector('pre')).toBeNull()
+    })
+  })
+
+  describe('heading anchors', () => {
+    it('gives each heading an id derived from its text, with a link to it', () => {
+      const { container } = render(
+        <MarkdownRenderer content={'# Guide de démarrage\n\n## Installation'} mode="full" />,
+      )
+      const heading = container.querySelector('h1')
+      expect(heading?.id).toBe('guide-de-démarrage')
+      expect(heading?.querySelector('a')?.getAttribute('href')).toBe('#guide-de-démarrage')
+      expect(heading?.querySelector('a')).toHaveAccessibleName('Lien vers cette section')
+      expect(container.querySelector('h2')?.id).toBe('installation')
+    })
+
+    it('suffixes duplicate headings', () => {
+      const { container } = render(
+        <MarkdownRenderer content={'## Exemple\n\n## Exemple'} mode="full" />,
+      )
+      const ids = Array.from(container.querySelectorAll('h2')).map((heading) => heading.id)
+      expect(ids).toEqual(['exemple', 'exemple-1'])
+    })
+
+    it('keeps an id written by hand in raw HTML', () => {
+      const { container } = render(
+        <MarkdownRenderer content={'<h2 id="perso">Titre</h2>\n\n## Perso'} mode="full" />,
+      )
+      const ids = Array.from(container.querySelectorAll('h2')).map((heading) => heading.id)
+      expect(ids).toEqual(['perso', 'perso-1'])
+    })
+
+    it('does not add ids or anchor links in restricted mode', () => {
+      const { container } = render(<MarkdownRenderer content="## Installation" />)
+      expect(container.querySelector('h2')?.id).toBe('')
+      expect(container.querySelector('h2 a')).toBeNull()
+    })
+  })
+
+  describe('callouts', () => {
+    it.each([
+      ['NOTE', 'note', 'Remarque'],
+      ['TIP', 'tip', 'Astuce'],
+      ['IMPORTANT', 'important', 'Important'],
+      ['WARNING', 'warning', 'Attention'],
+      ['CAUTION', 'caution', 'Danger'],
+    ])('renders a [!%s] blockquote as a %s callout', (marker, type, title) => {
+      const { container } = render(
+        <MarkdownRenderer content={`> [!${marker}]\n> Contenu`} mode="full" />,
+      )
+      const callout = container.querySelector(`[data-callout="${type}"]`)
+      expect(callout).not.toBeNull()
+      expect(callout).toHaveTextContent(title)
+      expect(callout).toHaveTextContent('Contenu')
+      expect(callout).not.toHaveTextContent('[!')
+      expect(container.querySelector('blockquote')).toBeNull()
+    })
+
+    it('accepts a lowercase marker', () => {
+      const { container } = render(<MarkdownRenderer content={'> [!tip]\n> Contenu'} mode="full" />)
+      expect(container.querySelector('[data-callout="tip"]')).not.toBeNull()
+    })
+
+    it('uses the text after the marker as a custom title', () => {
+      const { container } = render(
+        <MarkdownRenderer content={'> [!WARNING] Migration requise\n> Lancez les migrations.'} mode="full" />,
+      )
+      const callout = container.querySelector('[data-callout="warning"]')
+      expect(callout).toHaveTextContent('Migration requise')
+      expect(callout).not.toHaveTextContent('Attention')
+      expect(callout).toHaveTextContent('Lancez les migrations.')
+    })
+
+    it('keeps every paragraph of a multi-paragraph callout', () => {
+      const { container } = render(
+        <MarkdownRenderer content={'> [!NOTE]\n>\n> Premier\n>\n> Second'} mode="full" />,
+      )
+      const paragraphs = container.querySelectorAll('[data-callout="note"] > p')
+      expect(paragraphs).toHaveLength(3)
+      expect(paragraphs[1]).toHaveTextContent('Premier')
+      expect(paragraphs[2]).toHaveTextContent('Second')
+    })
+
+    it('leaves a blockquote with an unknown marker untouched', () => {
+      const { container } = render(<MarkdownRenderer content={'> [!FOO]\n> Contenu'} mode="full" />)
+      expect(container.querySelector('[data-callout]')).toBeNull()
+      expect(container.querySelector('blockquote')).toHaveTextContent('[!FOO]')
+    })
+
+    it('leaves a regular blockquote untouched', () => {
+      const { container } = render(<MarkdownRenderer content="> Une citation" mode="full" />)
+      expect(container.querySelector('blockquote')).toHaveTextContent('Une citation')
+    })
+
+    it('renders callouts in restricted mode too', () => {
+      const { container } = render(<MarkdownRenderer content={'> [!CAUTION]\n> Contenu'} />)
+      expect(container.querySelector('[data-callout="caution"]')).toHaveTextContent('Danger')
+    })
+
+    it('does not let restricted mode forge a callout with raw HTML', () => {
+      const { container } = render(
+        <MarkdownRenderer content='<wiki-callout data-callout-type="note">x</wiki-callout>' />,
+      )
+      expect(container.querySelector('[data-callout]')).toBeNull()
+    })
+  })
 })

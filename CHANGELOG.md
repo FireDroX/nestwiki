@@ -2,6 +2,27 @@
 
 All notable changes to NestWiki are documented here, newest first, one `## <version> — <date>` section per release. This file is the single source for the in-app "Notes de version" page, which groups releases by minor version (`1.0`, `0.31`…). Entries up to 0.31.10 were written in French, the project's original language.
 
+## 1.1.3 — 2026-10-09
+
+- Intégration MCP : le serveur décrit désormais aux IA connectées tout le formatage supporté dans les pages (Markdown, encadrés, ancres et sommaire, LaTeX, Mermaid, HTML/CSS, liens internes par chemin complet, images). Le guide est envoyé dans les instructions du serveur à la connexion, et le nouvel outil `wiki_get_formatting_guide` le renvoie à la demande ; `wiki_create_page` et `wiki_update_page` y renvoient.
+- `wiki_upload_image` renvoie aussi `embedUrl` (`/api/media/<id>/raw`), l'adresse stable à utiliser pour afficher l'image dans une page : l'`url` déjà renvoyée est présignée et expire.
+
+## 1.1.2 — 2026-10-09
+
+- Diagrammes Mermaid dans les pages : un bloc de code de langage `mermaid` est dessiné comme un diagramme (organigramme, séquence, classes, états, entité-relation, Gantt…), en thème clair ou sombre selon l'application. Une syntaxe invalide affiche l'erreur avec le code source. Dans les commentaires, le bloc reste un bloc de code.
+- La bibliothèque Mermaid n'est téléchargée que lorsqu'une page contient un diagramme : aucun impact sur le chargement des autres pages.
+- Correction : un bloc de code sans langage et une balise HTML `<pre>` conservent de nouveau leurs retours à la ligne au lieu d'être affichés sur une seule ligne.
+
+## 1.1.1 — 2026-10-09
+
+- Chaque titre d'une page a désormais une ancre : au survol, une icône de lien permet de copier l'adresse de la section (ex. `/pages/documentation/guide-demarrage#installation`), et ouvrir un tel lien fait défiler la page jusqu'à la section.
+- Sommaire « Sur cette page » automatique, en arborescence, dès qu'une page compte au moins deux titres : colonne à droite sur grand écran, avec la section en cours de lecture mise en évidence, ou bloc repliable « Sommaire » au-dessus du contenu sur les écrans plus petits.
+
+## 1.1.0 — 2026-10-09
+
+- Encadrés dans les pages et les commentaires : une citation qui commence par `[!NOTE]`, `[!TIP]`, `[!IMPORTANT]`, `[!WARNING]` ou `[!CAUTION]` (même syntaxe que GitHub) s'affiche comme un encadré coloré avec une icône et un titre (« Remarque », « Astuce », « Important », « Attention », « Danger »). Le texte écrit après le marqueur remplace le titre, ex. `> [!WARNING] Migration requise`.
+- La page de documentation « Marquages disponibles » présente cette syntaxe et l'utilise pour ses propres encadrés.
+
 ## 1.0.10 — 2026-10-09
 
 - Sécurité : mise à jour des dépendances concernées par 6 alertes Dependabot — `proxy-addr` 2.0.8 (critique : usurpation d'adresse IP via une adresse IPv6 mappée IPv4 dans un sous-réseau de confiance), `@modelcontextprotocol/sdk` 1.32.1 (envoi possible d'identifiants OAuth vers un serveur d'autorisation choisi par le serveur MCP), `source-map-js` 1.2.2, `postcss-selector-parser` 7.1.6 et `katex` 0.18.11 (le rendu des formules mathématiques est inchangé).

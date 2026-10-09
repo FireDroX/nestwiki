@@ -613,6 +613,14 @@ Une fois connecté, le client peut lister les tools disponibles (\`tools/list\`)
 
 ## 4. Tools disponibles
 
+**Formatage** (aucun scope requis)
+
+| Tool | Rôle |
+| --- | --- |
+| \`wiki_get_formatting_guide\` | Renvoyer le guide complet du formatage supporté dans les pages ([Marquages disponibles](/pages/documentation/marquages-disponibles)) |
+
+Ce même guide est envoyé dans les instructions du serveur à la connexion : la plupart des clients le donnent directement à l'IA, qui sait alors quelle syntaxe utiliser (encadrés, Mermaid, LaTeX, liens internes, images…).
+
 **Pages** (\`pages:read\`/\`pages:write\`)
 
 | Tool | Rôle |
@@ -645,7 +653,7 @@ Une fois connecté, le client peut lister les tools disponibles (\`tools/list\`)
 
 | Tool | Rôle |
 | --- | --- |
-| \`wiki_upload_image\` | Uploader une image (transmise en base64) sur une page |
+| \`wiki_upload_image\` | Uploader une image (transmise en base64) sur une page ; renvoie \`embedUrl\`, l'adresse stable à écrire dans le contenu |
 | \`wiki_get_media_url\` | Obtenir une URL présignée pour un média existant |
 
 **Recherche** (\`search:read\` ou \`pages:read\`)
@@ -773,23 +781,6 @@ Toutes ces actions sont tracées dans le [journal d'audit](/admin/audit-log).`,
   background: var(--primary);
   color: var(--primary-foreground);
 }
-.callout {
-  display: flex;
-  gap: 0.75rem;
-  border: 1px solid var(--border);
-  border-left: 4px solid var(--primary);
-  border-radius: var(--radius);
-  background: var(--card);
-  padding: 0.9rem 1.1rem;
-  margin: 1.1rem 0;
-}
-.callout-icon {
-  font-size: 1.1rem;
-  line-height: 1.4;
-}
-.callout strong {
-  color: var(--primary);
-}
 .deny-list {
   display: flex;
   flex-wrap: wrap;
@@ -809,10 +800,8 @@ Toutes ces actions sont tracées dans le [journal d'audit](/admin/audit-log).`,
 
 Le contenu d'une page est écrit en Markdown. Les pages (mais pas les commentaires — voir l'encart ci-dessous) supportent en plus du HTML et du CSS arbitraires, et des formules mathématiques en LaTeX. <span class="mode-badge pages-only">Pages uniquement</span>
 
-<div class="callout">
-  <span class="callout-icon">ℹ️</span>
-  <span>Les fonctionnalités marquées <span class="mode-badge pages-only">Pages uniquement</span> sur cette page (HTML/CSS libre, LaTeX) ne s'appliquent qu'au <strong>contenu des pages</strong>, réservé aux comptes editor/admin. Les <strong>commentaires</strong> restent en Markdown restreint pour tous les utilisateurs authentifiés.</span>
-</div>
+> [!NOTE]
+> Les fonctionnalités marquées <span class="mode-badge pages-only">Pages uniquement</span> sur cette page (HTML/CSS libre, LaTeX) ne s'appliquent qu'au **contenu des pages**, réservé aux comptes editor/admin. Les **commentaires** restent en Markdown restreint pour tous les utilisateurs authentifiés.
 
 ## Markdown de base
 
@@ -821,7 +810,7 @@ La syntaxe [CommonMark](https://commonmark.org/) + [GFM](https://github.github.c
 <div class="markup-example">
 <div>
 <div class="markup-label">Markdown</div>
-<pre>## Titre
+<pre>#### Titre
 - **gras**, *italique*, ~~barré~~
 - [lien](https://exemple.fr)
 - \`code en ligne\`
@@ -832,7 +821,7 @@ La syntaxe [CommonMark](https://commonmark.org/) + [GFM](https://github.github.c
 <div>
 <div class="markup-label">Rendu</div>
 
-## Titre
+#### Titre
 
 - **gras**, *italique*, ~~barré~~
 - [lien](https://exemple.fr)
@@ -845,7 +834,59 @@ La syntaxe [CommonMark](https://commonmark.org/) + [GFM](https://github.github.c
 </div>
 </div>
 
-## HTML et balises custom <span class="mode-badge pages-only">Pages uniquement</span>
+## Ancres et sommaire
+
+<span class="mode-badge pages-only">Pages uniquement</span>
+
+Chaque titre d'une page reçoit une ancre dérivée de son texte : \`## Guide de démarrage\` devient \`#guide-de-démarrage\` (minuscules, espaces remplacés par des tirets, ponctuation retirée ; un titre en double reçoit \`-1\`, \`-2\`…). Survolez un titre et cliquez sur l'icône de lien qui apparaît pour obtenir l'adresse de la section, à partager ou à utiliser dans un lien : \`[voir l'installation](#installation)\`. Un \`id\` écrit à la main dans un titre HTML (\`<h2 id="mon-ancre">\`) est conservé.
+
+Dès qu'une page compte au moins deux titres de niveau 1 à 3, un **sommaire** « Sur cette page » est généré automatiquement, présenté en arborescence : dans une colonne à droite sur grand écran, avec la section en cours de lecture mise en évidence, ou dans un bloc repliable au-dessus du contenu sur les écrans plus petits.
+
+## Encadrés
+
+Une citation qui commence par \`[!NOTE]\`, \`[!TIP]\`, \`[!IMPORTANT]\`, \`[!WARNING]\` ou \`[!CAUTION]\` devient un encadré coloré (même syntaxe que GitHub). Le texte écrit après le marqueur, sur la même ligne, remplace le titre par défaut. Fonctionne aussi dans les commentaires.
+
+<div class="markup-example">
+<div>
+<div class="markup-label">Markdown</div>
+<pre>&gt; [!TIP]
+&gt; Utilisez la recherche pour retrouver une page.
+
+&gt; [!WARNING] Migration requise
+&gt; Lancez la migration avant de redémarrer.</pre>
+</div>
+<div>
+<div class="markup-label">Rendu</div>
+
+> [!TIP]
+> Utilisez la recherche pour retrouver une page.
+
+> [!WARNING] Migration requise
+> Lancez la migration avant de redémarrer.
+
+</div>
+</div>
+
+Les cinq types disponibles :
+
+> [!NOTE]
+> Information utile, même en survolant la page.
+
+> [!TIP]
+> Conseil pour faire mieux ou plus vite.
+
+> [!IMPORTANT]
+> Information indispensable pour réussir.
+
+> [!WARNING]
+> Point qui demande une attention immédiate.
+
+> [!CAUTION]
+> Risque ou conséquence négative d'une action.
+
+## HTML et balises custom
+
+<span class="mode-badge pages-only">Pages uniquement</span>
 
 N'importe quelle balise HTML peut être écrite directement dans le contenu, y compris des balises custom inconnues (ex. pour styliser un composant maison). Seules ces balises sont retirées, ainsi que tout attribut \`on*\` (\`onclick\`, etc.) et les URLs \`javascript:\` :
 
@@ -880,7 +921,9 @@ N'importe quelle balise HTML peut être écrite directement dans le contenu, y c
 </div>
 </div>
 
-## CSS scopé à la page <span class="mode-badge pages-only">Pages uniquement</span>
+## CSS scopé à la page
+
+<span class="mode-badge pages-only">Pages uniquement</span>
 
 Un bloc \`<style>\` écrit dans le contenu s'applique — mais uniquement au contenu de **cette page**. Techniquement, le CSS est automatiquement enveloppé dans la règle native [\`@scope\`](https://developer.mozilla.org/fr/docs/Web/CSS/@scope), pour qu'un sélecteur générique comme \`p { color: red }\` ne puisse jamais affecter la sidebar, la barre du haut, ou une autre page.
 
@@ -914,14 +957,14 @@ Un bloc \`<style>\` écrit dans le contenu s'applique — mais uniquement au con
 </div>
 </div>
 
-## Formules LaTeX <span class="mode-badge pages-only">Pages uniquement</span>
+## Formules LaTeX
+
+<span class="mode-badge pages-only">Pages uniquement</span>
 
 Les formules mathématiques s'écrivent entre doubles dollars : \`$$formule$$\` — en ligne dans une phrase, ou seule sur son propre paragraphe pour un rendu centré en bloc. Rendu via [KaTeX](https://katex.org/).
 
-<div class="callout">
-  <span class="callout-icon">ℹ️</span>
-  <span>Seul le double dollar <code>$$...$$</code> est reconnu — pas de simple dollar <code>$...$</code>, qui n'offre aucune protection fiable contre les faux positifs (un prix comme "5 $ ou 10 $" serait interprété comme une formule).</span>
-</div>
+> [!NOTE]
+> Seul le double dollar \`$$...$$\` est reconnu — pas de simple dollar \`$...$\`, qui n'offre aucune protection fiable contre les faux positifs (un prix comme "5 $ ou 10 $" serait interprété comme une formule).
 
 <div class="markup-example">
 <div>
@@ -943,14 +986,46 @@ $$
 </div>
 </div>
 
+## Diagrammes Mermaid
+
+<span class="mode-badge pages-only">Pages uniquement</span>
+
+Un bloc de code dont le langage est \`mermaid\` est dessiné comme un diagramme : organigramme, séquence, classes, états, entité-relation, Gantt… Voir la [documentation Mermaid](https://mermaid.js.org/intro/) pour la syntaxe de chaque type. Le diagramme suit le thème clair ou sombre, et une syntaxe invalide affiche l'erreur avec le code source. Dans un commentaire, le bloc reste un simple bloc de code.
+
+<div class="markup-example">
+<div>
+<div class="markup-label">Markdown</div>
+<pre>\`\`\`mermaid
+flowchart LR
+  A[Brouillon] --> B{Relu ?}
+  B -- oui --> C[Publié]
+  B -- non --> A
+\`\`\`</pre>
+</div>
+<div>
+<div class="markup-label">Rendu</div>
+
+\`\`\`mermaid
+flowchart LR
+  A[Brouillon] --> B{Relu ?}
+  B -- oui --> C[Publié]
+  B -- non --> A
+\`\`\`
+
+</div>
+</div>
+
 ## Récapitulatif
 
 | Marquage | Pages | Commentaires |
 | --- | --- | --- |
 | Markdown / GFM | ✅ | ✅ |
+| Encadrés (\`> [!NOTE]\`…) | ✅ | ✅ |
+| Ancres sur les titres et sommaire | ✅ | ❌ |
 | HTML arbitraire (sauf balises interdites) | ✅ | ❌ (HTML très restreint) |
 | CSS (\`<style>\`, scopé) | ✅ | ❌ |
-| LaTeX (\`$$...$$\`) | ✅ | ❌ |`,
+| LaTeX (\`$$...$$\`) | ✅ | ❌ |
+| Diagrammes Mermaid | ✅ | ❌ |`,
       },
       {
         slug: 'notes-de-version',

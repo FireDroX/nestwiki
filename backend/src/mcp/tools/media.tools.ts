@@ -20,6 +20,10 @@ const MEDIA_READ_SCOPE = 'media:read';
 const MEDIA_WRITE_SCOPE = 'media:write';
 const BASE64_REGEX = /^[A-Za-z0-9+/]+={0,2}$/;
 
+function toEmbedUrl(attachmentId: string): string {
+  return `/api/media/${attachmentId}/raw`;
+}
+
 function decodeBase64OrThrow(content: string): Buffer {
   if (!content || !BASE64_REGEX.test(content)) {
     throw new ValidationException('Invalid base64 content');
@@ -35,7 +39,8 @@ export function buildMediaTools(
   return [
     defineMcpTool({
       name: 'wiki_upload_image',
-      description: 'Uploader une image (transmise en base64) sur une page',
+      description:
+        "Uploader une image (transmise en base64) sur une page. Pour l'afficher dans une page, utiliser embedUrl : ![texte alternatif](embedUrl). Ne pas écrire url dans une page, c'est une URL présignée qui expire.",
       inputSchema: {
         pageId: z.string().optional(),
         filename: z.string(),
@@ -61,7 +66,12 @@ export function buildMediaTools(
           ctx.userId,
         );
 
-        return { id: attachment.id, url, filename: attachment.filename };
+        return {
+          id: attachment.id,
+          url,
+          embedUrl: toEmbedUrl(attachment.id),
+          filename: attachment.filename,
+        };
       },
     }),
     defineMcpTool({
