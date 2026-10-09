@@ -74,6 +74,7 @@ async function bootstrap() {
   app.use(cookieParser());
   app.useGlobalFilters(new HttpExceptionFilter());
   setupSwagger(app);
+  app.enableShutdownHooks();
 
   await app.listen(process.env.PORT ?? 3000);
 }
