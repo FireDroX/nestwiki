@@ -11,7 +11,7 @@ Security problems are handled privately: see [SECURITY.md](SECURITY.md) instead 
 
 ## Setting up
 
-Follow the [Development](README.md#development) section of the README: Node.js 22+, pnpm (the version pinned in `package.json`) and Docker for MySQL and the object storage. Copy the three `.env.example` files and generate real secrets with `openssl rand -hex 32`: the API refuses to start with default values.
+Follow the [Development](README.md#development) section of the README: Node.js 22+, pnpm (the version pinned in `package.json`) and Docker for MySQL and the object storage. Copy the three `.env.example` files and generate real secrets with `openssl rand -hex 32`: the API refuses to start with default values, unless `DEV=true` is set in `backend/.env` (local development only).
 
 Use `pnpm`, not `npm` or `yarn`. Prefer dependencies without native build scripts (for example `bcryptjs` rather than `bcrypt`).
 

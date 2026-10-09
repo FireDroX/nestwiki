@@ -63,7 +63,14 @@ function distinctJwtSecrets(config: RawEnvironment): string[] {
   return [];
 }
 
+function isDevelopmentMode(config: RawEnvironment): boolean {
+  return readValue(config, 'DEV')?.trim().toLowerCase() === 'true';
+}
+
 export function validateEnvironment(config: RawEnvironment): RawEnvironment {
+  if (isDevelopmentMode(config)) {
+    return config;
+  }
   const problems = [
     ...requiredSecret(config, 'JWT_ACCESS_SECRET', MIN_JWT_SECRET_LENGTH),
     ...requiredSecret(config, 'JWT_REFRESH_SECRET', MIN_JWT_SECRET_LENGTH),
