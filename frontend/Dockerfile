@@ -1,3 +1,4 @@
+# check=skip=SecretsUsedInArgOrEnv
 # Built from the repo root (pnpm workspace): docker build -f frontend/Dockerfile .
 
 # Same as backend/Dockerfile: strip the per-ticket "version" bump so the
@@ -22,11 +23,13 @@ FROM deps AS build
 COPY frontend frontend
 # Vite bakes these into the bundle at build time — override with
 # --build-arg for a real deployment, empty defaults just let the image
-# build.
+# build. Build args are already environment variables for the RUN below,
+# no ENV needed. VITE_TURNSTILE_SITE_KEY is Turnstile's *public* site
+# key, shipped to every browser in the bundle anyway (the secret key
+# lives only in backend/.env), hence the SecretsUsedInArgOrEnv skip at
+# the top of this file.
 ARG VITE_API_URL=
 ARG VITE_TURNSTILE_SITE_KEY=
-ENV VITE_API_URL=$VITE_API_URL
-ENV VITE_TURNSTILE_SITE_KEY=$VITE_TURNSTILE_SITE_KEY
 RUN pnpm --filter frontend run build
 
 FROM nginx:alpine AS runtime
