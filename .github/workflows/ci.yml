@@ -6,119 +6,183 @@ on:
   push:
     branches: [main]
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 env:
   NODE_VERSION: '22'
   REGISTRY: ghcr.io
-  BACKEND_IMAGE: ${{ github.repository_owner }}/nestwiki-backend
-  FRONTEND_IMAGE: ${{ github.repository_owner }}/nestwiki-frontend
+  DB_HOST: localhost
+  DB_PORT: 3306
+  DB_USERNAME: root
+  DB_PASSWORD: ci-mysql-root-password
+  DB_DATABASE: nestwiki
+  MINIO_ENDPOINT: localhost
+  MINIO_PORT: 9000
+  MINIO_ACCESS_KEY: minioadmin
+  MINIO_SECRET_KEY: ci-storage-secret-key
+  MINIO_BUCKET: nestwiki
+  MINIO_USE_SSL: 'false'
+  JWT_ACCESS_SECRET: ci-jwt-access-secret-not-for-production
+  JWT_REFRESH_SECRET: ci-jwt-refresh-secret-not-for-production
+  FRONTEND_URL: http://localhost:5173
+  PORT: '3000'
 
 jobs:
-  lint:
-    name: lint (${{ matrix.workspace }})
+  backend:
+    name: backend (lint + unit tests)
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter backend run lint
+      - run: pnpm --filter backend run test
+
+  backend-e2e:
+    name: backend (e2e tests)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start MySQL and object storage
+        run: .github/scripts/test-services.sh start
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Wait for MySQL and object storage
+        run: .github/scripts/test-services.sh wait
+      - run: pnpm --filter backend run test:e2e
+
+  frontend:
+    name: frontend (lint + tests)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter frontend run lint
+      - run: pnpm --filter frontend run test
+
+  # Runs alongside the tests instead of after them: images are built on
+  # every PR (never pushed) so a broken Dockerfile shows up before the
+  # merge, and on main only the immutable `sha-<commit>` tag is pushed
+  # here. `latest`/`X.Y.Z`/`X.Y` are added by `release`, once every
+  # test job (and the backend smoke test) has passed.
+  #
+  # Only main writes the layer cache: a PR's cache scope can't be read
+  # by other PRs, while every PR can read main's.
+  image:
+    name: image (${{ matrix.image }})
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     strategy:
       fail-fast: false
       matrix:
-        workspace: [backend, frontend]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter ${{ matrix.workspace }} run lint
-
-  test-backend:
-    name: test-backend
-    runs-on: ubuntu-latest
-    services:
-      mysql:
-        image: mysql:8
-        env:
-          MYSQL_ROOT_PASSWORD: ci-mysql-root-password
-          MYSQL_DATABASE: nestwiki
-        ports:
-          - 3306:3306
-        options: >-
-          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -pci-mysql-root-password --silent"
-          --health-interval=5s
-          --health-timeout=5s
-          --health-retries=10
+        image: [backend, frontend]
     env:
-      DB_HOST: localhost
-      DB_PORT: 3306
-      DB_USERNAME: root
-      DB_PASSWORD: ci-mysql-root-password
-      DB_DATABASE: nestwiki
-      MINIO_ENDPOINT: localhost
-      MINIO_PORT: 9000
-      MINIO_ACCESS_KEY: minioadmin
-      MINIO_SECRET_KEY: ci-storage-secret-key
-      MINIO_BUCKET: nestwiki
-      MINIO_USE_SSL: 'false'
-      JWT_ACCESS_SECRET: ci-jwt-access-secret-not-for-production
-      JWT_REFRESH_SECRET: ci-jwt-refresh-secret-not-for-production
-      FRONTEND_URL: http://localhost:5173
-      PORT: '3000'
+      PUSH: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+
+      - name: Start MySQL and object storage
+        if: matrix.image == 'backend'
+        run: .github/scripts/test-services.sh start
+
+      - uses: docker/setup-buildx-action@v4
+
+      - name: Read the project version
+        id: version
+        run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+
+      # docker/metadata-action lowercases the image ref for us — GHCR
+      # rejects uppercase, and github.repository_owner carries this
+      # repo's actual (mixed-case) owner.
+      - name: Extract metadata (tag, labels)
+        id: meta
+        uses: docker/metadata-action@v6
         with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      # Not a `services:` container: GitHub Actions services can't override
-      # CMD, and this image needs env vars set before its entrypoint runs.
-      # Uses RustFS, not Minio — Minio's Community Edition (server, both
-      # `minio/minio` and `bitnami/minio` on Docker Hub, and the binaries
-      # on dl.min.io) was archived in 2026 and is no longer distributed
-      # anywhere. RustFS is a drop-in, actively maintained, Apache-2.0
-      # S3-compatible replacement — same docker-compose.yml switch, see
-      # that file's `minio` service for the matching prod/dev setup.
-      - name: Start Minio
+          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/nestwiki-${{ matrix.image }}
+          tags: type=sha,format=long
+          labels: org.opencontainers.image.version=${{ steps.version.outputs.version }}
+
+      - name: Log in to the Container registry
+        if: env.PUSH == 'true'
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build the image (and push its sha-<commit> tag on main)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.image }}/Dockerfile
+          load: ${{ matrix.image == 'backend' }}
+          push: ${{ env.PUSH == 'true' }}
+          build-args: |
+            VITE_API_URL=${{ vars.VITE_API_URL }}
+            VITE_TURNSTILE_SITE_KEY=${{ vars.VITE_TURNSTILE_SITE_KEY }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: ${{ env.PUSH == 'true' && format('type=gha,mode=max,scope={0}', matrix.image) || '' }}
+
+      - name: Smoke test the backend image (migrations, seeds, /api/health)
+        if: matrix.image == 'backend'
+        env:
+          IMAGE: ${{ steps.meta.outputs.tags }}
+          ADMIN_EMAIL: admin@ci.local
+          ADMIN_PASSWORD: Ci-Admin-Password-1!
+          ADMIN_DISPLAY_NAME: CI Admin
         run: |
-          docker run -d --name minio -p 9000:9000 -p 9001:9001 \
-            -e RUSTFS_ACCESS_KEY=minioadmin -e RUSTFS_SECRET_KEY=ci-storage-secret-key \
-            -e RUSTFS_ADDRESS=":9000" -e RUSTFS_CONSOLE_ADDRESS=":9001" \
-            rustfs/rustfs:latest /data
-          for i in $(seq 1 30); do
-            curl -sf http://localhost:9000/health && exit 0
+          .github/scripts/test-services.sh wait
+          docker run -d --name backend --network host \
+            -e DB_HOST -e DB_PORT -e DB_USERNAME -e DB_PASSWORD -e DB_DATABASE \
+            -e MINIO_ENDPOINT -e MINIO_PORT -e MINIO_ACCESS_KEY -e MINIO_SECRET_KEY -e MINIO_BUCKET -e MINIO_USE_SSL \
+            -e JWT_ACCESS_SECRET -e JWT_REFRESH_SECRET -e FRONTEND_URL -e PORT \
+            -e ADMIN_EMAIL -e ADMIN_PASSWORD -e ADMIN_DISPLAY_NAME \
+            "$IMAGE"
+          for _ in $(seq 1 90); do
+            if curl -sf http://localhost:3000/api/health; then
+              echo
+              docker logs backend
+              time docker stop backend
+              exit 0
+            fi
+            if [ "$(docker inspect -f '{{.State.Running}}' backend)" != true ]; then
+              break
+            fi
             sleep 1
           done
-          echo "Minio did not become healthy in time" >&2
+          docker logs backend
+          echo "The backend image did not answer /api/health" >&2
           exit 1
-      - run: pnpm --filter backend run test
-      - run: pnpm --filter backend run test:e2e
 
-  test-frontend:
-    name: test-frontend
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter frontend run test
-
-  build-and-push-images:
-    name: build-and-push-images
-    needs: [lint, test-backend, test-frontend]
+  release:
+    name: release
+    needs: [backend, backend-e2e, frontend, image]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: write
       packages: write
-      attestations: write
-      id-token: write
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Read the project version
         id: version
@@ -131,51 +195,19 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # docker/metadata-action lowercases the image ref for us — GHCR
-      # rejects uppercase, and github.repository_owner carries this
-      # repo's actual (mixed-case) owner.
-      - name: Extract metadata (tags, labels) for backend
-        id: meta-backend
-        uses: docker/metadata-action@v6
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}
-          tags: |
-            type=raw,value=latest
-            type=semver,pattern={{version}},value=${{ steps.version.outputs.version }}
-            type=semver,pattern={{major}}.{{minor}},value=${{ steps.version.outputs.version }}
-            type=sha,format=long
-
-      - name: Build and push backend image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: backend/Dockerfile
-          push: true
-          tags: ${{ steps.meta-backend.outputs.tags }}
-          labels: ${{ steps.meta-backend.outputs.labels }}
-
-      - name: Extract metadata (tags, labels) for frontend
-        id: meta-frontend
-        uses: docker/metadata-action@v6
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}
-          tags: |
-            type=raw,value=latest
-            type=semver,pattern={{version}},value=${{ steps.version.outputs.version }}
-            type=semver,pattern={{major}}.{{minor}},value=${{ steps.version.outputs.version }}
-            type=sha,format=long
-
-      - name: Build and push frontend image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: frontend/Dockerfile
-          push: true
-          build-args: |
-            VITE_API_URL=${{ vars.VITE_API_URL }}
-            VITE_TURNSTILE_SITE_KEY=${{ vars.VITE_TURNSTILE_SITE_KEY }}
-          tags: ${{ steps.meta-frontend.outputs.tags }}
-          labels: ${{ steps.meta-frontend.outputs.labels }}
+      - name: Tag the tested images as latest, X.Y.Z and X.Y
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          for image in backend frontend; do
+            repository="${REGISTRY}/${owner}/nestwiki-${image}"
+            docker buildx imagetools create \
+              -t "${repository}:latest" \
+              -t "${repository}:${VERSION}" \
+              -t "${repository}:${VERSION%.*}" \
+              "${repository}:sha-${GITHUB_SHA}"
+          done
 
       - name: Tag the version and publish its GitHub release
         env:

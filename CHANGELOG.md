@@ -2,6 +2,12 @@
 
 All notable changes to NestWiki are documented here, newest first, one `## <version> — <date>` section per release. This file is the single source for the in-app "Notes de version" page, which groups releases by minor version (`1.0`, `0.31`…). Entries up to 0.31.10 were written in French, the project's original language.
 
+## 1.1.6 — 2026-10-09
+
+- Déploiements plus rapides : une mise à jour ne retélécharge plus que ce qui a changé (quelques Mo) au lieu de toute l'image, tant que les dépendances ne bougent pas. Le backend redémarre aussi plus vite : il s'arrête dès que Docker le lui demande au lieu d'attendre 10 secondes.
+- Image Docker du backend allégée : elle ne contient plus pnpm, tsx ni les sources TypeScript, les migrations et les seeds tournent directement sur le code compilé.
+- ⚠️ Si vous lanciez des commandes `pnpm run …` à l'intérieur du conteneur backend, elles n'y sont plus disponibles. Pour rattacher les avatars à la main : `docker compose exec backend node --import ./scripts/register-stream-json-case-loader.mjs dist/database/run-avatar-backfill.js`.
+
 ## 1.1.5 — 2026-10-09
 
 - Correction : déplier des dossiers de l'arborescence (ou suivre un lien du sommaire) pouvait rendre la fenêtre entière défilable, décalant la barre du haut hors de l'écran et laissant une bande noire en bas de page. La page reste désormais fixe et seuls la barre latérale et le contenu défilent.
