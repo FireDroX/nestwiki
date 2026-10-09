@@ -575,7 +575,7 @@ Chaque clé porte un ou plusieurs scopes, qui déterminent les tools visibles et
 <tr><td><span class="scope-badge">tags:write</span></td><td>Créer des tags, (dé)taguer une page</td></tr>
 <tr><td><span class="scope-badge">users:read</span></td><td>Lister les utilisateurs</td></tr>
 <tr><td><span class="scope-badge">users:write</span></td><td>Créer un utilisateur, modifier son rôle</td></tr>
-<tr><td><span class="scope-badge">media:read</span></td><td>Obtenir l'URL présignée d'un média</td></tr>
+<tr><td><span class="scope-badge">media:read</span></td><td>Obtenir l'adresse d'un média (permanente et présignée)</td></tr>
 <tr><td><span class="scope-badge">media:write</span></td><td>Uploader une image</td></tr>
 <tr><td><span class="scope-badge">search:read</span></td><td>Rechercher (<code>pages:read</code> suffit aussi)</td></tr>
 </tbody>
@@ -653,8 +653,8 @@ Ce même guide est envoyé dans les instructions du serveur à la connexion : la
 
 | Tool | Rôle |
 | --- | --- |
-| \`wiki_upload_image\` | Uploader une image (transmise en base64) sur une page ; renvoie \`embedUrl\`, l'adresse stable à écrire dans le contenu |
-| \`wiki_get_media_url\` | Obtenir une URL présignée pour un média existant |
+| \`wiki_upload_image\` | Uploader une image (transmise en base64) sur une page ; renvoie \`embedUrl\`, l'adresse permanente à écrire dans le contenu |
+| \`wiki_get_media_url\` | Obtenir l'adresse d'un média existant : \`embedUrl\` (permanente, pour le contenu des pages) et \`url\` (présignée, temporaire, pour télécharger) |
 
 **Recherche** (\`search:read\` ou \`pages:read\`)
 

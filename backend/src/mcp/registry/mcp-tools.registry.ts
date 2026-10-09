@@ -17,6 +17,7 @@ import { buildUsersTools } from '../tools/users.tools.js';
 export interface McpToolContext {
   scopes: string[];
   userId: string;
+  publicBaseUrl: string;
 }
 
 export type InferShape<S extends ZodRawShape> = {
