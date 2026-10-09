@@ -2,6 +2,11 @@
 
 All notable changes to NestWiki are documented here, newest first, one `## <version> — <date>` section per release. This file is the single source for the in-app "Notes de version" page, which groups releases by minor version (`1.0`, `0.31`…). Entries up to 0.31.10 were written in French, the project's original language.
 
+## 1.1.5 — 2026-10-09
+
+- Correction : déplier des dossiers de l'arborescence (ou suivre un lien du sommaire) pouvait rendre la fenêtre entière défilable, décalant la barre du haut hors de l'écran et laissant une bande noire en bas de page. La page reste désormais fixe et seuls la barre latérale et le contenu défilent.
+- Barres de défilement aux couleurs du site : fines, arrondies, sans flèches, discrètes en thème clair comme en sombre, partout dans l'application.
+
 ## 1.1.4 — 2026-10-09
 
 - Intégration MCP : l'`embedUrl` d'un média est maintenant une adresse complète (ex. `https://wiki.example.com/api/media/<id>/raw`), construite à partir de l'adresse par laquelle le client joint l'API. Les images écrites par une IA s'affichent donc aussi quand le site et l'API ne sont pas sur la même adresse (en développement, ou avec une API sur son propre domaine).

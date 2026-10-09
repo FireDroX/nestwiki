@@ -21,7 +21,7 @@ function SidebarNav({ onCollapse }: SidebarNavProps) {
   const canCreate = hasGlobal('page.create_root')
 
   return (
-    <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
+    <nav className="relative flex flex-1 flex-col gap-1 overflow-y-auto p-3">
       <div className="flex items-center gap-1">
         <InputGroup>
           <InputGroupAddon>
