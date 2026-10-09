@@ -88,7 +88,7 @@ There are three `.env` files, each with a commented `.env.example` next to it.
 
 **`frontend/.env`** — the web app in development: `VITE_API_URL` (e.g. `http://localhost:3000/api`) and the optional `VITE_TURNSTILE_SITE_KEY`.
 
-> **Secrets are checked at startup.** The API refuses to start while `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, `DB_PASSWORD` or `MINIO_SECRET_KEY` is missing, too short or a well-known default (`changeme`, `minioadmin`, `root`…), and lists every variable to fix in one message.
+> **Secrets are checked at startup.** The API refuses to start while `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, `DB_PASSWORD` or `MINIO_SECRET_KEY` is missing, too short or a well-known default (`changeme`, `minioadmin`, `root`…), and lists every variable to fix in one message. For local development only, `DEV=true` in `backend/.env` skips these checks.
 
 ## Updating
 

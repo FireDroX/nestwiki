@@ -107,6 +107,24 @@ describe('validateEnvironment', () => {
     ]);
   });
 
+  it.each(['true', 'TRUE', ' true '])(
+    'skips every check when DEV is "%s"',
+    (value) => {
+      const config = { DEV: value, DB_PASSWORD: 'root' };
+
+      expect(validateEnvironment(config)).toBe(config);
+    },
+  );
+
+  it.each(['false', '1', 'yes', ''])(
+    'still validates when DEV is "%s"',
+    (value) => {
+      expect(
+        problemsFor({ ...validConfig(), DEV: value, DB_PASSWORD: 'root' }),
+      ).toEqual(['DB_PASSWORD: uses a well-known default value']);
+    },
+  );
+
   it('explains how to generate secrets in the error message', () => {
     expect(() => validateEnvironment({})).toThrow(/openssl rand -hex 32/);
   });

@@ -5,6 +5,7 @@ All notable changes to NestWiki are documented here, newest first, one `## <vers
 ## 1.0.10 — 2026-10-09
 
 - Sécurité : mise à jour des dépendances concernées par 6 alertes Dependabot — `proxy-addr` 2.0.8 (critique : usurpation d'adresse IP via une adresse IPv6 mappée IPv4 dans un sous-réseau de confiance), `@modelcontextprotocol/sdk` 1.32.1 (envoi possible d'identifiants OAuth vers un serveur d'autorisation choisi par le serveur MCP), `source-map-js` 1.2.2, `postcss-selector-parser` 7.1.6 et `katex` 0.18.11 (le rendu des formules mathématiques est inchangé).
+- Développement local : `DEV=true` dans `backend/.env` désactive la vérification des secrets au démarrage (secrets JWT trop courts, mots de passe par défaut comme `root` ou `minioadmin`…), pour lancer l'API avec des valeurs jetables. À ne jamais définir en production.
 
 ## 1.0.9 — 2026-10-08
 
