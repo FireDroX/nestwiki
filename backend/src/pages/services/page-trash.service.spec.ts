@@ -215,7 +215,7 @@ describe('PageTrashService', () => {
       expect(userActivityLogService.record).toHaveBeenCalledWith(
         expect.objectContaining({
           userId: 'me',
-          action: 'page.restored',
+          action: 'page.trash_restored',
           targetId: 'root',
         }),
       );

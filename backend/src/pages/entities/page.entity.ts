@@ -12,7 +12,10 @@ export const PAGE_VISIBILITIES = ['public', 'private'] as const;
 export type PageVisibility = (typeof PAGE_VISIBILITIES)[number];
 
 @Entity('pages')
-@Index(['parentId', 'activeSlug'], { unique: true })
+@Index('IDX_pages_parent_id_active_slug', ['parentId', 'activeSlug'], {
+  unique: true,
+})
+@Index('IDX_pages_deletion_root_id', ['deletionRootId'])
 export class Page {
   @PrimaryGeneratedColumn('uuid')
   id: string;

@@ -83,7 +83,7 @@ export class PageTrashService {
 
     void this.userActivityLogService.record({
       userId,
-      action: 'page.restored',
+      action: 'page.trash_restored',
       targetType: 'page',
       targetId: page.id,
       metadata: { title: page.title },

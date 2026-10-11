@@ -12,6 +12,8 @@ export const USER_ACTIVITY_LOG_ACTIONS = [
   'page.moved',
   'page.deleted',
   'page.restored',
+  'page.trash_restored',
+  'page.purged',
   'media.uploaded',
   'media.deleted',
 ] as const
