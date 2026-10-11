@@ -212,4 +212,133 @@ describe('Pages (e2e)', () => {
 
     expect(response.status).toBe(403);
   });
+
+  describe('trash', () => {
+    async function createPage(
+      agent: request.Agent,
+      slug: string,
+      parentId?: string,
+    ): Promise<string> {
+      const response = await agent.post('/api/pages').send({
+        slug,
+        title: slug,
+        content: `Content of ${slug}`,
+        visibility: 'public',
+        parentId,
+      });
+      expect(response.status).toBe(201);
+      return dataOf<PageResponse>(response).id;
+    }
+
+    async function registerAdmin(email: string): Promise<request.Agent> {
+      const agent = request.agent(app.getHttpServer() as HttpServer);
+      await agent.post('/api/auth/register').send({
+        email,
+        password: 'Str0ng!Passw0rd',
+        displayName: 'Admin',
+        turnstileToken: 'stubbed',
+      });
+      await dataSource.query(
+        "UPDATE `users` SET `role` = 'admin' WHERE `email` = ?",
+        [email],
+      );
+      await agent.post('/api/auth/login').send({
+        email,
+        password: 'Str0ng!Passw0rd',
+        turnstileToken: 'stubbed',
+      });
+      return agent;
+    }
+
+    it('trashes a subtree, frees its slug and restores it with its children', async () => {
+      const agent = await registerEditor(app, dataSource, 'editor@example.com');
+      const docsId = await createPage(agent, 'docs');
+      await createPage(agent, 'child', docsId);
+
+      expect(
+        (await agent.delete(`/api/pages/${docsId}?cascade=true`)).status,
+      ).toBe(204);
+      expect((await agent.get('/api/pages/docs/child')).status).toBe(404);
+
+      const trash = dataOf<
+        { id: string; path: string; descendantCount: number }[]
+      >(await agent.get('/api/pages/trash'));
+      expect(trash).toEqual([
+        expect.objectContaining({
+          id: docsId,
+          path: '/docs',
+          descendantCount: 1,
+        }),
+      ]);
+
+      const replacementId = await createPage(agent, 'docs');
+      const blocked = await agent.post(`/api/pages/${docsId}/restore`);
+      expect(blocked.status).toBe(409);
+
+      await agent.delete(`/api/pages/${replacementId}`);
+      expect((await agent.post(`/api/pages/${docsId}/restore`)).status).toBe(
+        204,
+      );
+      expect((await agent.get('/api/pages/docs/child')).status).toBe(200);
+      expect(
+        dataOf<{ id: string }[]>(await agent.get('/api/pages/trash')).map(
+          (entry) => entry.id,
+        ),
+      ).toEqual([replacementId]);
+    });
+
+    it('refuses to restore a page whose parent is still in the trash', async () => {
+      const agent = await registerEditor(app, dataSource, 'editor@example.com');
+      const docsId = await createPage(agent, 'docs');
+      const childId = await createPage(agent, 'child', docsId);
+
+      await agent.delete(`/api/pages/${childId}`);
+      await agent.delete(`/api/pages/${docsId}`);
+
+      const response = await agent.post(`/api/pages/${childId}/restore`);
+      expect(response.status).toBe(409);
+      expect(response.body).toEqual({ error: 'Restore the parent page first' });
+    });
+
+    it('purges a trashed subtree and keeps its media in the library', async () => {
+      const admin = await registerAdmin('admin@example.com');
+      const docsId = await createPage(admin, 'docs');
+      const childId = await createPage(admin, 'child', docsId);
+      const attachmentId = randomUUID();
+      await dataSource.query(
+        'INSERT INTO `attachments` (`id`, `page_id`, `minio_key`, `filename`, `mime_type`, `size`, `uploaded_by_id`) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [
+          attachmentId,
+          childId,
+          `pages/${childId}/x-image.png`,
+          'image.png',
+          'image/png',
+          1,
+          docsId,
+        ],
+      );
+      await admin.delete(`/api/pages/${childId}`);
+      await admin.delete(`/api/pages/${docsId}`);
+
+      expect((await admin.delete(`/api/pages/${docsId}/purge`)).status).toBe(
+        204,
+      );
+
+      const remainingPages = await dataSource.query<{ id: string }[]>(
+        'SELECT `id` FROM `pages` WHERE `id` IN (?, ?)',
+        [docsId, childId],
+      );
+      expect(remainingPages).toEqual([]);
+      const remainingVersions = await dataSource.query<{ id: string }[]>(
+        'SELECT `id` FROM `page_versions` WHERE `page_id` IN (?, ?)',
+        [docsId, childId],
+      );
+      expect(remainingVersions).toEqual([]);
+      const [attachment] = await dataSource.query<{ page_id: string | null }[]>(
+        'SELECT `page_id` FROM `attachments` WHERE `id` = ?',
+        [attachmentId],
+      );
+      expect(attachment.page_id).toBeNull();
+    });
+  });
 });

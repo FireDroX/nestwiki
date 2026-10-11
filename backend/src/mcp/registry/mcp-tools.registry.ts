@@ -1,6 +1,7 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import type { z, ZodRawShape } from 'zod';
 import { MediaService } from '../../media/services/media.service.js';
+import { PageTrashService } from '../../pages/services/page-trash.service.js';
 import { PagesService } from '../../pages/services/pages.service.js';
 import { AccessRulesService } from '../../permissions/services/access-rules.service.js';
 import { GroupsService } from '../../permissions/services/groups.service.js';
@@ -84,11 +85,16 @@ export class McpToolsBootstrapService implements OnModuleInit {
     private readonly permissionsService: PermissionsService,
     private readonly accessRulesService: AccessRulesService,
     private readonly groupsService: GroupsService,
+    private readonly pageTrashService: PageTrashService,
   ) {}
 
   onModuleInit(): void {
     this.registry.register(
-      ...buildPagesTools(this.pagesService, this.usersService),
+      ...buildPagesTools(
+        this.pagesService,
+        this.usersService,
+        this.pageTrashService,
+      ),
       ...buildTagsTools(
         this.tagsService,
         this.usersService,

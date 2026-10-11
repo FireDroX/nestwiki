@@ -79,6 +79,8 @@ function buildPage(overrides: Partial<Page> = {}): Page {
     createdAt: new Date(),
     updatedAt: new Date(),
     deletedAt: null,
+    deletedById: null,
+    deletionRootId: null,
     ...overrides,
   };
 }
@@ -130,7 +132,7 @@ describe('PagesService', () => {
       updateWithNewVersion: vi.fn(),
       updateParent: vi.fn(),
       findChildren: vi.fn(),
-      softDelete: vi.fn(),
+      softDeleteBatch: vi.fn(),
       updateVisibility: vi.fn(),
       updateCommentsEnabled: vi.fn(),
       countCreatedByUser: vi.fn(),
@@ -788,12 +790,15 @@ describe('PagesService', () => {
       expect(result).toBe(created);
     });
 
-    it('throws ReservedSlugException for a root page named "tree"', async () => {
-      await expect(
-        service.createPage({ ...dto, slug: 'tree' }, 'user-1'),
-      ).rejects.toBeInstanceOf(ReservedSlugException);
-      expect(pagesRepository.createWithFirstVersion).not.toHaveBeenCalled();
-    });
+    it.each(['tree', 'trash'])(
+      'throws ReservedSlugException for a root page named "%s"',
+      async (slug) => {
+        await expect(
+          service.createPage({ ...dto, slug }, 'user-1'),
+        ).rejects.toBeInstanceOf(ReservedSlugException);
+        expect(pagesRepository.createWithFirstVersion).not.toHaveBeenCalled();
+      },
+    );
 
     it.each(['versions', 'comments', 'tags', 'access-rules', 'stats'])(
       'throws ReservedSlugException for "%s" directly under a root page',
@@ -1307,7 +1312,7 @@ describe('PagesService', () => {
       await expect(
         service.deletePage('page-1', {}, 'user-1'),
       ).rejects.toBeInstanceOf(PageHasChildrenException);
-      expect(pagesRepository.softDelete).not.toHaveBeenCalled();
+      expect(pagesRepository.softDeleteBatch).not.toHaveBeenCalled();
     });
 
     it('deletes recursively when cascade=true', async () => {
@@ -1331,8 +1336,11 @@ describe('PagesService', () => {
       expect(
         permissionsService.getEffectivePageActionsBulk,
       ).toHaveBeenCalledWith(expect.anything(), ['child']);
-      expect(pagesRepository.softDelete).toHaveBeenCalledWith('child');
-      expect(pagesRepository.softDelete).toHaveBeenCalledWith('parent');
+      expect(pagesRepository.softDeleteBatch).toHaveBeenCalledWith(
+        ['parent', 'child'],
+        'user-1',
+        'parent',
+      );
     });
 
     it('refuses a cascade delete when the user cannot delete one of the descendants', async () => {
@@ -1350,7 +1358,7 @@ describe('PagesService', () => {
       await expect(
         service.deletePage('parent', { cascade: 'true' }, 'user-1'),
       ).rejects.toBeInstanceOf(InsufficientPagePermissionException);
-      expect(pagesRepository.softDelete).not.toHaveBeenCalled();
+      expect(pagesRepository.softDeleteBatch).not.toHaveBeenCalled();
     });
 
     it('soft-deletes a leaf page without cascade', async () => {
@@ -1359,7 +1367,11 @@ describe('PagesService', () => {
 
       await service.deletePage('leaf', {}, 'user-1');
 
-      expect(pagesRepository.softDelete).toHaveBeenCalledWith('leaf');
+      expect(pagesRepository.softDeleteBatch).toHaveBeenCalledWith(
+        ['leaf'],
+        'user-1',
+        'leaf',
+      );
     });
 
     it('emits PAGE_TREE_CHANGED_EVENT after deleting a page', async () => {

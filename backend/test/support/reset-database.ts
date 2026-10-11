@@ -1,6 +1,7 @@
 import { DataSource } from 'typeorm';
 
 const E2E_TABLES = [
+  'attachments',
   'page_access_exclusions',
   'page_access_rules',
   'group_permissions',

@@ -15,6 +15,7 @@ import {
 import type { GroupsRepository } from '../persistence/groups.repository.js';
 import type { PageAccessRulesRepository } from '../persistence/page-access-rules.repository.js';
 import type {
+  FindChainsOptions,
   PageChain,
   PageHierarchyRepository,
 } from '../persistence/page-hierarchy.repository.js';
@@ -252,13 +253,17 @@ export class PermissionsService {
   async getEffectivePageActionsBulk(
     user: User | undefined,
     pageIds: string[],
+    options: FindChainsOptions = {},
   ): Promise<Map<string, PageAction[]>> {
     const result = new Map<string, PageAction[]>();
     if (pageIds.length === 0) {
       return result;
     }
 
-    const chains = await this.pageHierarchyRepository.findChains(pageIds);
+    const chains = await this.pageHierarchyRepository.findChains(
+      pageIds,
+      options,
+    );
     const isAdmin = user?.role === 'admin';
     const context =
       user && user.isActive && !isAdmin

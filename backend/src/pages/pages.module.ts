@@ -11,9 +11,11 @@ import { PageVersion } from './entities/page-version.entity.js';
 import { Page } from './entities/page.entity.js';
 import { PagesController } from './pages.controller.js';
 import { TypeormPageFollowRepository } from './persistence/typeorm.page-follow.repository.js';
+import { TypeormPageTrashRepository } from './persistence/typeorm.page-trash.repository.js';
 import { TypeormPagesRepository } from './persistence/typeorm.page.repository.js';
 import { PageMergeService } from './services/page-merge.service.js';
 import { PageStatsService } from './services/page-stats.service.js';
+import { PageTrashService } from './services/page-trash.service.js';
 import { PagesService } from './services/pages.service.js';
 
 @Module({
@@ -30,10 +32,12 @@ import { PagesService } from './services/pages.service.js';
   providers: [
     { provide: 'PagesRepository', useClass: TypeormPagesRepository },
     { provide: 'PageFollowsRepository', useClass: TypeormPageFollowRepository },
+    { provide: 'PageTrashRepository', useClass: TypeormPageTrashRepository },
     PagesService,
     PageMergeService,
     PageStatsService,
+    PageTrashService,
   ],
-  exports: [PagesService, PageStatsService],
+  exports: [PagesService, PageStatsService, PageTrashService],
 })
 export class PagesModule {}

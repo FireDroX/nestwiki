@@ -3,6 +3,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MediaService } from '../../media/services/media.service.js';
+import { PageTrashService } from '../../pages/services/page-trash.service.js';
 import { PagesService } from '../../pages/services/pages.service.js';
 import { PermissionsService } from '../../permissions/services/permissions.service.js';
 import { UsersService } from '../../users/services/users.service.js';
@@ -23,6 +24,8 @@ describe('McpServerService', () => {
   let registry: McpToolsRegistry;
   let uploadFile: ReturnType<typeof vi.fn>;
   let getPresignedUrl: ReturnType<typeof vi.fn>;
+  let listTrash: ReturnType<typeof vi.fn>;
+  let restore: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
     uploadFile = vi.fn().mockResolvedValue({
@@ -33,6 +36,8 @@ describe('McpServerService', () => {
       url: 'https://storage.example/presigned?X-Amz-Expires=900',
       expiresIn: 900,
     });
+    listTrash = vi.fn().mockResolvedValue([{ id: 'p1', title: 'Guide' }]);
+    restore = vi.fn().mockResolvedValue(undefined);
     const moduleRef = await Test.createTestingModule({
       providers: [
         McpServerService,
@@ -54,7 +59,11 @@ describe('McpServerService', () => {
     service = moduleRef.get(McpServerService);
     registry = moduleRef.get(McpToolsRegistry);
     registry.register(
-      ...buildPagesTools({} as PagesService, {} as UsersService),
+      ...buildPagesTools(
+        {} as PagesService,
+        {} as UsersService,
+        { listTrash, restore } as unknown as PageTrashService,
+      ),
       ...buildMediaTools(
         { uploadFile, getPresignedUrl } as unknown as MediaService,
         {
@@ -98,6 +107,26 @@ describe('McpServerService', () => {
     });
     const [content] = result.content as { type: string; text: string }[];
     expect(JSON.parse(content.text)).toEqual({ guide: PAGE_FORMATTING_GUIDE });
+  });
+
+  it('lists the trash and restores a page as the key owner', async () => {
+    const client = await connect(['pages:read', 'pages:write']);
+
+    const listed = await client.callTool({
+      name: 'wiki_list_trash',
+      arguments: {},
+    });
+    const [listContent] = listed.content as { type: string; text: string }[];
+    expect(JSON.parse(listContent.text)).toEqual({
+      pages: [{ id: 'p1', title: 'Guide' }],
+    });
+    expect(listTrash).toHaveBeenCalledWith('user-1');
+
+    await client.callTool({
+      name: 'wiki_restore_page',
+      arguments: { pageId: 'p1' },
+    });
+    expect(restore).toHaveBeenCalledWith('p1', 'user-1');
   });
 
   it('points the page writing tools to the formatting guide', async () => {

@@ -203,9 +203,7 @@ export class MediaService {
         attachment.minioKey,
       );
     if (referencingPages.length > 0) {
-      throw new AttachmentInUseException(
-        referencingPages.map((page) => page.title),
-      );
+      throw new AttachmentInUseException(referencingPages);
     }
 
     try {

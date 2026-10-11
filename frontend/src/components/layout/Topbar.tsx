@@ -1,4 +1,4 @@
-import { LogOut, Menu, Moon, Search, Shield, Sun, User } from 'lucide-react'
+import { LogOut, Menu, Moon, Search, Shield, Sun, Trash2, User } from 'lucide-react'
 import { Link } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { useTheme } from 'next-themes'
@@ -82,6 +82,12 @@ export function Topbar({ onOpenSidebar }: TopbarProps) {
               <Link to="/profile">
                 <User />
                 {t('topbar.profile')}
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link to="/trash">
+                <Trash2 />
+                {t('topbar.trash')}
               </Link>
             </DropdownMenuItem>
             {user?.role === UserRole.Admin && (

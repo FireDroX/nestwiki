@@ -25,6 +25,7 @@ import { PageHistory } from '#pages/PageHistory'
 import { PageView } from '#pages/PageView'
 import { Profile } from '#pages/Profile'
 import { SearchResults } from '#pages/SearchResults'
+import { Trash } from '#pages/Trash'
 
 export function App() {
   const { status } = useAuth()
@@ -52,6 +53,7 @@ export function App() {
           <Route path="/search" element={<SearchResults />} />
           <Route element={<ProtectedRoute />}>
             <Route path="/profile" element={<Profile />} />
+            <Route path="/trash" element={<Trash />} />
           </Route>
           <Route element={<ProtectedRoute roles={[UserRole.Admin]} />}>
             <Route path="/admin/settings" element={<AdminSettings />} />

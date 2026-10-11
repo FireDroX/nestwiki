@@ -55,6 +55,8 @@ function buildPage(overrides: Partial<Page> = {}): Page {
     createdAt: new Date(),
     updatedAt: new Date(),
     deletedAt: null,
+    deletedById: null,
+    deletionRootId: null,
     ...overrides,
   };
 }
@@ -664,6 +666,42 @@ describe('PermissionsService', () => {
       expect(result.get('p2')).toContain('page.create_child');
       expect(pageHierarchyRepository.findChains).toHaveBeenCalledTimes(1);
       expect(groupsRepository.findGroupIdsForUser).not.toHaveBeenCalled();
+    });
+
+    it('resolves a deleted page through its deleted ancestors when includeDeleted is set', async () => {
+      const member = buildUser();
+      pageHierarchyRepository.findChains.mockResolvedValue(
+        new Map([
+          [
+            'trashed',
+            {
+              pageId: 'trashed',
+              visibility: 'private',
+              chainIds: ['trashed', 'parent'],
+            },
+          ],
+        ]),
+      );
+      pageAccessRulesRepository.findByUserId.mockResolvedValue([
+        buildRule({
+          userId: member.id,
+          pageId: 'parent',
+          appliesTo: 'subtree',
+          actions: ['page.delete'],
+        }),
+      ]);
+
+      const result = await service.getEffectivePageActionsBulk(
+        member,
+        ['trashed'],
+        { includeDeleted: true },
+      );
+
+      expect(pageHierarchyRepository.findChains).toHaveBeenCalledWith(
+        ['trashed'],
+        { includeDeleted: true },
+      );
+      expect(result.get('trashed')).toContain('page.delete');
     });
 
     it('maps a missing page to an empty action list', async () => {

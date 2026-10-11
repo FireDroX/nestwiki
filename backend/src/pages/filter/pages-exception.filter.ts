@@ -35,11 +35,13 @@ export class PagesExceptionFilter implements ExceptionFilter {
       case 'PageTagNotFoundException':
       case 'GroupNotFoundException':
       case 'AccessRuleNotFoundException':
+      case 'PageNotInTrashException':
         return { statusCode: HttpStatus.NOT_FOUND, error: exception.message };
       case 'SlugAlreadyExistsException':
       case 'CircularReferenceException':
       case 'PageHasChildrenException':
       case 'PageTagAlreadyExistsException':
+      case 'ParentInTrashException':
         return { statusCode: HttpStatus.CONFLICT, error: exception.message };
       case 'PageAccessForbiddenException':
       case 'InsufficientPagePermissionException':

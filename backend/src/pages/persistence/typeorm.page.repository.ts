@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, IsNull, Repository } from 'typeorm';
+import { DataSource, In, IsNull, Repository } from 'typeorm';
 import { PageVersion } from '../entities/page-version.entity.js';
 import { Page, PageVisibility } from '../entities/page.entity.js';
 import {
@@ -104,8 +104,15 @@ export class TypeormPagesRepository implements PagesRepository {
     return this.repository.findBy({ parentId });
   }
 
-  async softDelete(id: string): Promise<void> {
-    await this.repository.softDelete(id);
+  async softDeleteBatch(
+    ids: string[],
+    deletedById: string,
+    deletionRootId: string,
+  ): Promise<void> {
+    await this.repository.update(
+      { id: In(ids) },
+      { deletedAt: new Date(), deletedById, deletionRootId },
+    );
   }
 
   async updateVisibility(

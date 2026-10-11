@@ -629,7 +629,9 @@ Ce même guide est envoyé dans les instructions du serveur à la connexion : la
 | \`wiki_update_page\` | Modifier titre/contenu (crée une nouvelle version) |
 | \`wiki_get_page\` | Récupérer une page par son chemin complet (ex. \`docs/guide\`) |
 | \`wiki_list_pages\` | Lister l'arbre entier, ou les enfants directs d'une page |
-| \`wiki_delete_page\` | Supprimer une page (\`cascade\` obligatoire si elle a des enfants) |
+| \`wiki_delete_page\` | Déplacer une page dans la corbeille (\`cascade\` obligatoire si elle a des enfants) |
+| \`wiki_list_trash\` | Lister les pages de la corbeille que la clé peut restaurer |
+| \`wiki_restore_page\` | Restaurer une page de la corbeille, avec les sous-pages supprimées en même temps |
 | \`wiki_set_page_visibility\` | Changer la visibilité d'une page (public/private), en cascade sur les enfants |
 
 **Tags** (\`tags:read\`/\`tags:write\`)
@@ -721,7 +723,18 @@ Pas besoin d'accès admin pour partager une page précise : quiconque détient \
 - Les règles **héritées** d'une page ancêtre ou d'une portée « tout le wiki » sont affichées en lecture seule, avec un lien vers la page d'origine — elles ne se modifient que depuis là où elles ont été créées.
 - Ajouter un accès se fait en une recherche (utilisateur ou groupe), un choix de portée (cette page seule, ou cette page et ses sous-pages) et une sélection d'actions — limitée à ce que vous détenez vous-même sur cette page, pour éviter toute escalade.
 
-## 5. La règle anti-escalade
+## 5. Supprimer et restaurer une page : la corbeille
+
+Quiconque détient \`page.delete\` sur une page voit un bouton **Supprimer** dans sa vue. Une page qui a des sous-pages les emporte avec elle, après confirmation (il faut alors aussi pouvoir supprimer chacune d'elles).
+
+Une page supprimée n'est pas effacée : elle part dans la **corbeille** (menu utilisateur → Corbeille), qui liste les pages que vous avez le droit de supprimer, avec leur ancien chemin, qui les a supprimées et quand.
+
+- **Restaurer** remet la page à sa place, avec les sous-pages supprimées en même temps qu'elle. Si sa page parente est elle-même dans la corbeille, restaurez d'abord la parente. Si une autre page a pris son adresse entre-temps, renommez ou déplacez celle-ci avant de restaurer.
+- **Supprimer définitivement** est réservé aux admins : la page, son historique et ses commentaires sont effacés. Les images qu'elle utilisait restent dans la médiathèque.
+- L'adresse d'une page en corbeille est libre : on peut créer une nouvelle page au même endroit.
+- Une image utilisée par une page de la corbeille ne peut pas être supprimée de la médiathèque, pour que la restauration ne casse pas la page.
+
+## 6. La règle anti-escalade
 
 Quelle que soit l'interface utilisée, une règle simple s'applique partout : **vous ne pouvez jamais accorder à quelqu'un d'autre plus de droits que vous n'en avez vous-même** — ni en lui donnant un accès direct, ni en l'ajoutant à un groupe qui en détient davantage que vous. Toute tentative renvoie une erreur plutôt que de silencieusement échouer ou de réduire la demande.
 

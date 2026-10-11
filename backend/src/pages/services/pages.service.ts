@@ -639,33 +639,33 @@ export class PagesService {
       throw new PageHasChildrenException();
     }
 
-    if (cascade) {
-      const descendantIds = await this.collectDescendantIds(id);
-      if (descendantIds.length > 0) {
-        const user = await this.usersService.findById(userId);
-        const effectiveActions =
-          await this.permissionsService.getEffectivePageActionsBulk(
-            user,
-            descendantIds,
-          );
-        for (const descendantId of descendantIds) {
-          if (
-            !(effectiveActions.get(descendantId) ?? []).includes('page.delete')
-          ) {
-            throw new InsufficientPagePermissionException();
-          }
+    const descendantIds = cascade ? await this.collectDescendantIds(id) : [];
+    if (descendantIds.length > 0) {
+      const user = await this.usersService.findById(userId);
+      const effectiveActions =
+        await this.permissionsService.getEffectivePageActionsBulk(
+          user,
+          descendantIds,
+        );
+      for (const descendantId of descendantIds) {
+        if (
+          !(effectiveActions.get(descendantId) ?? []).includes('page.delete')
+        ) {
+          throw new InsufficientPagePermissionException();
         }
       }
-      await this.deleteRecursive(id);
-    } else {
-      await this.pagesRepository.softDelete(id);
     }
+    await this.pagesRepository.softDeleteBatch(
+      [id, ...descendantIds],
+      userId,
+      id,
+    );
     void this.userActivityLogService.record({
       userId,
       action: 'page.deleted',
       targetType: 'page',
       targetId: id,
-      metadata: { cascade },
+      metadata: { cascade, pageCount: descendantIds.length + 1 },
     });
     this.eventEmitter.emit(PAGE_TREE_CHANGED_EVENT);
   }
@@ -793,14 +793,6 @@ export class PagesService {
       ids.push(...(await this.collectDescendantIds(child.id)));
     }
     return ids;
-  }
-
-  private async deleteRecursive(id: string): Promise<void> {
-    const children = await this.pagesRepository.findChildren(id);
-    for (const child of children) {
-      await this.deleteRecursive(child.id);
-    }
-    await this.pagesRepository.softDelete(id);
   }
 
   private static parseCascade(raw?: string): boolean {

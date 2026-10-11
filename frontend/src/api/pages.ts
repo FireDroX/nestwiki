@@ -102,6 +102,32 @@ export async function unfollowPage(id: string): Promise<void> {
   await apiClient.delete(`/pages/${id}/follow`)
 }
 
+export async function deletePage(id: string, cascade: boolean): Promise<void> {
+  await apiClient.delete(`/pages/${id}`, { params: cascade ? { cascade: 'true' } : undefined })
+}
+
+export interface TrashEntry {
+  id: string
+  title: string
+  path: string
+  deletedAt: string
+  deletedBy: { id: string; displayName: string } | null
+  descendantCount: number
+}
+
+export async function listTrash(): Promise<TrashEntry[]> {
+  const { data } = await apiClient.get<ResponseDto<TrashEntry[]>>('/pages/trash')
+  return data.data
+}
+
+export async function restorePage(id: string): Promise<void> {
+  await apiClient.post(`/pages/${id}/restore`)
+}
+
+export async function purgePage(id: string): Promise<void> {
+  await apiClient.delete(`/pages/${id}/purge`)
+}
+
 export interface MergePreviewPayload {
   baseVersionId: string
   content: string
