@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { MergeSegment } from '#api/pages'
-import { resolveMergeSegments, takeTheirs } from './resolve-merge-segments'
+import { resolveMergeSegments } from './resolve-merge-segments'
 
 const segments: MergeSegment[] = [
   { type: 'ok', lines: ['Intro'] },
@@ -23,11 +23,5 @@ describe('resolveMergeSegments', () => {
 
   it('returns the ok lines when there is no conflict', () => {
     expect(resolveMergeSegments([{ type: 'ok', lines: ['a', 'b'] }], {})).toBe('a\nb')
-  })
-})
-
-describe('takeTheirs', () => {
-  it('rebuilds the current version', () => {
-    expect(takeTheirs(segments)).toBe('Intro\nTheirs A\nMiddle\nTheirs B1\nTheirs B2')
   })
 })

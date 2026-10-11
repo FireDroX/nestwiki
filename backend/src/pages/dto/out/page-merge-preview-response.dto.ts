@@ -7,4 +7,5 @@ export interface PageMergePreviewResponseDto {
   segments?: MergeSegment[];
   currentVersionAuthorName?: string | null;
   currentVersionCreatedAt?: Date;
+  currentVersionContent?: string;
 }

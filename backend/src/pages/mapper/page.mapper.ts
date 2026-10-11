@@ -92,6 +92,7 @@ export class PageMapper {
       segments: result.segments,
       currentVersionAuthorName: result.currentVersionAuthorName,
       currentVersionCreatedAt: result.currentVersionCreatedAt,
+      currentVersionContent: result.currentVersionContent,
     };
   }
 

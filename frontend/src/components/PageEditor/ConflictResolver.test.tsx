@@ -11,6 +11,7 @@ const conflict: MergeConflictDetails = {
   ],
   currentVersionAuthorName: 'Alice',
   currentVersionCreatedAt: new Date().toISOString(),
+  currentVersionContent: 'Intro\nSecond line edited by them\nTheirs A\nTheirs B',
 }
 
 describe('ConflictResolver', () => {
@@ -58,10 +59,10 @@ describe('ConflictResolver', () => {
     expect(screen.getByText(/Second line/)).toBeInTheDocument()
   })
 
-  it('discards my changes with the other version content', () => {
+  it('discards my changes by reloading the current version content, edits outside conflicts included', () => {
     const onDiscard = vi.fn()
     render(<ConflictResolver conflict={conflict} onApply={vi.fn()} onDiscard={onDiscard} />)
     fireEvent.click(screen.getByRole('button', { name: 'Abandonner mes modifications' }))
-    expect(onDiscard).toHaveBeenCalledWith('Intro\nSecond line\nTheirs A\nTheirs B')
+    expect(onDiscard).toHaveBeenCalledWith('Intro\nSecond line edited by them\nTheirs A\nTheirs B')
   })
 })

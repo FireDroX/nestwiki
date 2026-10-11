@@ -418,6 +418,7 @@ describe('PagesService', () => {
         segments,
         currentVersionAuthorName: 'User',
         currentVersionCreatedAt: currentVersion.createdAt,
+        currentVersionContent: currentVersion.content,
       });
       expect(pagesRepository.updateWithNewVersion).not.toHaveBeenCalled();
     });
@@ -466,6 +467,7 @@ describe('PagesService', () => {
         segments,
         currentVersionAuthorName: null,
         currentVersionCreatedAt: currentVersion.createdAt,
+        currentVersionContent: currentVersion.content,
       });
       expect(pagesRepository.updateWithNewVersion).not.toHaveBeenCalled();
     });
@@ -673,6 +675,7 @@ describe('PagesService', () => {
         segments,
         currentVersionAuthorName: 'User',
         currentVersionCreatedAt: currentVersion.createdAt,
+        currentVersionContent: currentVersion.content,
       });
     });
 

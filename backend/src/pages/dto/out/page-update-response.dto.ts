@@ -12,4 +12,5 @@ export interface PageUpdateResponseDto {
   segments?: MergeSegment[];
   currentVersionAuthorName?: string | null;
   currentVersionCreatedAt?: Date;
+  currentVersionContent?: string;
 }

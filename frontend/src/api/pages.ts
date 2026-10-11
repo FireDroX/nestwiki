@@ -53,6 +53,7 @@ export interface MergeConflictDetails {
   segments: MergeSegment[]
   currentVersionAuthorName: string | null
   currentVersionCreatedAt: string
+  currentVersionContent: string
 }
 
 export interface PageUpdateResult {
@@ -67,6 +68,7 @@ export interface PageUpdateResult {
   segments?: MergeSegment[]
   currentVersionAuthorName?: string | null
   currentVersionCreatedAt?: string
+  currentVersionContent?: string
 }
 
 export async function updatePage(id: string, payload: UpdatePagePayload): Promise<PageUpdateResult> {
@@ -153,6 +155,7 @@ export interface MergePreviewResult {
   segments?: MergeSegment[]
   currentVersionAuthorName?: string | null
   currentVersionCreatedAt?: string
+  currentVersionContent?: string
 }
 
 export async function mergePreview(id: string, payload: MergePreviewPayload): Promise<MergePreviewResult> {

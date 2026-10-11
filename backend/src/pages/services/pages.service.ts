@@ -548,6 +548,7 @@ export class PagesService {
     segments: MergeSegment[];
     currentVersionAuthorName: string | null;
     currentVersionCreatedAt: Date;
+    currentVersionContent: string;
   }> {
     const currentVersionAuthorName = await this.usersService
       .findById(currentVersion.authorId)
@@ -557,6 +558,7 @@ export class PagesService {
       segments: merged.segments,
       currentVersionAuthorName,
       currentVersionCreatedAt: currentVersion.createdAt,
+      currentVersionContent: currentVersion.content,
     };
   }
 

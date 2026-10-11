@@ -32,7 +32,3 @@ export function resolveMergeSegments(
   }
   return lines.join('\n')
 }
-
-export function takeTheirs(segments: MergeSegment[]): string {
-  return segments.flatMap((segment) => (segment.type === 'ok' ? segment.lines : segment.theirs)).join('\n')
-}

@@ -119,6 +119,7 @@ export function PageEditor() {
       segments: result.segments ?? [],
       currentVersionAuthorName: result.currentVersionAuthorName ?? null,
       currentVersionCreatedAt: result.currentVersionCreatedAt ?? new Date().toISOString(),
+      currentVersionContent: result.currentVersionContent ?? editor.content,
     }
   }
 

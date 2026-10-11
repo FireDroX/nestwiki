@@ -4,7 +4,7 @@ import { Button } from '#components/ui/button'
 import { cn } from '#lib/utils'
 import type { MergeConflictDetails } from '#api/pages'
 import { formatRelativeTime } from '#utils/relative-time'
-import { resolveMergeSegments, takeTheirs, type ConflictChoice } from '#utils/resolve-merge-segments'
+import { resolveMergeSegments, type ConflictChoice } from '#utils/resolve-merge-segments'
 
 interface ConflictResolverProps {
   conflict: MergeConflictDetails
@@ -113,7 +113,7 @@ export function ConflictResolver({ conflict, onApply, onDiscard }: ConflictResol
       })}
 
       <div className="flex justify-end gap-2">
-        <Button variant="ghost" onClick={() => onDiscard(takeTheirs(conflict.segments))}>
+        <Button variant="ghost" onClick={() => onDiscard(conflict.currentVersionContent)}>
           {t('pageEditor.conflict.discard')}
         </Button>
         <Button disabled={recomposed === null} onClick={() => recomposed !== null && onApply(recomposed)}>
