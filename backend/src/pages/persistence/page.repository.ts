@@ -34,7 +34,11 @@ export interface PagesRepository {
   ): Promise<{ page: Page; version: PageVersion }>;
   updateParent(page: Page, newParentId: string | null): Promise<Page>;
   findChildren(parentId: string): Promise<Page[]>;
-  softDelete(id: string): Promise<void>;
+  softDeleteBatch(
+    ids: string[],
+    deletedById: string,
+    deletionRootId: string,
+  ): Promise<void>;
   updateVisibility(page: Page, visibility: PageVisibility): Promise<Page>;
   updateCommentsEnabled(page: Page, commentsEnabled: boolean): Promise<Page>;
   countCreatedByUser(userId: string): Promise<number>;
