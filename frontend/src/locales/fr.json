@@ -103,7 +103,14 @@
     "errorDescription": "Impossible de charger cette page pour le moment.",
     "backHome": "Retour à l'accueil",
     "newVersionBanner": "Une nouvelle version de cette page est disponible.",
-    "reloadButton": "Recharger"
+    "reloadButton": "Recharger",
+    "delete": "Supprimer",
+    "deleteConfirmTitle": "Supprimer « {{title}} » ?",
+    "deleteConfirmDescription": "La page sera déplacée dans la corbeille, d'où elle pourra être restaurée.",
+    "deleteConfirmDescendants_one": "Sa sous-page sera aussi déplacée dans la corbeille.",
+    "deleteConfirmDescendants_other": "Ses {{count}} sous-pages seront aussi déplacées dans la corbeille.",
+    "deleteConfirmAction": "Déplacer dans la corbeille",
+    "deleted": "Page déplacée dans la corbeille."
   },
   "pageEditor": {
     "newPageTitle": "Nouvelle page",

@@ -103,7 +103,14 @@
     "errorDescription": "Unable to load this page right now.",
     "backHome": "Back to home",
     "newVersionBanner": "A new version of this page is available.",
-    "reloadButton": "Reload"
+    "reloadButton": "Reload",
+    "delete": "Delete",
+    "deleteConfirmTitle": "Delete “{{title}}”?",
+    "deleteConfirmDescription": "The page will be moved to the trash, where it can be restored.",
+    "deleteConfirmDescendants_one": "Its sub-page will be moved to the trash too.",
+    "deleteConfirmDescendants_other": "Its {{count}} sub-pages will be moved to the trash too.",
+    "deleteConfirmAction": "Move to trash",
+    "deleted": "Page moved to the trash."
   },
   "pageEditor": {
     "newPageTitle": "New page",

@@ -1,12 +1,15 @@
-import { Link, useParams } from 'react-router'
+import { Link, useNavigate, useParams } from 'react-router'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { History, Pencil } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
+import { deletePage } from '#api/pages'
 import { Button } from '#components/ui/button'
 import { MarkdownRenderer } from '#components/MarkdownRenderer'
 import { Skeleton } from '#components/ui/skeleton'
 import { PageBreadcrumb } from '#components/layout/PageBreadcrumb'
 import { CommentThread } from '#components/PageView/CommentThread'
+import { DeletePageDialog } from '#components/PageView/DeletePageDialog'
 import { ContributorsList } from '#components/PageView/ContributorsList'
 import { FollowButton } from '#components/PageView/FollowButton'
 import { PageTagList } from '#components/PageView/PageTagList'
@@ -18,11 +21,14 @@ import { useDocumentTitle } from '#hooks/useDocumentTitle'
 import { usePage } from '#hooks/usePage'
 import { usePageRoom } from '#hooks/usePageRoom'
 import { usePageTags } from '#hooks/usePageTags'
+import { usePageTree } from '#hooks/usePageTree'
 import { usePermissions } from '#hooks/usePermissions'
 import { useScrollToHash } from '#hooks/useScrollToHash'
 import { useTableOfContents } from '#hooks/useTableOfContents'
+import { extractErrorMessage } from '#lib/api-errors'
 import { getRealtimeSocket } from '#lib/realtime-client'
 import { PAGE_PADDING } from '#utils/page-layout'
+import { collectSubtreeIds } from '#utils/page-tree'
 import { shouldShowTableOfContents } from '#utils/table-of-contents'
 import { cn } from '#lib/utils'
 
@@ -82,6 +88,11 @@ export function PageView() {
   const { canOnPage } = usePermissions()
   const canEdit = canOnPage(page, 'page.edit')
   const canManageAccess = canOnPage(page, 'page.manage_permissions')
+  const canDelete = canOnPage(page, 'page.delete')
+  const { tree, refresh: refreshTree } = usePageTree()
+  const navigate = useNavigate()
+  const [isDeleting, setIsDeleting] = useState(false)
+  const descendantCount = page ? collectSubtreeIds(tree, page.id).length - 1 : 0
   useDocumentTitle(page?.title)
   const contentRef = useRef<HTMLDivElement>(null)
   const headings = useTableOfContents(contentRef, page?.content)
@@ -111,6 +122,24 @@ export function PageView() {
   async function handleReload() {
     await refresh()
     setHasNewVersion(false)
+  }
+
+  async function handleDelete() {
+    if (!page) {
+      return
+    }
+    setIsDeleting(true)
+    try {
+      await deletePage(page.id, descendantCount > 0)
+      toast.success(t('pageView.deleted'))
+      await refreshTree()
+      const parentSegments = pathSegments.slice(0, -1)
+      navigate(parentSegments.length > 0 ? `/pages/${parentSegments.join('/')}` : '/')
+    } catch (error) {
+      toast.error(extractErrorMessage(error))
+    } finally {
+      setIsDeleting(false)
+    }
   }
 
   if (status === 'loading') {
@@ -163,6 +192,14 @@ export function PageView() {
                     <Pencil /> {t('pageView.edit')}
                   </Link>
                 </Button>
+              )}
+              {canDelete && (
+                <DeletePageDialog
+                  title={page.title}
+                  descendantCount={descendantCount}
+                  pending={isDeleting}
+                  onConfirm={handleDelete}
+                />
               )}
               {canManageAccess && <PageAccessPanel pageId={page.id} availableActions={page.permissions} />}
             </div>
