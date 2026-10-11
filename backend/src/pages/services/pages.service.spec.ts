@@ -196,6 +196,43 @@ describe('PagesService', () => {
     service = module.get(PagesService);
   });
 
+  function arrangeConflict() {
+    const page = buildPage({ currentVersionId: 'version-2' });
+    const baseVersion = buildVersion({ id: 'version-1', content: 'base' });
+    const currentVersion = buildVersion({
+      id: 'version-2',
+      content: 'theirs',
+      authorId: 'other-user',
+      createdAt: new Date('2026-10-11T10:00:00Z'),
+    });
+    const segments = [
+      {
+        type: 'conflict' as const,
+        mine: ['mine'],
+        base: ['base'],
+        theirs: ['theirs'],
+      },
+    ];
+    pagesRepository.findById.mockResolvedValue(page);
+    pagesRepository.findVersionById.mockImplementation((id: string) =>
+      Promise.resolve(id === 'version-1' ? baseVersion : currentVersion),
+    );
+    pageMergeService.merge.mockReturnValue({
+      conflict: true,
+      content: '<<<<<<<',
+      segments,
+    });
+    return { page, currentVersion, segments };
+  }
+
+  function removeCurrentVersionAuthor() {
+    usersService.findById.mockImplementation((id: string) =>
+      id === 'other-user'
+        ? Promise.reject(new Error('gone'))
+        : Promise.resolve(buildUser({ id })),
+    );
+  }
+
   describe('updatePage', () => {
     it('creates a new PageVersion and never mutates the existing one', async () => {
       const page = buildPage();
@@ -380,31 +417,7 @@ describe('PagesService', () => {
     });
 
     it('returns the merge segments and the current version author on conflict', async () => {
-      const page = buildPage({ currentVersionId: 'version-2' });
-      const baseVersion = buildVersion({ id: 'version-1', content: 'base' });
-      const currentVersion = buildVersion({
-        id: 'version-2',
-        content: 'theirs',
-        authorId: 'other-user',
-        createdAt: new Date('2026-10-11T10:00:00Z'),
-      });
-      const segments = [
-        {
-          type: 'conflict',
-          mine: ['mine'],
-          base: ['base'],
-          theirs: ['theirs'],
-        },
-      ];
-      pagesRepository.findById.mockResolvedValue(page);
-      pagesRepository.findVersionById.mockImplementation((id: string) =>
-        Promise.resolve(id === 'version-1' ? baseVersion : currentVersion),
-      );
-      pageMergeService.merge.mockReturnValue({
-        conflict: true,
-        content: '<<<<<<<',
-        segments,
-      });
+      const { page, currentVersion, segments } = arrangeConflict();
 
       const result = await service.updatePage(
         page.id,
@@ -424,36 +437,8 @@ describe('PagesService', () => {
     });
 
     it('returns a null author name when the current version author no longer exists', async () => {
-      const page = buildPage({ currentVersionId: 'version-2' });
-      const baseVersion = buildVersion({ id: 'version-1', content: 'base' });
-      const currentVersion = buildVersion({
-        id: 'version-2',
-        content: 'theirs',
-        authorId: 'other-user',
-        createdAt: new Date('2026-10-11T10:00:00Z'),
-      });
-      const segments = [
-        {
-          type: 'conflict',
-          mine: ['mine'],
-          base: ['base'],
-          theirs: ['theirs'],
-        },
-      ];
-      pagesRepository.findById.mockResolvedValue(page);
-      pagesRepository.findVersionById.mockImplementation((id: string) =>
-        Promise.resolve(id === 'version-1' ? baseVersion : currentVersion),
-      );
-      pageMergeService.merge.mockReturnValue({
-        conflict: true,
-        content: '<<<<<<<',
-        segments,
-      });
-      usersService.findById.mockImplementation((id: string) =>
-        id === 'other-user'
-          ? Promise.reject(new Error('gone'))
-          : Promise.resolve(buildUser({ id })),
-      );
+      const { page, currentVersion, segments } = arrangeConflict();
+      removeCurrentVersionAuthor();
 
       const result = await service.updatePage(
         page.id,
@@ -635,31 +620,7 @@ describe('PagesService', () => {
     });
 
     it('returns the segments and the current version author on conflict', async () => {
-      const page = buildPage({ currentVersionId: 'version-2' });
-      const baseVersion = buildVersion({ id: 'version-1', content: 'base' });
-      const currentVersion = buildVersion({
-        id: 'version-2',
-        content: 'theirs',
-        authorId: 'other-user',
-        createdAt: new Date('2026-10-11T10:00:00Z'),
-      });
-      const segments = [
-        {
-          type: 'conflict',
-          mine: ['mine'],
-          base: ['base'],
-          theirs: ['theirs'],
-        },
-      ];
-      pagesRepository.findById.mockResolvedValue(page);
-      pagesRepository.findVersionById.mockImplementation((id: string) =>
-        Promise.resolve(id === 'version-1' ? baseVersion : currentVersion),
-      );
-      pageMergeService.merge.mockReturnValue({
-        conflict: true,
-        content: '<<<<<<<',
-        segments,
-      });
+      const { currentVersion, segments } = arrangeConflict();
 
       const result = await service.mergePreview(
         'page-1',
@@ -680,36 +641,8 @@ describe('PagesService', () => {
     });
 
     it('returns a null author name on conflict when the author no longer exists', async () => {
-      const page = buildPage({ currentVersionId: 'version-2' });
-      const baseVersion = buildVersion({ id: 'version-1', content: 'base' });
-      const currentVersion = buildVersion({
-        id: 'version-2',
-        content: 'theirs',
-        authorId: 'other-user',
-        createdAt: new Date('2026-10-11T10:00:00Z'),
-      });
-      const segments = [
-        {
-          type: 'conflict',
-          mine: ['mine'],
-          base: ['base'],
-          theirs: ['theirs'],
-        },
-      ];
-      pagesRepository.findById.mockResolvedValue(page);
-      pagesRepository.findVersionById.mockImplementation((id: string) =>
-        Promise.resolve(id === 'version-1' ? baseVersion : currentVersion),
-      );
-      pageMergeService.merge.mockReturnValue({
-        conflict: true,
-        content: '<<<<<<<',
-        segments,
-      });
-      usersService.findById.mockImplementation((id: string) =>
-        id === 'other-user'
-          ? Promise.reject(new Error('gone'))
-          : Promise.resolve(buildUser({ id })),
-      );
+      arrangeConflict();
+      removeCurrentVersionAuthor();
 
       const result = await service.mergePreview(
         'page-1',

@@ -44,19 +44,20 @@ export class PageTrashService {
       deletable.map((page) => page.id),
     );
     const deleters = await this.resolveDeleters(deletable);
-
-    return Promise.all(
-      deletable.map(async (page) => ({
-        id: page.id,
-        title: page.title,
-        path: await this.buildPath(page),
-        deletedAt: page.deletedAt as Date,
-        deletedBy: page.deletedById
-          ? (deleters.get(page.deletedById) ?? null)
-          : null,
-        descendantCount: Math.max((batchSizes.get(page.id) ?? 1) - 1, 0),
-      })),
+    const paths = await this.pageTrashRepository.findPaths(
+      deletable.map((page) => page.id),
     );
+
+    return deletable.map((page) => ({
+      id: page.id,
+      title: page.title,
+      path: paths.get(page.id) ?? `/${page.slug}`,
+      deletedAt: page.deletedAt as Date,
+      deletedBy: page.deletedById
+        ? (deleters.get(page.deletedById) ?? null)
+        : null,
+      descendantCount: Math.max((batchSizes.get(page.id) ?? 1) - 1, 0),
+    }));
   }
 
   async restore(id: string, userId: string): Promise<void> {
@@ -140,21 +141,6 @@ export class PageTrashService {
     if (parent.deletedAt) {
       throw new ParentInTrashException();
     }
-  }
-
-  private async buildPath(page: Page): Promise<string> {
-    const segments = [page.slug];
-    let parentId = page.parentId;
-    while (parentId !== null) {
-      const parent =
-        await this.pageTrashRepository.findByIdWithDeleted(parentId);
-      if (!parent) {
-        break;
-      }
-      segments.unshift(parent.slug);
-      parentId = parent.parentId;
-    }
-    return `/${segments.join('/')}`;
   }
 
   private async resolveDeleters(pages: Page[]): Promise<Map<string, Deleter>> {

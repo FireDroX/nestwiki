@@ -1,3 +1,4 @@
+import { merge } from 'node-diff3';
 import { describe, expect, it } from 'vitest';
 import { PageMergeService } from './page-merge.service.js';
 
@@ -118,4 +119,26 @@ describe('PageMergeService', () => {
       theirs: ['Line 2 edited by them'],
     });
   });
+
+  it.each([
+    [
+      'Line 1\nLine 2\nLine 3',
+      'Line 1\nMine\nLine 3',
+      'Line 1\nTheirs\nLine 3',
+    ],
+    ['A\nB\nC\n', 'A\nB mine\nC\nD mine\n', 'A\nB theirs\nC\n'],
+    ['A\nB', '', 'A\nB\nC'],
+    ['', 'Mine only', 'Theirs only'],
+    ['A\nB\nC', 'A\nC', 'A\nB changed\nC'],
+  ])(
+    'produces the same marked content as a plain three-way merge (case %#)',
+    (base, mine, theirs) => {
+      const expected = merge(mine, base, theirs, { stringSeparator: '\n' });
+
+      const result = service.merge(base, mine, theirs);
+
+      expect(result.conflict).toBe(expected.conflict);
+      expect(result.content).toBe(expected.result.join('\n'));
+    },
+  );
 });
