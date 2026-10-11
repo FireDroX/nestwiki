@@ -156,7 +156,24 @@
     "commentsDisabled": "Comments disabled.",
     "commentsEnabledChangeFailed": "Failed to update comments.",
     "realtimeMergedToast": "Your changes were automatically merged with someone else's.",
-    "realtimeConflictBanner": "Conflict with a concurrent save: resolve the <<<<<<< / ======= / >>>>>>> markers below before saving again."
+    "realtimeConflictBanner": "Conflict with a concurrent save: resolve the <<<<<<< / ======= / >>>>>>> markers below before saving again.",
+    "conflict": {
+      "title": "Conflict with a concurrent edit",
+      "description": "{{author}} saved this page {{date}} while you were editing it. For each block, choose the version to keep.",
+      "unknownAuthor": "Someone",
+      "progress": "{{resolved}} / {{total}} conflicts resolved",
+      "identicalLines_one": "{{count}} identical line",
+      "identicalLines_other": "{{count}} identical lines",
+      "mine": "My version",
+      "theirs": "Their version",
+      "emptySide": "(deleted)",
+      "keepMine": "Keep mine",
+      "keepTheirs": "Keep theirs",
+      "keepBoth": "Keep both",
+      "apply": "Apply",
+      "discard": "Discard my changes",
+      "applied": "Conflicts resolved: review, then save."
+    }
   },
   "pageMetadataForm": {
     "titleLabel": "Title",
