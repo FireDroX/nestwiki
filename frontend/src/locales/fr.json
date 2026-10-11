@@ -91,6 +91,14 @@
       "selfHost": "Héberger votre propre NestWiki"
     }
   },
+  "printView": {
+    "notReady": "Certains diagrammes ou images ne sont pas encore prêts. Vous pouvez attendre ou imprimer tel quel.",
+    "printAnyway": "Imprimer quand même",
+    "loading": "Préparation de l'impression…",
+    "error": "Impossible de préparer l'impression de ces pages.",
+    "contents": "Sommaire",
+    "generatedOn": "Exporté le {{date}}"
+  },
   "pageView": {
     "history": "Historique",
     "edit": "Modifier",
@@ -111,6 +119,12 @@
     "deleteConfirmDescendants_one": "Sa sous-page sera aussi déplacée dans la corbeille.",
     "deleteConfirmDescendants_other": "Ses {{count}} sous-pages seront aussi déplacées dans la corbeille.",
     "deleteConfirmAction": "Déplacer dans la corbeille",
+    "export": "Exporter",
+    "exportPdfPage": "PDF (cette page)",
+    "exportPdfSubtree": "PDF avec les sous-pages",
+    "exportMarkdownPage": "Markdown brut (.md)",
+    "exportMarkdownSubtree": "Markdown avec les sous-pages (.zip)",
+    "exportFailed": "L'export a échoué.",
     "deleted": "Page déplacée dans la corbeille."
   },
   "trash": {

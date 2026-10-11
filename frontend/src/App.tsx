@@ -23,6 +23,7 @@ import { PageCreate } from '#pages/PageCreate'
 import { PageEditor } from '#pages/PageEditor'
 import { PageHistory } from '#pages/PageHistory'
 import { PageView } from '#pages/PageView'
+import { PrintSubtree } from '#pages/PrintSubtree'
 import { Profile } from '#pages/Profile'
 import { SearchResults } from '#pages/SearchResults'
 import { Trash } from '#pages/Trash'
@@ -39,6 +40,7 @@ export function App() {
     <>
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/print/*" element={<PrintSubtree />} />
         <Route element={<ProtectedRoute />}>
           <Route path="/oauth/consent" element={<OAuthConsent />} />
         </Route>

@@ -30,7 +30,7 @@ export function Topbar({ onOpenSidebar }: TopbarProps) {
   const { resolvedTheme, setTheme } = useTheme()
 
   return (
-    <header className="flex h-14 w-full shrink-0 items-center gap-3 border-b border-border bg-background px-4">
+    <header className="flex h-14 w-full shrink-0 items-center gap-3 border-b border-border bg-background px-4 print:hidden">
       <Button variant="ghost" size="icon" className="md:hidden" onClick={onOpenSidebar}>
         <Menu />
         <span className="sr-only">{t('topbar.openSidebar')}</span>

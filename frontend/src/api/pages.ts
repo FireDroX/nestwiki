@@ -1,3 +1,4 @@
+import { isAxiosError } from 'axios'
 import { apiClient } from '#lib/api-client'
 import type { ResponseDto } from '#api/response-dto'
 import type { PageAction } from '#api/permissions'
@@ -161,4 +162,51 @@ export interface MergePreviewResult {
 export async function mergePreview(id: string, payload: MergePreviewPayload): Promise<MergePreviewResult> {
   const { data } = await apiClient.post<ResponseDto<MergePreviewResult>>(`/pages/${id}/merge-preview`, payload)
   return data.data
+}
+
+export interface SubtreePage {
+  id: string
+  title: string
+  slug: string
+  path: string
+  depth: number
+  content: string
+  tags: string[]
+  updatedAt: string
+}
+
+export async function getSubtreeContent(id: string): Promise<SubtreePage[]> {
+  const { data } = await apiClient.get<ResponseDto<SubtreePage[]>>(`/pages/${id}/subtree-content`)
+  return data.data
+}
+
+export type PageExportScope = 'page' | 'subtree'
+
+function filenameFromDisposition(disposition: string | undefined, fallback: string): string {
+  const match = disposition?.match(/filename="([^"]+)"/)
+  return match ? match[1] : fallback
+}
+
+async function withJsonErrorBody(error: unknown): Promise<never> {
+  if (isAxiosError(error) && error.response?.data instanceof Blob) {
+    const body: Blob = error.response.data
+    error.response.data = await body
+      .text()
+      .then((text) => JSON.parse(text) as unknown)
+      .catch(() => body)
+  }
+  throw error
+}
+
+export async function downloadPageExport(id: string, scope: PageExportScope): Promise<void> {
+  const response = await apiClient
+    .get<Blob>(`/pages/${id}/export`, { params: { scope }, responseType: 'blob' })
+    .catch(withJsonErrorBody)
+  const fallback = scope === 'page' ? 'page.md' : 'pages.zip'
+  const url = URL.createObjectURL(response.data)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filenameFromDisposition(response.headers['content-disposition'] as string | undefined, fallback)
+  link.click()
+  setTimeout(() => URL.revokeObjectURL(url), 0)
 }

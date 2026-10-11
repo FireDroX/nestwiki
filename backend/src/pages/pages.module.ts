@@ -2,6 +2,7 @@ import { forwardRef, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ActivityModule } from '../activity/activity.module.js';
 import { CommentsModule } from '../comments/comments.module.js';
+import { MediaModule } from '../media/media.module.js';
 import { PermissionsModule } from '../permissions/permissions.module.js';
 import { TagsModule } from '../tags/tags.module.js';
 import { UsersModule } from '../users/users.module.js';
@@ -13,6 +14,7 @@ import { PagesController } from './pages.controller.js';
 import { TypeormPageFollowRepository } from './persistence/typeorm.page-follow.repository.js';
 import { TypeormPageTrashRepository } from './persistence/typeorm.page-trash.repository.js';
 import { TypeormPagesRepository } from './persistence/typeorm.page.repository.js';
+import { PageExportService } from './services/page-export.service.js';
 import { PageMergeService } from './services/page-merge.service.js';
 import { PageStatsService } from './services/page-stats.service.js';
 import { PageTrashService } from './services/page-trash.service.js';
@@ -26,6 +28,7 @@ import { PagesService } from './services/pages.service.js';
     ActivityModule,
     forwardRef(() => CommentsModule),
     forwardRef(() => TagsModule),
+    forwardRef(() => MediaModule),
     PermissionsModule,
   ],
   controllers: [PagesController],
@@ -34,6 +37,7 @@ import { PagesService } from './services/pages.service.js';
     { provide: 'PageFollowsRepository', useClass: TypeormPageFollowRepository },
     { provide: 'PageTrashRepository', useClass: TypeormPageTrashRepository },
     PagesService,
+    PageExportService,
     PageMergeService,
     PageStatsService,
     PageTrashService,

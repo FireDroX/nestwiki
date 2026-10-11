@@ -26,6 +26,17 @@ export class TypeormPagesRepository implements PagesRepository {
     return this.versionRepository.findOneBy({ id });
   }
 
+  findCurrentVersions(pageIds: string[]): Promise<PageVersion[]> {
+    if (pageIds.length === 0) {
+      return Promise.resolve([]);
+    }
+    return this.versionRepository
+      .createQueryBuilder('version')
+      .innerJoin(Page, 'page', 'page.currentVersionId = version.id')
+      .where('page.id IN (:...pageIds)', { pageIds })
+      .getMany();
+  }
+
   findBySlugAndParent(
     slug: string,
     parentId: string | null,

@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 import { UserActivityLogService } from '../../activity/services/user-activity-log.service.js';
@@ -32,7 +33,11 @@ describe('MediaService', () => {
     findPagesReferencing: Mock<AttachmentsRepository['findPagesReferencing']>;
     delete: Mock<AttachmentsRepository['delete']>;
   };
-  let storageService: { delete: ReturnType<typeof vi.fn> };
+  let storageService: {
+    delete: ReturnType<typeof vi.fn>;
+    download: ReturnType<typeof vi.fn>;
+  };
+  let pagesService: { getByIdOrFail: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
     attachmentsRepository = {
@@ -40,7 +45,11 @@ describe('MediaService', () => {
       findPagesReferencing: vi.fn().mockResolvedValue([]),
       delete: vi.fn().mockResolvedValue(undefined),
     };
-    storageService = { delete: vi.fn().mockResolvedValue(undefined) };
+    storageService = {
+      delete: vi.fn().mockResolvedValue(undefined),
+      download: vi.fn().mockResolvedValue(Buffer.from('png')),
+    };
+    pagesService = { getByIdOrFail: vi.fn().mockResolvedValue({}) };
 
     const module = await Test.createTestingModule({
       providers: [
@@ -48,7 +57,7 @@ describe('MediaService', () => {
         { provide: 'AttachmentsRepository', useValue: attachmentsRepository },
         { provide: 'StorageService', useValue: storageService },
         { provide: 'MediaBucket', useValue: 'bucket' },
-        { provide: PagesService, useValue: {} },
+        { provide: PagesService, useValue: pagesService },
         { provide: PermissionsService, useValue: {} },
         { provide: UsersService, useValue: {} },
         {
@@ -86,6 +95,56 @@ describe('MediaService', () => {
         buildAttachment().minioKey,
       );
       expect(attachmentsRepository.delete).toHaveBeenCalledWith(ATTACHMENT_ID);
+    });
+  });
+
+  describe('findExportable', () => {
+    it('checks access up front and downloads the file only when it is read', async () => {
+      attachmentsRepository.findById.mockResolvedValue(
+        buildAttachment({ pageId: 'p1' }),
+      );
+
+      const media = await service.findExportable(ATTACHMENT_ID);
+
+      expect(pagesService.getByIdOrFail).toHaveBeenCalledWith('p1', undefined);
+      expect(media?.filename).toBe('image.png');
+      expect(storageService.download).not.toHaveBeenCalled();
+      expect(await media?.read()).toEqual(Buffer.from('png'));
+      expect(storageService.download).toHaveBeenCalledWith(
+        'bucket',
+        buildAttachment().minioKey,
+      );
+    });
+
+    it('returns null for a missing media or one the caller may not read, without logging', async () => {
+      const warn = vi
+        .spyOn(Logger.prototype, 'warn')
+        .mockImplementation(() => undefined);
+      attachmentsRepository.findById.mockResolvedValueOnce(null);
+      expect(await service.findExportable(ATTACHMENT_ID)).toBeNull();
+
+      attachmentsRepository.findById.mockResolvedValue(
+        buildAttachment({ pageId: 'p1' }),
+      );
+      pagesService.getByIdOrFail.mockRejectedValueOnce(new Error('forbidden'));
+      expect(await service.findExportable(ATTACHMENT_ID)).toBeNull();
+      expect(warn).not.toHaveBeenCalled();
+      warn.mockRestore();
+    });
+
+    it('logs a storage failure and reads nothing', async () => {
+      const warn = vi
+        .spyOn(Logger.prototype, 'warn')
+        .mockImplementation(() => undefined);
+      storageService.download.mockRejectedValueOnce(
+        new Error('bucket offline'),
+      );
+
+      const media = await service.findExportable(ATTACHMENT_ID);
+
+      expect(await media?.read()).toBeNull();
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining(ATTACHMENT_ID));
+      warn.mockRestore();
     });
   });
 });

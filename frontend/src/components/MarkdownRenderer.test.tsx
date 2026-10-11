@@ -323,4 +323,45 @@ describe('MarkdownRenderer', () => {
       expect(container.querySelector('[data-callout]')).toBeNull()
     })
   })
+
+  describe('anchor prefix', () => {
+    it('prefixes heading ids and in-page links so several pages can share one document', () => {
+      const { container } = render(
+        <MarkdownRenderer content={'# Setup\n\n[go](#setup) [out](/pages/faq#setup)'} mode="full" anchorPrefix="page-1-" />,
+      )
+      expect(container.querySelector('h1')?.id).toBe('page-1-setup')
+      const linkTo = (text: string) =>
+        [...container.querySelectorAll('a')].find((link) => link.textContent === text)?.getAttribute('href')
+      expect(linkTo('go')).toBe('#page-1-setup')
+      expect(linkTo('out')).toBe('/pages/faq#setup')
+    })
+
+    it('leaves ids written by the author untouched so their CSS keeps applying', () => {
+      const { container } = render(
+        <MarkdownRenderer
+          content={'<div id="box">x</div>\n\n[to box](#box)'}
+          mode="full"
+          anchorPrefix="page-1-"
+        />,
+      )
+      expect(container.querySelector('#box')).not.toBeNull()
+      const link = [...container.querySelectorAll('a')].find((candidate) => candidate.textContent === 'to box')
+      expect(link?.getAttribute('href')).toBe('#box')
+    })
+
+    it('prefixes footnote ids and their references together', () => {
+      const { container } = render(
+        <MarkdownRenderer content={'Text[^1]\n\n[^1]: Note'} mode="full" anchorPrefix="page-1-" />,
+      )
+      const reference = container.querySelector('a[data-footnote-ref]')
+      const target = reference?.getAttribute('href')?.slice(1) ?? ''
+      expect(target.startsWith('page-1-')).toBe(true)
+      expect(container.querySelector(`[id="${target}"]`)).not.toBeNull()
+    })
+
+    it('keeps plain ids without a prefix', () => {
+      const { container } = render(<MarkdownRenderer content="# Setup" mode="full" />)
+      expect(container.querySelector('h1')?.id).toBe('setup')
+    })
+  })
 })

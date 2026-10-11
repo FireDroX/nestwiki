@@ -77,7 +77,7 @@ There are three `.env` files, each with a commented `.env.example` next to it.
 | Variable | Description |
 | --- | --- |
 | `PORT` | HTTP port of the API (`3000`). |
-| `FRONTEND_URL` | Public origin of the web app, allowed by CORS. |
+| `FRONTEND_URL` | Public origin of the web app, allowed by CORS. Also used as the base of absolute links in Markdown exports, so the API should be served from the same origin (`/api`), as in the provided Docker setup. |
 | `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD`, `DB_DATABASE` | MySQL 8 connection. |
 | `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` | Token signing secrets: at least 32 characters each, different from each other. |
 | `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `ADMIN_DISPLAY_NAME` | First admin account, created only while the database has no admin. Never modified afterwards: change the password from the app. |

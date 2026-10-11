@@ -56,4 +56,30 @@ export class TypeormTagRepository implements TagRepository {
       id: In(pageTags.map((pageTag) => pageTag.tagId)),
     });
   }
+
+  async findTagNamesByPageIds(
+    pageIds: string[],
+  ): Promise<Map<string, string[]>> {
+    const names = new Map<string, string[]>();
+    if (pageIds.length === 0) {
+      return names;
+    }
+    const pageTags = await this.pageTagRepository.findBy({
+      pageId: In(pageIds),
+    });
+    if (pageTags.length === 0) {
+      return names;
+    }
+    const tags = await this.repository.findBy({
+      id: In([...new Set(pageTags.map((pageTag) => pageTag.tagId))]),
+    });
+    const namesById = new Map(tags.map((tag) => [tag.id, tag.name]));
+    for (const { pageId, tagId } of pageTags) {
+      const name = namesById.get(tagId);
+      if (name) {
+        names.set(pageId, [...(names.get(pageId) ?? []), name]);
+      }
+    }
+    return names;
+  }
 }

@@ -15,7 +15,7 @@ import { MediaService } from './services/media.service.js';
   imports: [
     TypeOrmModule.forFeature([Attachment]),
     StorageModule,
-    PagesModule,
+    forwardRef(() => PagesModule),
     ActivityModule,
     PermissionsModule,
     forwardRef(() => UsersModule),

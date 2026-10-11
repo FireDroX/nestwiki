@@ -77,7 +77,7 @@ export function Sidebar({ mobileOpen, onMobileOpenChange }: SidebarProps) {
     <>
       <aside
         className={cn(
-          'hidden shrink-0 flex-col border-r border-sidebar-border bg-sidebar md:flex',
+          'hidden shrink-0 flex-col border-r border-sidebar-border bg-sidebar md:flex print:hidden',
           collapsed ? 'w-12 items-center py-3' : 'w-[280px]'
         )}
       >

@@ -68,7 +68,7 @@ async function bootstrap() {
   app.enableCors({
     origin: process.env.FRONTEND_URL,
     credentials: true,
-    exposedHeaders: ['Retry-After'],
+    exposedHeaders: ['Retry-After', 'Content-Disposition'],
   });
   app.use(helmet());
   app.use(cookieParser());

@@ -1,5 +1,10 @@
 import { randomUUID } from 'node:crypto';
-import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  Logger,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { UserActivityLogService } from '../../activity/services/user-activity-log.service.js';
 import { AttachmentInUseException } from '../../common/exceptions/media/attachment-in-use.exception.js';
 import { AttachmentNotFoundException } from '../../common/exceptions/media/attachment-not-found.exception.js';
@@ -35,6 +40,8 @@ export interface UploadedMediaFile {
 
 @Injectable()
 export class MediaService {
+  private readonly logger = new Logger(MediaService.name);
+
   constructor(
     @Inject('AttachmentsRepository')
     private readonly attachmentsRepository: AttachmentsRepository,
@@ -186,6 +193,37 @@ export class MediaService {
     );
 
     return { url, expiresIn: MEDIA_PRESIGNED_URL_EXPIRY_SECONDS };
+  }
+
+  async findExportable(
+    id: string,
+    currentUser?: AuthenticatedUser,
+  ): Promise<{ filename: string; read: () => Promise<Buffer | null> } | null> {
+    const attachment = await this.attachmentsRepository.findById(id);
+    if (!attachment) {
+      return null;
+    }
+    if (attachment.pageId) {
+      const readable = await this.pagesService
+        .getByIdOrFail(attachment.pageId, currentUser)
+        .then(() => true)
+        .catch(() => false);
+      if (!readable) {
+        return null;
+      }
+    }
+    return {
+      filename: attachment.filename,
+      read: () =>
+        this.storageService
+          .download(this.bucket, attachment.minioKey)
+          .catch((error: unknown) => {
+            this.logger.warn(
+              `Export skipped media ${id}: ${error instanceof Error ? error.message : String(error)}`,
+            );
+            return null;
+          }),
+    };
   }
 
   async deleteAttachment(id: string, deletedById: string): Promise<void> {

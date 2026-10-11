@@ -26,6 +26,7 @@ export interface PagesRepository {
   ): Promise<Page | null>;
   findAll(): Promise<Page[]>;
   findVersionById(id: string): Promise<PageVersion | null>;
+  findCurrentVersions(pageIds: string[]): Promise<PageVersion[]>;
   createWithFirstVersion(
     input: CreatePageWithFirstVersionInput,
   ): Promise<{ page: Page; version: PageVersion }>;

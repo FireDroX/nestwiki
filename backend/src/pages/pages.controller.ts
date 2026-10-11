@@ -9,10 +9,12 @@ import {
   Patch,
   Post,
   Query,
+  Res,
   UseFilters,
   UseGuards,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
+import type { Response } from 'express';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
@@ -23,6 +25,7 @@ import {
   ApiNoContentResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
+  ApiPayloadTooLargeResponse,
   ApiOperation,
   ApiParam,
   ApiQuery,
@@ -41,6 +44,10 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard.js';
 import { OptionalJwtAuthGuard } from '../common/guards/optional-jwt-auth.guard.js';
 import { RolesGuard } from '../common/guards/roles.guard.js';
 import type { AuthenticatedUser } from '../common/strategies/jwt.strategy.js';
+import {
+  EXPORT_MAX_MEDIA,
+  EXPORT_MAX_PAGES,
+} from '../common/variables.global.js';
 import { CreateCommentDto } from '../comments/dto/in/create-comment.dto.js';
 import { CommentResponseDto } from '../comments/dto/out/comment-response.dto.js';
 import { CommentMapper } from '../comments/mapper/comment.mapper.js';
@@ -68,6 +75,7 @@ import { ChangeVisibilityDto } from './dto/in/change-visibility.dto.js';
 import { CreatePageAccessRuleDto } from './dto/in/create-page-access-rule.dto.js';
 import { CreatePageDto } from './dto/in/create-page.dto.js';
 import { DeletePageQueryDto } from './dto/in/delete-page-query.dto.js';
+import { ExportPageQueryDto } from './dto/in/export-page-query.dto.js';
 import { MergePreviewDto } from './dto/in/merge-preview.dto.js';
 import { MovePageDto } from './dto/in/move-page.dto.js';
 import { SetCommentsEnabledDto } from './dto/in/set-comments-enabled.dto.js';
@@ -76,17 +84,22 @@ import { PageDetailResponseDto } from './dto/out/page-detail-response.dto.js';
 import { PageMergePreviewResponseDto } from './dto/out/page-merge-preview-response.dto.js';
 import { PageResponseDto } from './dto/out/page-response.dto.js';
 import { PageStatsResponseDto } from './dto/out/page-stats-response.dto.js';
+import type { SubtreePageResponseDto } from './dto/out/subtree-page-response.dto.js';
 import { PageTreeNodeDto } from './dto/out/page-tree-node.dto.js';
 import type { TrashEntryResponseDto } from './dto/out/trash-entry-response.dto.js';
 import { PageUpdateResponseDto } from './dto/out/page-update-response.dto.js';
 import { PagesExceptionFilter } from './filter/pages-exception.filter.js';
 import { PageMapper } from './mapper/page.mapper.js';
+import { PageExportService } from './services/page-export.service.js';
 import { PageStatsService } from './services/page-stats.service.js';
+import { streamZip } from './services/zip-stream.js';
 import { PageTrashService } from './services/page-trash.service.js';
 import { PagesService } from './services/pages.service.js';
 
 const COMMENT_CREATE_THROTTLE_LIMIT = 10;
 const COMMENT_CREATE_THROTTLE_TTL_MS = 60000;
+const EXPORT_THROTTLE_LIMIT = 10;
+const EXPORT_THROTTLE_TTL_MS = 60000;
 
 @ApiTags('Pages')
 @Controller('pages')
@@ -100,6 +113,7 @@ export class PagesController {
     private readonly accessRulesService: AccessRulesService,
     private readonly pageStatsService: PageStatsService,
     private readonly pageTrashService: PageTrashService,
+    private readonly pageExportService: PageExportService,
   ) {}
 
   @Post()
@@ -462,6 +476,86 @@ export class PagesController {
   ): Promise<ResponseDto<PageTreeNodeDto[]>> {
     const tree = await this.pagesService.getTree(user);
     return new ResponseDto(tree);
+  }
+
+  @Get(':id/subtree-content')
+  @UseGuards(OptionalJwtAuthGuard)
+  @Throttle({
+    default: { limit: EXPORT_THROTTLE_LIMIT, ttl: EXPORT_THROTTLE_TTL_MS },
+  })
+  @ApiOperation({
+    summary: "Récupérer le contenu d'une page et de ses sous-pages",
+    description:
+      "Authentification optionnelle. Pages lisibles par l'appelant, en ordre de parcours en profondeur ; une page illisible est exclue avec tout son sous-arbre. Sert à l'impression en PDF.",
+  })
+  @ApiParam({ name: 'id', description: 'Identifiant de la page racine' })
+  @ApiOkResponse({ description: 'Pages du sous-arbre, racine en tête.' })
+  @ApiForbiddenResponse({
+    description: 'Page privée, accès non autorisé.',
+    type: ErrorResponseDto,
+  })
+  @ApiNotFoundResponse({
+    description: "La page n'existe pas.",
+    type: ErrorResponseDto,
+  })
+  async getSubtreeContent(
+    @Param('id') id: string,
+    @CurrentUser() user?: AuthenticatedUser,
+  ): Promise<ResponseDto<SubtreePageResponseDto[]>> {
+    return new ResponseDto(
+      await this.pageExportService.collectSubtree(id, user),
+    );
+  }
+
+  @Get(':id/export')
+  @UseGuards(OptionalJwtAuthGuard)
+  @Throttle({
+    default: { limit: EXPORT_THROTTLE_LIMIT, ttl: EXPORT_THROTTLE_TTL_MS },
+  })
+  @ApiOperation({
+    summary: 'Exporter une page en Markdown brut',
+    description:
+      'scope=page (défaut) : fichier .md ; scope=subtree : archive .zip avec les sous-pages lisibles et les médias référencés. Chaque fichier commence par un en-tête YAML (title, tags, updatedAt, source).',
+  })
+  @ApiParam({ name: 'id', description: 'Identifiant de la page' })
+  @ApiOkResponse({ description: 'Fichier .md ou archive .zip.' })
+  @ApiBadRequestResponse({
+    description: 'scope invalide.',
+    type: ErrorResponseDto,
+  })
+  @ApiPayloadTooLargeResponse({
+    description: `Plus de ${EXPORT_MAX_PAGES} pages ou de ${EXPORT_MAX_MEDIA} médias.`,
+    type: ErrorResponseDto,
+  })
+  @ApiForbiddenResponse({
+    description: 'Page privée, accès non autorisé.',
+    type: ErrorResponseDto,
+  })
+  @ApiNotFoundResponse({
+    description: "La page n'existe pas.",
+    type: ErrorResponseDto,
+  })
+  async exportPage(
+    @Param('id') id: string,
+    @Query() query: ExportPageQueryDto,
+    @Res() res: Response,
+    @CurrentUser() user?: AuthenticatedUser,
+  ): Promise<void> {
+    if (PageExportService.parseScope(query.scope) === 'page') {
+      const file = await this.pageExportService.exportPage(id, user);
+      res.attachment(file.filename);
+      res.type('text/markdown; charset=utf-8');
+      res.send(file.content);
+      return;
+    }
+
+    const { filename, entries } = await this.pageExportService.exportSubtree(
+      id,
+      user,
+    );
+    res.attachment(filename);
+    res.type('application/zip');
+    await streamZip(entries, res);
   }
 
   @Get(':id/versions')
