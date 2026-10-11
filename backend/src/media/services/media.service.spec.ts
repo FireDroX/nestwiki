@@ -32,7 +32,11 @@ describe('MediaService', () => {
     findPagesReferencing: Mock<AttachmentsRepository['findPagesReferencing']>;
     delete: Mock<AttachmentsRepository['delete']>;
   };
-  let storageService: { delete: ReturnType<typeof vi.fn> };
+  let storageService: {
+    delete: ReturnType<typeof vi.fn>;
+    download: ReturnType<typeof vi.fn>;
+  };
+  let pagesService: { getByIdOrFail: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
     attachmentsRepository = {
@@ -40,7 +44,11 @@ describe('MediaService', () => {
       findPagesReferencing: vi.fn().mockResolvedValue([]),
       delete: vi.fn().mockResolvedValue(undefined),
     };
-    storageService = { delete: vi.fn().mockResolvedValue(undefined) };
+    storageService = {
+      delete: vi.fn().mockResolvedValue(undefined),
+      download: vi.fn().mockResolvedValue(Buffer.from('png')),
+    };
+    pagesService = { getByIdOrFail: vi.fn().mockResolvedValue({}) };
 
     const module = await Test.createTestingModule({
       providers: [
@@ -48,7 +56,7 @@ describe('MediaService', () => {
         { provide: 'AttachmentsRepository', useValue: attachmentsRepository },
         { provide: 'StorageService', useValue: storageService },
         { provide: 'MediaBucket', useValue: 'bucket' },
-        { provide: PagesService, useValue: {} },
+        { provide: PagesService, useValue: pagesService },
         { provide: PermissionsService, useValue: {} },
         { provide: UsersService, useValue: {} },
         {
@@ -86,6 +94,37 @@ describe('MediaService', () => {
         buildAttachment().minioKey,
       );
       expect(attachmentsRepository.delete).toHaveBeenCalledWith(ATTACHMENT_ID);
+    });
+  });
+
+  describe('readForExport', () => {
+    it('returns the file of a media the user may read', async () => {
+      attachmentsRepository.findById.mockResolvedValue(
+        buildAttachment({ pageId: 'p1' }),
+      );
+
+      const file = await service.readForExport(ATTACHMENT_ID);
+
+      expect(pagesService.getByIdOrFail).toHaveBeenCalledWith('p1', undefined);
+      expect(storageService.download).toHaveBeenCalledWith(
+        'bucket',
+        buildAttachment().minioKey,
+      );
+      expect(file).toEqual({ filename: 'image.png', data: Buffer.from('png') });
+    });
+
+    it('returns null when the media is missing, unreadable or its file is gone', async () => {
+      attachmentsRepository.findById.mockResolvedValueOnce(null);
+      expect(await service.readForExport(ATTACHMENT_ID)).toBeNull();
+
+      attachmentsRepository.findById.mockResolvedValue(
+        buildAttachment({ pageId: 'p1' }),
+      );
+      pagesService.getByIdOrFail.mockRejectedValueOnce(new Error('forbidden'));
+      expect(await service.readForExport(ATTACHMENT_ID)).toBeNull();
+
+      storageService.download.mockRejectedValueOnce(new Error('gone'));
+      expect(await service.readForExport(ATTACHMENT_ID)).toBeNull();
     });
   });
 });

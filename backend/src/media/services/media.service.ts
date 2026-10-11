@@ -188,6 +188,28 @@ export class MediaService {
     return { url, expiresIn: MEDIA_PRESIGNED_URL_EXPIRY_SECONDS };
   }
 
+  async readForExport(
+    id: string,
+    currentUser?: AuthenticatedUser,
+  ): Promise<{ filename: string; data: Buffer } | null> {
+    try {
+      const attachment = await this.attachmentsRepository.findById(id);
+      if (!attachment) {
+        return null;
+      }
+      if (attachment.pageId) {
+        await this.pagesService.getByIdOrFail(attachment.pageId, currentUser);
+      }
+      const data = await this.storageService.download(
+        this.bucket,
+        attachment.minioKey,
+      );
+      return { filename: attachment.filename, data };
+    } catch {
+      return null;
+    }
+  }
+
   async deleteAttachment(id: string, deletedById: string): Promise<void> {
     if (!UUID_REGEX.test(id)) {
       throw new ValidationException('id must be a UUID');

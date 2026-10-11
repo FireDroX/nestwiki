@@ -128,6 +128,7 @@ describe('PagesService', () => {
       findBySlugAndParent: vi.fn(),
       findAll: vi.fn(),
       findVersionById: vi.fn(),
+      findCurrentVersions: vi.fn(),
       createWithFirstVersion: vi.fn(),
       updateWithNewVersion: vi.fn(),
       updateParent: vi.fn(),
