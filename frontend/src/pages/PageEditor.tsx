@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next'
 import { EditorLayout } from '#components/PageEditor/EditorLayout'
 import { FileUploadButton } from '#components/PageEditor/FileUploadButton'
 import { MarkdownEditor, type MarkdownEditorHandle } from '#components/PageEditor/MarkdownEditor'
+import { ConflictResolver } from '#components/PageEditor/ConflictResolver'
 import { MediaLibraryPicker } from '#components/PageEditor/MediaLibraryPicker'
 import { PageMetadataForm } from '#components/PageEditor/PageMetadataForm'
 import { PageTagsPanel } from '#components/page-settings/PageTagsPanel'
@@ -18,6 +19,7 @@ import { Textarea } from '#components/ui/textarea'
 import {
   changePageVisibility,
   movePage,
+  type MergeConflictDetails,
   setCommentsEnabled,
   updatePage,
   type PageVisibility,
@@ -67,6 +69,8 @@ export function PageEditor() {
   const [currentParentId, setCurrentParentId] = useState<string | null>(null)
   const [commentsEnabled, setCommentsEnabledState] = useState(true)
   const [baseVersionId, setBaseVersionId] = useState('')
+  const [conflict, setConflict] = useState<MergeConflictDetails | null>(null)
+  const [conflictKey, setConflictKey] = useState(0)
   const schema = useMemo(() => createPageMetadataSchema(t), [t])
 
   const { control, setValue, watch, getValues, reset } = useForm<PageMetadataFormValues>({
@@ -98,13 +102,35 @@ export function PageEditor() {
     getBaseVersionId: () => baseVersionId,
     getContent: () => editor.content,
     onMergeResult: (result) => {
-      editor.setContent(result.mergedContent)
       setBaseVersionId(result.newBaseVersionId)
-      if (!result.conflict) {
-        toast.success(t('pageEditor.realtimeMergedToast'))
+      if (result.conflict) {
+        openConflict({
+          segments: result.segments ?? [],
+          currentVersionAuthorName: result.currentVersionAuthorName ?? null,
+          currentVersionCreatedAt: result.currentVersionCreatedAt ?? new Date().toISOString(),
+        })
+        return
       }
+      editor.setContent(result.mergedContent)
+      toast.success(t('pageEditor.realtimeMergedToast'))
     },
   })
+
+  function openConflict(details: MergeConflictDetails) {
+    setConflict(details)
+    setConflictKey((key) => key + 1)
+  }
+
+  function handleConflictApplied(content: string) {
+    editor.setContent(content)
+    setConflict(null)
+    toast.success(t('pageEditor.conflict.applied'))
+  }
+
+  function handleConflictDiscarded(theirContent: string) {
+    editor.reset(getValues('title'), theirContent)
+    setConflict(null)
+  }
 
   async function handleParentChange(newParentId: string | null) {
     if (!page) {
@@ -167,9 +193,12 @@ export function PageEditor() {
       })
 
       if (result.conflict) {
-        editor.setContent(result.mergedContent ?? editor.content)
         setBaseVersionId(result.currentVersionId)
-        toast.error(t('pageEditor.realtimeConflictBanner'))
+        openConflict({
+          segments: result.segments ?? [],
+          currentVersionAuthorName: result.currentVersionAuthorName ?? null,
+          currentVersionCreatedAt: result.currentVersionCreatedAt ?? new Date().toISOString(),
+        })
         return
       }
 
@@ -224,7 +253,7 @@ export function PageEditor() {
           <Button type="button" variant="ghost" onClick={handleCancel}>
             {t('common.cancel')}
           </Button>
-          <Button type="button" onClick={() => submitSave()} disabled={isSaving}>
+          <Button type="button" onClick={() => submitSave()} disabled={isSaving || conflict !== null}>
             {isSaving ? t('pageEditor.saving') : t('pageEditor.save')}
           </Button>
         </>
@@ -260,36 +289,42 @@ export function PageEditor() {
               canDeleteTags={hasGlobal('tag.delete')}
             />
           </div>
-          {editor.content.includes('<<<<<<<') && (
-            <p className="mt-2 text-sm text-destructive">{t('pageEditor.realtimeConflictBanner')}</p>
-          )}
           <FormError message={saveError} />
         </>
       }
     >
-      <MarkdownEditor
-        ref={editorRef}
-        value={editor.content}
-        onChange={editor.setContent}
-        onSave={() => submitSave()}
-        onFilesDropped={handleImageUpload}
-        toolbarExtra={
-          <>
-            {hasGlobal('media.upload') && (
-              <>
-                <FileUploadButton variant="image" onFilesSelected={handleImageUpload} />
-                <FileUploadButton variant="attachment" onFilesSelected={handleAttachmentUpload} />
-              </>
-            )}
-            <MediaLibraryPicker
-              pageId={page.id}
-              canUpload={hasGlobal('media.upload')}
-              canDelete={hasGlobal('media.delete')}
-              onInsert={(markdown) => editorRef.current?.insertAtCursor(markdown)}
-            />
-          </>
-        }
-      />
+      {conflict ? (
+        <ConflictResolver
+          key={conflictKey}
+          conflict={conflict}
+          onApply={handleConflictApplied}
+          onDiscard={handleConflictDiscarded}
+        />
+      ) : (
+        <MarkdownEditor
+          ref={editorRef}
+          value={editor.content}
+          onChange={editor.setContent}
+          onSave={() => submitSave()}
+          onFilesDropped={handleImageUpload}
+          toolbarExtra={
+            <>
+              {hasGlobal('media.upload') && (
+                <>
+                  <FileUploadButton variant="image" onFilesSelected={handleImageUpload} />
+                  <FileUploadButton variant="attachment" onFilesSelected={handleAttachmentUpload} />
+                </>
+              )}
+              <MediaLibraryPicker
+                pageId={page.id}
+                canUpload={hasGlobal('media.upload')}
+                canDelete={hasGlobal('media.delete')}
+                onInsert={(markdown) => editorRef.current?.insertAtCursor(markdown)}
+              />
+            </>
+          }
+        />
+      )}
     </EditorLayout>
   )
 }

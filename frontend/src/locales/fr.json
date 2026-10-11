@@ -156,7 +156,6 @@
     "commentsDisabled": "Commentaires désactivés.",
     "commentsEnabledChangeFailed": "Échec de la mise à jour des commentaires.",
     "realtimeMergedToast": "Vos modifications ont été fusionnées automatiquement avec celles de quelqu'un d'autre.",
-    "realtimeConflictBanner": "Conflit détecté avec une sauvegarde concurrente : résolvez les marqueurs <<<<<<< / ======= / >>>>>>> ci-dessous avant de sauvegarder à nouveau.",
     "conflict": {
       "title": "Conflit avec une modification concurrente",
       "description": "{{author}} a enregistré cette page {{date}} pendant que vous l'éditiez. Choisissez, pour chaque bloc, la version à garder.",
