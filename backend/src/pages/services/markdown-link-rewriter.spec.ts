@@ -115,4 +115,25 @@ describe('MarkdownLinkRewriter', () => {
       ),
     );
   });
+
+  it('handles query strings, single-quoted attributes, angle-bracket targets and reference definitions', () => {
+    expect(rewrite('[a](/pages/docs/guide/install?tab=1#linux)')).toBe(
+      '[a](guide/install.md#linux)',
+    );
+    expect(rewrite('[b](/pages/faq?tab=1)')).toBe(
+      `[b](${INSTANCE_URL}/pages/faq?tab=1)`,
+    );
+    expect(rewrite(`![c](/api/media/${MEDIA_ID}/raw?v=2)`)).toBe(
+      `![c](_media/${MEDIA_ID}-shot.png)`,
+    );
+    expect(rewrite("<a href='/pages/docs/guide/install'>d</a>")).toBe(
+      "<a href='guide/install.md'>d</a>",
+    );
+    expect(rewrite('[e](</pages/docs/guide/install>)')).toBe(
+      '[e](<guide/install.md>)',
+    );
+    expect(
+      rewrite('[f][ref]\n\n[ref]: /pages/docs/guide/install "Install"'),
+    ).toBe('[f][ref]\n\n[ref]: guide/install.md "Install"');
+  });
 });

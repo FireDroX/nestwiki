@@ -7,11 +7,12 @@ export interface LinkRewriteContext {
   instanceUrl: string;
 }
 
-const MARKDOWN_TARGET = /(\]\()([^)\s]+)/g;
-const HTML_TARGET = /(\b(?:src|href)=")([^"]+)/g;
-const MEDIA_PATH = /^\/api\/media\/([0-9a-f-]{36})\/raw$/i;
+const MARKDOWN_TARGET = /(\]\(<?)([^)\s>]+)/g;
+const HTML_TARGET = /(\b(?:src|href)=["'])([^"']+)/g;
+const REFERENCE_DEFINITION = /^( {0,3}\[[^\]\n]+\]:[ \t]*<?)([^\s>]+)/gm;
+const MEDIA_PATH = /^\/api\/media\/([0-9a-f-]{36})\/raw(?:\?[^#]*)?$/i;
 const MEDIA_REFERENCE = /\/api\/media\/([0-9a-f-]{36})\/raw/gi;
-const PAGE_PATH = /^\/pages(\/[^#?]*)(#.*)?$/;
+const PAGE_PATH = /^\/pages(\/[^#?]*)(?:\?[^#]*)?(#.*)?$/;
 const CODE = /^(`{3,}|~{3,})[^\n]*\n[\s\S]*?^\1[^\n]*$|`[^`\n]+`/gm;
 
 export class MarkdownLinkRewriter {
@@ -49,7 +50,8 @@ export class MarkdownLinkRewriter {
       `${prefix}${MarkdownLinkRewriter.rewriteUrl(url, context)}`;
     return text
       .replace(MARKDOWN_TARGET, replaceTarget)
-      .replace(HTML_TARGET, replaceTarget);
+      .replace(HTML_TARGET, replaceTarget)
+      .replace(REFERENCE_DEFINITION, replaceTarget);
   }
 
   private static rewriteUrl(url: string, context: LinkRewriteContext): string {

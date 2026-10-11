@@ -13,7 +13,7 @@ import { MarkdownHeading } from '#components/MarkdownHeading'
 import { MermaidDiagram } from '#components/MermaidDiagram'
 import { PdfPreview } from '#components/PdfPreview'
 import { CALLOUT_TAG_NAME, rehypeCallouts } from '#lib/markdown-callouts'
-import { rehypeHeadingIds } from '#lib/markdown-headings'
+import { rehypeHeadingIds, rehypePrefixAnchors } from '#lib/markdown-headings'
 import { MERMAID_TAG_NAME, rehypeMermaid } from '#lib/markdown-mermaid'
 import { rehypeHardenFullMode } from '#lib/markdown-sanitize'
 import { rehypeScopeStyles } from '#lib/markdown-css-scope'
@@ -93,6 +93,7 @@ function CodeBlock({ language, code }: CodeBlockProps) {
 interface MarkdownRendererProps {
   content: string
   mode?: 'full' | 'restricted'
+  anchorPrefix?: string
 }
 
 const MARKDOWN_BODY_CLASSES = cn(
@@ -160,7 +161,11 @@ const markdownComponents = {
   },
 }
 
-export const MarkdownRenderer = memo(function MarkdownRenderer({ content, mode = 'restricted' }: MarkdownRendererProps) {
+export const MarkdownRenderer = memo(function MarkdownRenderer({
+  content,
+  mode = 'restricted',
+  anchorPrefix,
+}: MarkdownRendererProps) {
   const scopeId = useId()
   const remarkPlugins: Array<unknown> =
     mode === 'full' ? [remarkGfm, [remarkMath, { singleDollarTextMath: false }]] : [remarkGfm]
@@ -168,6 +173,9 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({ content, mode =
     mode === 'full'
       ? [rehypeRaw, rehypeHardenFullMode, rehypeMermaid, [rehypeScopeStyles, scopeId], rehypeHeadingIds, rehypeKatex, rehypeCallouts]
       : [rehypeRaw, [rehypeSanitize, MARKDOWN_SANITIZE_SCHEMA], rehypeCallouts]
+  if (anchorPrefix) {
+    rehypePlugins.push([rehypePrefixAnchors, anchorPrefix])
+  }
 
   return (
     <div id={mode === 'full' ? scopeId : undefined} className={MARKDOWN_BODY_CLASSES}>

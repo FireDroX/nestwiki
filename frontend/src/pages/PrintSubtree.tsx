@@ -3,9 +3,11 @@ import { useParams } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { getPageByPath, getSubtreeContent, type SubtreePage } from '#api/pages'
 import { MarkdownRenderer } from '#components/MarkdownRenderer'
+import { Button } from '#components/ui/button'
 import { useAuth } from '#hooks/useAuth'
 import { useDocumentTitle } from '#hooks/useDocumentTitle'
 import { usePrintPreparation } from '#hooks/usePrintPreparation'
+import { setPrintMode } from '#lib/print-mode'
 import { isPrintableContentReady } from '#utils/printable-content'
 
 const READY_CHECK_INTERVAL_MS = 200
@@ -13,7 +15,9 @@ const READY_TIMEOUT_MS = 15000
 
 type PrintState = { status: 'loading' } | { status: 'error' } | { status: 'ready'; pages: SubtreePage[] }
 
-function usePrintWhenReady(rootRef: React.RefObject<HTMLElement | null>, enabled: boolean) {
+function usePrintWhenReady(rootRef: React.RefObject<HTMLElement | null>, enabled: boolean): boolean {
+  const [timedOut, setTimedOut] = useState(false)
+
   useEffect(() => {
     if (!enabled) {
       return
@@ -21,14 +25,18 @@ function usePrintWhenReady(rootRef: React.RefObject<HTMLElement | null>, enabled
     const startedAt = Date.now()
     const timer = window.setInterval(() => {
       const root = rootRef.current
-      const timedOut = Date.now() - startedAt > READY_TIMEOUT_MS
-      if (root && (isPrintableContentReady(root) || timedOut)) {
+      if (root && isPrintableContentReady(root)) {
         window.clearInterval(timer)
+        setTimedOut(false)
         window.print()
+      } else if (Date.now() - startedAt > READY_TIMEOUT_MS) {
+        setTimedOut(true)
       }
     }, READY_CHECK_INTERVAL_MS)
     return () => window.clearInterval(timer)
   }, [rootRef, enabled])
+
+  return timedOut
 }
 
 export function PrintSubtree() {
@@ -42,7 +50,12 @@ export function PrintSubtree() {
 
   useDocumentTitle(rootPage?.title)
   usePrintPreparation(user?.displayName)
-  usePrintWhenReady(rootRef, state.status === 'ready')
+  const notReadyInTime = usePrintWhenReady(rootRef, state.status === 'ready')
+
+  useEffect(() => {
+    setPrintMode(true)
+    return () => setPrintMode(false)
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -67,6 +80,14 @@ export function PrintSubtree() {
 
   return (
     <main ref={rootRef} className="mx-auto max-w-3xl space-y-8 p-8 print:max-w-none print:p-0">
+      {notReadyInTime && (
+        <div className="flex items-center justify-between gap-4 rounded-md border border-border bg-muted px-4 py-3 text-sm print:hidden">
+          <span>{t('printView.notReady')}</span>
+          <Button size="sm" onClick={() => window.print()}>
+            {t('printView.printAnyway')}
+          </Button>
+        </div>
+      )}
       <header className="flex min-h-[60vh] flex-col justify-center gap-2 break-after-page">
         <h1 className="text-4xl font-bold">{rootPage.title}</h1>
         <p className="text-sm text-muted-foreground">
@@ -87,7 +108,7 @@ export function PrintSubtree() {
 
       {state.pages.map((page) => (
         <section key={page.id} id={`print-page-${page.id}`} className="break-before-page">
-          <MarkdownRenderer content={page.content} mode="full" />
+          <MarkdownRenderer content={page.content} mode="full" anchorPrefix={`${page.id}-`} />
         </section>
       ))}
     </main>

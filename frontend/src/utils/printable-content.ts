@@ -1,5 +1,6 @@
 export function isPrintableContentReady(root: ParentNode): boolean {
-  const diagramsPending = root.querySelector('[data-slot="mermaid-loading"]') !== null
+  const diagramsPending = root.querySelector('[data-print-pending]') !== null
   const imagesPending = [...root.querySelectorAll('img')].some((image) => !image.complete)
-  return !diagramsPending && !imagesPending
+  const fontsPending = document.fonts?.status === 'loading'
+  return !diagramsPending && !imagesPending && !fontsPending
 }

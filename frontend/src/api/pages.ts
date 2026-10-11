@@ -1,3 +1,4 @@
+import { isAxiosError } from 'axios'
 import { apiClient } from '#lib/api-client'
 import type { ResponseDto } from '#api/response-dto'
 import type { PageAction } from '#api/permissions'
@@ -186,8 +187,21 @@ function filenameFromDisposition(disposition: string | undefined, fallback: stri
   return match ? match[1] : fallback
 }
 
+async function withJsonErrorBody(error: unknown): Promise<never> {
+  if (isAxiosError(error) && error.response?.data instanceof Blob) {
+    const body: Blob = error.response.data
+    error.response.data = await body
+      .text()
+      .then((text) => JSON.parse(text) as unknown)
+      .catch(() => body)
+  }
+  throw error
+}
+
 export async function downloadPageExport(id: string, scope: PageExportScope): Promise<void> {
-  const response = await apiClient.get<Blob>(`/pages/${id}/export`, { params: { scope }, responseType: 'blob' })
+  const response = await apiClient
+    .get<Blob>(`/pages/${id}/export`, { params: { scope }, responseType: 'blob' })
+    .catch(withJsonErrorBody)
   const fallback = scope === 'page' ? 'page.md' : 'pages.zip'
   const url = URL.createObjectURL(response.data)
   const link = document.createElement('a')

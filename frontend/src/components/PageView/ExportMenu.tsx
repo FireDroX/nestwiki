@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from '#components/ui/dropdown-menu'
 import { extractErrorMessage } from '#lib/api-errors'
+import { printWithLightDiagrams } from '#lib/print-mode'
 
 interface ExportMenuProps {
   pageId: string
@@ -37,7 +38,7 @@ export function ExportMenu({ pageId, pathSegments, hasChildren }: ExportMenuProp
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-auto">
-        <DropdownMenuItem onSelect={() => setTimeout(() => window.print())}>
+        <DropdownMenuItem onSelect={() => void printWithLightDiagrams()}>
           {t('pageView.exportPdfPage')}
         </DropdownMenuItem>
         {hasChildren && (

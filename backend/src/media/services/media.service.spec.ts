@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 import { UserActivityLogService } from '../../activity/services/user-activity-log.service.js';
@@ -125,6 +126,26 @@ describe('MediaService', () => {
 
       storageService.download.mockRejectedValueOnce(new Error('gone'));
       expect(await service.readForExport(ATTACHMENT_ID)).toBeNull();
+    });
+
+    it('logs a storage failure but not a refused access', async () => {
+      const warn = vi
+        .spyOn(Logger.prototype, 'warn')
+        .mockImplementation(() => undefined);
+      attachmentsRepository.findById.mockResolvedValue(
+        buildAttachment({ pageId: 'p1' }),
+      );
+
+      pagesService.getByIdOrFail.mockRejectedValueOnce(new Error('forbidden'));
+      await service.readForExport(ATTACHMENT_ID);
+      expect(warn).not.toHaveBeenCalled();
+
+      storageService.download.mockRejectedValueOnce(
+        new Error('bucket offline'),
+      );
+      await service.readForExport(ATTACHMENT_ID);
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining(ATTACHMENT_ID));
+      warn.mockRestore();
     });
   });
 });

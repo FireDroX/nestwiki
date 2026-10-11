@@ -1,8 +1,12 @@
 import { type ReactNode, useEffect, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useTheme } from 'next-themes'
+import { usePrintMode } from '#lib/print-mode'
 
-type MermaidRender = { status: 'loading' } | { status: 'rendered'; svg: string } | { status: 'error'; message: string }
+type MermaidRender =
+  | { status: 'loading' }
+  | { status: 'rendered'; svg: string; dark: boolean }
+  | { status: 'error'; message: string }
 
 function toPlainText(node: ReactNode): string {
   if (typeof node === 'string' || typeof node === 'number') {
@@ -37,15 +41,17 @@ function MermaidSource({ code }: { code: string }) {
 export function MermaidDiagram({ children }: { children?: ReactNode }) {
   const { t } = useTranslation()
   const { resolvedTheme } = useTheme()
+  const printMode = usePrintMode()
+  const dark = resolvedTheme === 'dark' && !printMode
   const elementId = `mermaid-${useId().replace(/[^\w-]/g, '')}`
   const code = toPlainText(children)
   const [result, setResult] = useState<MermaidRender>({ status: 'loading' })
 
   useEffect(() => {
     let cancelled = false
-    renderMermaid(elementId, code, resolvedTheme === 'dark').then(
+    renderMermaid(elementId, code, dark).then(
       (svg) => {
-        if (!cancelled) setResult({ status: 'rendered', svg })
+        if (!cancelled) setResult({ status: 'rendered', svg, dark })
       },
       (error: unknown) => {
         if (!cancelled) setResult({ status: 'error', message: error instanceof Error ? error.message : String(error) })
@@ -54,12 +60,13 @@ export function MermaidDiagram({ children }: { children?: ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [elementId, code, resolvedTheme])
+  }, [elementId, code, dark])
 
   if (result.status === 'rendered') {
     return (
       <div
         data-slot="mermaid-diagram"
+        data-print-pending={result.dark !== dark ? '' : undefined}
         className="flex justify-center overflow-x-auto [&_svg]:h-auto [&_svg]:max-w-full"
         dangerouslySetInnerHTML={{ __html: result.svg }}
       />
@@ -78,7 +85,7 @@ export function MermaidDiagram({ children }: { children?: ReactNode }) {
   }
 
   return (
-    <div data-slot="mermaid-loading">
+    <div data-print-pending>
       <MermaidSource code={code} />
     </div>
   )

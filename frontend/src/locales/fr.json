@@ -92,6 +92,8 @@
     }
   },
   "printView": {
+    "notReady": "Certains diagrammes ou images ne sont pas encore prêts. Vous pouvez attendre ou imprimer tel quel.",
+    "printAnyway": "Imprimer quand même",
     "loading": "Préparation de l'impression…",
     "error": "Impossible de préparer l'impression de ces pages.",
     "contents": "Sommaire",

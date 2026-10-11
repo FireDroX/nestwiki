@@ -323,4 +323,22 @@ describe('MarkdownRenderer', () => {
       expect(container.querySelector('[data-callout]')).toBeNull()
     })
   })
+
+  describe('anchor prefix', () => {
+    it('prefixes heading ids and in-page links so several pages can share one document', () => {
+      const { container } = render(
+        <MarkdownRenderer content={'# Setup\n\n[go](#setup) [out](/pages/faq#setup)'} mode="full" anchorPrefix="page-1-" />,
+      )
+      expect(container.querySelector('h1')?.id).toBe('page-1-setup')
+      const linkTo = (text: string) =>
+        [...container.querySelectorAll('a')].find((link) => link.textContent === text)?.getAttribute('href')
+      expect(linkTo('go')).toBe('#page-1-setup')
+      expect(linkTo('out')).toBe('/pages/faq#setup')
+    })
+
+    it('keeps plain ids without a prefix', () => {
+      const { container } = render(<MarkdownRenderer content="# Setup" mode="full" />)
+      expect(container.querySelector('h1')?.id).toBe('setup')
+    })
+  })
 })

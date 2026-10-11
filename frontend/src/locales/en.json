@@ -92,6 +92,8 @@
     }
   },
   "printView": {
+    "notReady": "Some diagrams or images are not ready yet. You can wait or print as is.",
+    "printAnyway": "Print anyway",
     "loading": "Preparing the print…",
     "error": "These pages could not be prepared for printing.",
     "contents": "Contents",

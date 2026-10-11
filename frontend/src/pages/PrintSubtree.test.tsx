@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { render, renderHook, screen, waitFor, within } from '@testing-library/react'
+import { usePrintMode } from '#lib/print-mode'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { PrintSubtree } from './PrintSubtree'
 
@@ -7,6 +8,11 @@ const getPageByPathMock = vi.fn()
 const getSubtreeContentMock = vi.fn()
 vi.mock('#hooks/useAuth', () => ({
   useAuth: () => ({ user: { displayName: 'Alice Martin' } }),
+}))
+
+const isPrintableContentReadyMock = vi.fn(() => true)
+vi.mock('#utils/printable-content', () => ({
+  isPrintableContentReady: () => isPrintableContentReadyMock(),
 }))
 
 vi.mock('#api/pages', () => ({
@@ -26,6 +32,7 @@ function renderAt(path: string) {
 
 describe('PrintSubtree', () => {
   beforeEach(() => {
+    isPrintableContentReadyMock.mockReturnValue(true)
     getPageByPathMock.mockReset().mockResolvedValue({ id: 'guide' })
     getSubtreeContentMock.mockReset().mockResolvedValue([
       { id: 'guide', title: 'Guide', slug: 'guide', path: '/docs/guide', depth: 0, content: 'Intro text', tags: [], updatedAt: '' },
@@ -48,11 +55,40 @@ describe('PrintSubtree', () => {
     await waitFor(() => expect(print).toHaveBeenCalledTimes(1))
   })
 
+  it('draws diagrams in print mode while the print view is open', async () => {
+    vi.spyOn(window, 'print').mockImplementation(() => {})
+    const { result } = renderHook(() => usePrintMode())
+
+    const { unmount } = renderAt('/print/docs/guide')
+    await screen.findByText('Intro text')
+    expect(result.current).toBe(true)
+
+    unmount()
+    expect(result.current).toBe(false)
+  })
+
   it('shows an error when the pages cannot be loaded', async () => {
     getSubtreeContentMock.mockRejectedValue(new Error('forbidden'))
 
     renderAt('/print/docs/guide')
 
     expect(await screen.findByText("Impossible de préparer l'impression de ces pages.")).toBeInTheDocument()
+  })
+
+  it('does not print on its own when the content is still not ready after the timeout, and lets the user print anyway', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const print = vi.spyOn(window, 'print').mockImplementation(() => {})
+    print.mockClear()
+    isPrintableContentReadyMock.mockReturnValue(false)
+
+    renderAt('/print/docs/guide')
+    await screen.findByText('Intro text')
+    await vi.advanceTimersByTimeAsync(16000)
+
+    expect(print).not.toHaveBeenCalled()
+    expect(screen.getByText(/ne sont pas encore prêts/)).toBeInTheDocument()
+    screen.getByRole('button', { name: 'Imprimer quand même' }).click()
+    expect(print).toHaveBeenCalledTimes(1)
+    vi.useRealTimers()
   })
 })

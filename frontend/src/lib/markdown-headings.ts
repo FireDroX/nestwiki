@@ -71,3 +71,17 @@ export function rehypeHeadingIds() {
     }
   }
 }
+
+export function rehypePrefixAnchors(prefix: string) {
+  return (tree: Root) => {
+    visit(tree, 'element', (node: Element) => {
+      const { id, href } = node.properties ?? {}
+      if (typeof id === 'string' && id !== '') {
+        node.properties.id = `${prefix}${id}`
+      }
+      if (typeof href === 'string' && href.startsWith('#') && href.length > 1) {
+        node.properties.href = `#${prefix}${href.slice(1)}`
+      }
+    })
+  }
+}
