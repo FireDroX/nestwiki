@@ -12,7 +12,7 @@ export const PAGE_VISIBILITIES = ['public', 'private'] as const;
 export type PageVisibility = (typeof PAGE_VISIBILITIES)[number];
 
 @Entity('pages')
-@Index(['parentId', 'slug'], { unique: true })
+@Index(['parentId', 'activeSlug'], { unique: true })
 export class Page {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -54,4 +54,28 @@ export class Page {
 
   @DeleteDateColumn({ name: 'deleted_at' })
   deletedAt: Date | null;
+
+  @Column({ type: 'uuid', name: 'deleted_by_id', length: 36, nullable: true })
+  deletedById: string | null;
+
+  @Column({
+    type: 'uuid',
+    name: 'deletion_root_id',
+    length: 36,
+    nullable: true,
+  })
+  deletionRootId: string | null;
+
+  @Column({
+    type: 'varchar',
+    name: 'active_slug',
+    length: 255,
+    nullable: true,
+    select: false,
+    insert: false,
+    update: false,
+    generatedType: 'STORED',
+    asExpression: 'IF(`deleted_at` IS NULL, `slug`, NULL)',
+  })
+  activeSlug?: string | null;
 }

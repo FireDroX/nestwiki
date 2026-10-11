@@ -29,6 +29,8 @@ function buildPage(overrides: Partial<Page> = {}): Page {
     createdAt: new Date(),
     updatedAt: new Date(),
     deletedAt: null,
+    deletedById: null,
+    deletionRootId: null,
     ...overrides,
   };
 }

@@ -79,6 +79,8 @@ function buildPage(overrides: Partial<Page> = {}): Page {
     createdAt: new Date(),
     updatedAt: new Date(),
     deletedAt: null,
+    deletedById: null,
+    deletionRootId: null,
     ...overrides,
   };
 }
@@ -788,12 +790,15 @@ describe('PagesService', () => {
       expect(result).toBe(created);
     });
 
-    it('throws ReservedSlugException for a root page named "tree"', async () => {
-      await expect(
-        service.createPage({ ...dto, slug: 'tree' }, 'user-1'),
-      ).rejects.toBeInstanceOf(ReservedSlugException);
-      expect(pagesRepository.createWithFirstVersion).not.toHaveBeenCalled();
-    });
+    it.each(['tree', 'trash'])(
+      'throws ReservedSlugException for a root page named "%s"',
+      async (slug) => {
+        await expect(
+          service.createPage({ ...dto, slug }, 'user-1'),
+        ).rejects.toBeInstanceOf(ReservedSlugException);
+        expect(pagesRepository.createWithFirstVersion).not.toHaveBeenCalled();
+      },
+    );
 
     it.each(['versions', 'comments', 'tags', 'access-rules', 'stats'])(
       'throws ReservedSlugException for "%s" directly under a root page',
