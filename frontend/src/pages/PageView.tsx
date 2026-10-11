@@ -104,7 +104,7 @@ export function PageView() {
   const headings = useTableOfContents(contentRef, page?.content)
   const activeHeadingId = useActiveHeading(headings)
   useScrollToHash(page?.content)
-  usePrintPreparation()
+  usePrintPreparation(user?.displayName)
 
   useEffect(() => {
     setHasNewVersion(false)

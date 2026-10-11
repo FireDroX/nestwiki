@@ -3,6 +3,7 @@ import { useParams } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { getPageByPath, getSubtreeContent, type SubtreePage } from '#api/pages'
 import { MarkdownRenderer } from '#components/MarkdownRenderer'
+import { useAuth } from '#hooks/useAuth'
 import { useDocumentTitle } from '#hooks/useDocumentTitle'
 import { usePrintPreparation } from '#hooks/usePrintPreparation'
 import { isPrintableContentReady } from '#utils/printable-content'
@@ -32,6 +33,7 @@ function usePrintWhenReady(rootRef: React.RefObject<HTMLElement | null>, enabled
 
 export function PrintSubtree() {
   const { t, i18n } = useTranslation()
+  const { user } = useAuth()
   const params = useParams()
   const pathSegments = useMemo(() => (params['*'] ?? '').split('/').filter(Boolean), [params])
   const [state, setState] = useState<PrintState>({ status: 'loading' })
@@ -39,7 +41,7 @@ export function PrintSubtree() {
   const rootPage = state.status === 'ready' ? state.pages[0] : undefined
 
   useDocumentTitle(rootPage?.title)
-  usePrintPreparation()
+  usePrintPreparation(user?.displayName)
   usePrintWhenReady(rootRef, state.status === 'ready')
 
   useEffect(() => {

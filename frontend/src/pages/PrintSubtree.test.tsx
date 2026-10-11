@@ -5,6 +5,10 @@ import { PrintSubtree } from './PrintSubtree'
 
 const getPageByPathMock = vi.fn()
 const getSubtreeContentMock = vi.fn()
+vi.mock('#hooks/useAuth', () => ({
+  useAuth: () => ({ user: { displayName: 'Alice Martin' } }),
+}))
+
 vi.mock('#api/pages', () => ({
   getPageByPath: (...args: unknown[]) => getPageByPathMock(...args),
   getSubtreeContent: (...args: unknown[]) => getSubtreeContentMock(...args),

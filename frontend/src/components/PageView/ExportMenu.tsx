@@ -36,7 +36,7 @@ export function ExportMenu({ pageId, pathSegments, hasChildren }: ExportMenuProp
           <Download /> {t('pageView.export')}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
+      <DropdownMenuContent align="end" className="w-auto">
         <DropdownMenuItem onSelect={() => setTimeout(() => window.print())}>
           {t('pageView.exportPdfPage')}
         </DropdownMenuItem>
