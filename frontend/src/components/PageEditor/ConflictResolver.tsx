@@ -29,6 +29,16 @@ function Side({ title, lines, emptyLabel }: { title: string; lines: string[]; em
   )
 }
 
+function trimBlankEdges(lines: string[]): string[] {
+  const isBlank = (line: string) => line.trim() === ''
+  const start = lines.findIndex((line) => !isBlank(line))
+  if (start === -1) {
+    return []
+  }
+  const end = lines.findLastIndex((line) => !isBlank(line))
+  return lines.slice(start, end + 1)
+}
+
 export function ConflictResolver({ conflict, onApply, onDiscard }: ConflictResolverProps) {
   const { t } = useTranslation()
   const [choices, setChoices] = useState<Partial<Record<number, ConflictChoice>>>({})
@@ -66,14 +76,18 @@ export function ConflictResolver({ conflict, onApply, onDiscard }: ConflictResol
 
       {conflict.segments.map((segment, index) => {
         if (segment.type === 'ok') {
+          const lines = trimBlankEdges(segment.lines)
+          if (lines.length === 0) {
+            return null
+          }
           return (
             <div key={index} className="space-y-2">
               <Button variant="ghost" size="sm" onClick={() => toggleExpanded(index)}>
-                {t('pageEditor.conflict.identicalLines', { count: segment.lines.length })}
+                {t('pageEditor.conflict.mergedLines', { count: lines.length })}
               </Button>
               {expanded.has(index) && (
                 <pre className="whitespace-pre-wrap rounded-md bg-muted p-3 font-mono text-xs">
-                  {segment.lines.join('\n')}
+                  {lines.join('\n')}
                 </pre>
               )}
             </div>

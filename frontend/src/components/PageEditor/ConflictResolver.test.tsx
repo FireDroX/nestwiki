@@ -52,11 +52,27 @@ describe('ConflictResolver', () => {
     expect(screen.getAllByText(/Alice/).length).toBeGreaterThan(0)
   })
 
-  it('collapses identical lines', () => {
+  it('collapses lines merged without conflict', () => {
     render(<ConflictResolver conflict={conflict} onApply={vi.fn()} onDiscard={vi.fn()} />)
     expect(screen.queryByText(/Second line/)).not.toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: '2 lignes identiques' }))
+    fireEvent.click(screen.getByRole('button', { name: '2 lignes sans conflit' }))
     expect(screen.getByText(/Second line/)).toBeInTheDocument()
+  })
+
+  it('ignores blank lines at the edges of a merged block and hides blank-only blocks', () => {
+    const withBlanks: MergeConflictDetails = {
+      ...conflict,
+      segments: [
+        { type: 'ok', lines: ['', 'Paragraph', ''] },
+        { type: 'conflict', mine: ['Mine A'], base: ['Base A'], theirs: ['Theirs A'] },
+        { type: 'ok', lines: [''] },
+      ],
+    }
+    render(<ConflictResolver conflict={withBlanks} onApply={vi.fn()} onDiscard={vi.fn()} />)
+
+    expect(screen.getAllByRole('button', { name: /sans conflit/ })).toHaveLength(1)
+    fireEvent.click(screen.getByRole('button', { name: '1 ligne sans conflit' }))
+    expect(screen.getByText('Paragraph', { selector: 'pre' }).textContent).toBe('Paragraph')
   })
 
   it('discards my changes by reloading the current version content, edits outside conflicts included', () => {
