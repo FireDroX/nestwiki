@@ -72,15 +72,31 @@ export function rehypeHeadingIds() {
   }
 }
 
+const GENERATED_ID = /^(user-content-|footnote-label$)/
+
+function isGeneratedAnchor(node: Element, id: string): boolean {
+  return isHeading(node) || GENERATED_ID.test(id)
+}
+
 export function rehypePrefixAnchors(prefix: string) {
   return (tree: Root) => {
+    const prefixed = new Set<string>()
     visit(tree, 'element', (node: Element) => {
-      const { id, href } = node.properties ?? {}
-      if (typeof id === 'string' && id !== '') {
+      const id = node.properties?.id
+      if (typeof id === 'string' && id !== '' && isGeneratedAnchor(node, id)) {
+        prefixed.add(id)
         node.properties.id = `${prefix}${id}`
       }
-      if (typeof href === 'string' && href.startsWith('#') && href.length > 1) {
+    })
+    visit(tree, 'element', (node: Element) => {
+      const { href, ariaDescribedBy } = node.properties ?? {}
+      if (typeof href === 'string' && href.startsWith('#') && prefixed.has(href.slice(1))) {
         node.properties.href = `#${prefix}${href.slice(1)}`
+      }
+      if (Array.isArray(ariaDescribedBy)) {
+        node.properties.ariaDescribedBy = ariaDescribedBy.map((reference) =>
+          prefixed.has(String(reference)) ? `${prefix}${String(reference)}` : reference,
+        )
       }
     })
   }

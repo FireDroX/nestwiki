@@ -238,7 +238,7 @@ Le bouton « Exporter » d'une page propose :
 - **Markdown brut (.md)** : le texte source de la page, précédé d'un en-tête (titre, tags, date, adresse d'origine). Les liens vers le wiki et les images pointent vers l'adresse complète de l'instance.
 - **Markdown avec les sous-pages (.zip)** : une archive avec un fichier par page (les sous-pages dans un dossier du même nom) et les images utilisées dans \`_media/\`. Les liens entre pages exportées deviennent des liens relatifs entre fichiers.
 
-Seules les pages que vous pouvez lire sont exportées.
+Seules les pages que vous pouvez lire sont exportées. Une archive est limitée à 500 pages et 200 images : au-delà, exportez une partie plus petite de l'arborescence.
 
 ## Étapes suivantes
 

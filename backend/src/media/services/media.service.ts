@@ -195,10 +195,10 @@ export class MediaService {
     return { url, expiresIn: MEDIA_PRESIGNED_URL_EXPIRY_SECONDS };
   }
 
-  async readForExport(
+  async findExportable(
     id: string,
     currentUser?: AuthenticatedUser,
-  ): Promise<{ filename: string; data: Buffer } | null> {
+  ): Promise<{ filename: string; read: () => Promise<Buffer | null> } | null> {
     const attachment = await this.attachmentsRepository.findById(id);
     if (!attachment) {
       return null;
@@ -212,18 +212,18 @@ export class MediaService {
         return null;
       }
     }
-    try {
-      const data = await this.storageService.download(
-        this.bucket,
-        attachment.minioKey,
-      );
-      return { filename: attachment.filename, data };
-    } catch (error) {
-      this.logger.warn(
-        `Export skipped media ${id}: ${error instanceof Error ? error.message : String(error)}`,
-      );
-      return null;
-    }
+    return {
+      filename: attachment.filename,
+      read: () =>
+        this.storageService
+          .download(this.bucket, attachment.minioKey)
+          .catch((error: unknown) => {
+            this.logger.warn(
+              `Export skipped media ${id}: ${error instanceof Error ? error.message : String(error)}`,
+            );
+            return null;
+          }),
+    };
   }
 
   async deleteAttachment(id: string, deletedById: string): Promise<void> {

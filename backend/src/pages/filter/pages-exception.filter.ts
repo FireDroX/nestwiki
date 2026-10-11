@@ -48,6 +48,11 @@ export class PagesExceptionFilter implements ExceptionFilter {
       case 'InsufficientPermissionException':
       case 'CommentsDisabledException':
         return { statusCode: HttpStatus.FORBIDDEN, error: exception.message };
+      case 'ExportTooLargeException':
+        return {
+          statusCode: HttpStatus.PAYLOAD_TOO_LARGE,
+          error: exception.message,
+        };
       case 'ValidationException':
       case 'ReplyNestingException':
       case 'ReservedSlugException':

@@ -25,8 +25,17 @@ interface PageFixture {
   secretId: string;
   hiddenId: string;
   apiId: string;
+  teamId: string;
+  notesId: string;
   publicMediaId: string;
   privateMediaId: string;
+  libraryMediaId: string;
+}
+
+function instanceUrlFromEnv(): string {
+  const url = process.env.FRONTEND_URL;
+  expect(url).toMatch(/^https?:\/\/[^/]/);
+  return (url ?? '').replace(/\/+$/, '');
 }
 
 function binaryParser(
@@ -97,12 +106,12 @@ describe('Export (e2e)', () => {
   }
 
   async function storeMedia(
-    pageId: string,
+    pageId: string | null,
     filename: string,
     bytes: string,
   ): Promise<string> {
     const id = randomUUID();
-    const key = `pages/${pageId}/${id}-${filename}`;
+    const key = `pages/${pageId ?? 'library'}/${id}-${filename}`;
     const storage = app.get<StorageService>('StorageService', {
       strict: false,
     });
@@ -146,8 +155,20 @@ describe('Export (e2e)', () => {
       secretId,
     );
     const apiId = await createPage(admin, 'api', 'API', 'public', docsId);
+    const teamId = await createPage(admin, 'team', 'Team', 'private', docsId);
+    const notesId = await createPage(
+      admin,
+      'notes',
+      'Notes',
+      'private',
+      teamId,
+    );
+    await createPage(admin, 'drafts', 'Drafts', 'private', notesId);
+    const oldId = await createPage(admin, 'old', 'Old', 'public', docsId);
+    expect((await admin.delete(`/api/pages/${oldId}`)).status).toBe(204);
     const publicMediaId = await storeMedia(docsId, 'diagram.png', 'public');
     const privateMediaId = await storeMedia(secretId, 'plan.png', 'private');
+    const libraryMediaId = await storeMedia(null, 'logo.png', 'library');
     await admin.patch(`/api/pages/${docsId}`).send({
       content: [
         '# Docs',
@@ -155,6 +176,7 @@ describe('Export (e2e)', () => {
         '[Guide](/pages/docs/guide#intro)',
         `![public](/api/media/${publicMediaId}/raw)`,
         `![private](/api/media/${privateMediaId}/raw)`,
+        `![library](/api/media/${libraryMediaId}/raw)`,
         '',
         '```md',
         '[Guide](/pages/docs/guide)',
@@ -167,9 +189,48 @@ describe('Export (e2e)', () => {
       secretId,
       hiddenId,
       apiId,
+      teamId,
+      notesId,
       publicMediaId,
       privateMediaId,
+      libraryMediaId,
     };
+  }
+
+  async function registerMemberReadingTeamExceptNotes(): Promise<request.Agent> {
+    const agent = request.agent(server);
+    const credentials = {
+      email: 'member@example.com',
+      password: 'Str0ng!Passw0rd',
+      turnstileToken: 'stubbed',
+    };
+    await agent
+      .post('/api/auth/register')
+      .send({ ...credentials, displayName: 'Member' });
+    const [member] = await dataSource.query<{ id: string }[]>(
+      'SELECT `id` FROM `users` WHERE `email` = ?',
+      [credentials.email],
+    );
+    const [granter] = await dataSource.query<{ id: string }[]>(
+      "SELECT `id` FROM `users` WHERE `role` = 'admin' LIMIT 1",
+    );
+    const ruleId = randomUUID();
+    await dataSource.query(
+      "INSERT INTO `page_access_rules` (`id`, `user_id`, `group_id`, `page_id`, `applies_to`, `actions`, `granted_by_id`) VALUES (?, ?, NULL, ?, 'subtree', ?, ?)",
+      [
+        ruleId,
+        member.id,
+        tree.teamId,
+        JSON.stringify(['page.read']),
+        granter.id,
+      ],
+    );
+    await dataSource.query(
+      'INSERT INTO `page_access_exclusions` (`rule_id`, `page_id`) VALUES (?, ?)',
+      [ruleId, tree.notesId],
+    );
+    await agent.post('/api/auth/login').send(credentials);
+    return agent;
   }
 
   describe('GET /pages/:id/subtree-content', () => {
@@ -199,6 +260,24 @@ describe('Export (e2e)', () => {
         '/docs/guide/secret',
         '/docs/guide/secret/hidden',
         '/docs/api',
+        '/docs/team',
+        '/docs/team/notes',
+        '/docs/team/notes/drafts',
+      ]);
+    });
+
+    it("applies a member's subtree rule and its exclusion, dropping the excluded page with its children", async () => {
+      const member = await registerMemberReadingTeamExceptNotes();
+
+      const response = await member.get(
+        `/api/pages/${tree.docsId}/subtree-content`,
+      );
+
+      expect(dataOf<SubtreePage[]>(response).map((page) => page.path)).toEqual([
+        '/docs',
+        '/docs/guide',
+        '/docs/api',
+        '/docs/team',
       ]);
     });
 
@@ -231,7 +310,7 @@ describe('Export (e2e)', () => {
       expect(response.headers['content-disposition']).toBe(
         'attachment; filename="guide.md"',
       );
-      const instanceUrl = (process.env.FRONTEND_URL ?? '').replace(/\/+$/, '');
+      const instanceUrl = instanceUrlFromEnv();
       expect(response.text).toContain('title: "Title guide"');
       expect(response.text).toContain(
         `source: "${instanceUrl}/pages/docs/guide"`,
@@ -258,12 +337,13 @@ describe('Export (e2e)', () => {
         'docs/guide.md',
         'docs/api.md',
         `_media/${tree.publicMediaId}-diagram.png`,
+        `_media/${tree.libraryMediaId}-logo.png`,
       ]);
       expect(
         files.get(`_media/${tree.publicMediaId}-diagram.png`)?.toString(),
       ).toBe('public');
 
-      const instanceUrl = (process.env.FRONTEND_URL ?? '').replace(/\/+$/, '');
+      const instanceUrl = instanceUrlFromEnv();
       const docs = files.get('docs.md')?.toString() ?? '';
       expect(docs).toContain('[Guide](docs/guide.md#intro)');
       expect(docs).toContain(
@@ -291,8 +371,12 @@ describe('Export (e2e)', () => {
         'docs/guide/secret.md',
         'docs/guide/secret/hidden.md',
         'docs/api.md',
+        'docs/team.md',
+        'docs/team/notes.md',
+        'docs/team/notes/drafts.md',
         `_media/${tree.publicMediaId}-diagram.png`,
         `_media/${tree.privateMediaId}-plan.png`,
+        `_media/${tree.libraryMediaId}-logo.png`,
       ]);
       expect(files.get('docs/guide.md')?.toString()).toContain(
         '[Secret](guide/secret.md)',
@@ -314,6 +398,10 @@ describe('Export (e2e)', () => {
             `/api/pages/${tree.secretId}/export?scope=subtree`,
           )
         ).status,
+      ).toBe(403);
+      expect(
+        (await request(server).get(`/api/pages/${tree.secretId}/export`))
+          .status,
       ).toBe(403);
     });
   });

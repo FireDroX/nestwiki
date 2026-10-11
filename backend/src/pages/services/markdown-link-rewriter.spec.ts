@@ -93,6 +93,7 @@ describe('MarkdownLinkRewriter', () => {
     expect(
       MarkdownLinkRewriter.findMediaIds(
         `![a](/api/media/${MEDIA_ID}/raw) ![b](${INSTANCE_URL}/api/media/${MEDIA_ID}/raw) <img src="/api/media/${OTHER_MEDIA_ID}/raw">`,
+        INSTANCE_URL,
       ),
     ).toEqual([MEDIA_ID, OTHER_MEDIA_ID]);
   });
@@ -135,5 +136,42 @@ describe('MarkdownLinkRewriter', () => {
     expect(
       rewrite('[f][ref]\n\n[ref]: /pages/docs/guide/install "Install"'),
     ).toBe('[f][ref]\n\n[ref]: guide/install.md "Install"');
+  });
+
+  it('leaves code untouched in indented fences, unterminated fences and multi-backtick spans', () => {
+    const indented = '- item\n\n  ```\n  [x](/pages/docs/guide)\n  ```';
+    expect(rewrite(indented)).toBe(indented);
+    const unterminated = '```\n[x](/pages/docs/guide)\n';
+    expect(rewrite(unterminated)).toBe(unterminated);
+    const spans =
+      'Use `` [x](/pages/docs/guide) `` or `[y](/pages/docs/guide\n)`';
+    expect(rewrite(spans)).toBe(spans);
+  });
+
+  it('rewrites attributes written with spaces around the equal sign', () => {
+    expect(rewrite('<a href = "/pages/docs/guide/install">x</a>')).toBe(
+      '<a href = "guide/install.md">x</a>',
+    );
+  });
+
+  it('only collects media linked from the content itself, not from code or other hosts', () => {
+    expect(
+      MarkdownLinkRewriter.findMediaIds(
+        [
+          `![a](/api/media/${MEDIA_ID}/raw)`,
+          '```',
+          `![b](/api/media/${OTHER_MEDIA_ID}/raw)`,
+          '```',
+          `![c](https://elsewhere.org/api/media/${OTHER_MEDIA_ID}/raw)`,
+        ].join('\n'),
+        INSTANCE_URL,
+      ),
+    ).toEqual([MEDIA_ID]);
+  });
+
+  it('does not treat a lone backtick as code spanning the next paragraphs', () => {
+    expect(
+      rewrite("It's ` alone\n\n[Install](/pages/docs/guide/install)"),
+    ).toBe("It's ` alone\n\n[Install](guide/install.md)");
   });
 });

@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'react-router'
 import { useTranslation } from 'react-i18next'
-import { getPageByPath, getSubtreeContent, type SubtreePage } from '#api/pages'
+import { getPageByPath, getSubtreeContent, getTree, type SubtreePage } from '#api/pages'
 import { MarkdownRenderer } from '#components/MarkdownRenderer'
 import { Button } from '#components/ui/button'
 import { useAuth } from '#hooks/useAuth'
 import { useDocumentTitle } from '#hooks/useDocumentTitle'
 import { usePrintPreparation } from '#hooks/usePrintPreparation'
 import { setPrintMode } from '#lib/print-mode'
+import { findNodeByPath } from '#utils/page-tree'
 import { isPrintableContentReady } from '#utils/printable-content'
 
 const READY_CHECK_INTERVAL_MS = 200
@@ -39,6 +40,12 @@ function usePrintWhenReady(rootRef: React.RefObject<HTMLElement | null>, enabled
   return timedOut
 }
 
+async function resolvePageId(pathSegments: string[]): Promise<string> {
+  const nodePath = findNodeByPath(await getTree(), pathSegments)
+  const node = nodePath?.[nodePath.length - 1]
+  return node ? node.id : (await getPageByPath(pathSegments)).id
+}
+
 export function PrintSubtree() {
   const { t, i18n } = useTranslation()
   const { user } = useAuth()
@@ -59,8 +66,8 @@ export function PrintSubtree() {
 
   useEffect(() => {
     let cancelled = false
-    getPageByPath(pathSegments)
-      .then((page) => getSubtreeContent(page.id))
+    resolvePageId(pathSegments)
+      .then((pageId) => getSubtreeContent(pageId))
       .then(
         (pages) => !cancelled && setState({ status: 'ready', pages }),
         () => !cancelled && setState({ status: 'error' }),

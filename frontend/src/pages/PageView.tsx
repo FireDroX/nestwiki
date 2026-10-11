@@ -29,6 +29,7 @@ import { usePageTags } from '#hooks/usePageTags'
 import { usePageTree } from '#hooks/usePageTree'
 import { usePermissions } from '#hooks/usePermissions'
 import { usePrintPreparation } from '#hooks/usePrintPreparation'
+import { usePrintShortcut } from '#lib/print-mode'
 import { useScrollToHash } from '#hooks/useScrollToHash'
 import { useTableOfContents } from '#hooks/useTableOfContents'
 import { extractErrorMessage } from '#lib/api-errors'
@@ -105,6 +106,7 @@ export function PageView() {
   const activeHeadingId = useActiveHeading(headings)
   useScrollToHash(page?.content)
   usePrintPreparation(user?.displayName)
+  usePrintShortcut()
 
   useEffect(() => {
     setHasNewVersion(false)

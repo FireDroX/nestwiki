@@ -5,6 +5,7 @@ import { MemoryRouter, Route, Routes } from 'react-router'
 import { PrintSubtree } from './PrintSubtree'
 
 const getPageByPathMock = vi.fn()
+const getTreeMock = vi.fn()
 const getSubtreeContentMock = vi.fn()
 vi.mock('#hooks/useAuth', () => ({
   useAuth: () => ({ user: { displayName: 'Alice Martin' } }),
@@ -17,6 +18,7 @@ vi.mock('#utils/printable-content', () => ({
 
 vi.mock('#api/pages', () => ({
   getPageByPath: (...args: unknown[]) => getPageByPathMock(...args),
+  getTree: () => getTreeMock(),
   getSubtreeContent: (...args: unknown[]) => getSubtreeContentMock(...args),
 }))
 
@@ -34,6 +36,11 @@ describe('PrintSubtree', () => {
   beforeEach(() => {
     isPrintableContentReadyMock.mockReturnValue(true)
     getPageByPathMock.mockReset().mockResolvedValue({ id: 'guide' })
+    getTreeMock.mockReset().mockResolvedValue([
+      { id: 'docs', slug: 'docs', title: 'Docs', visibility: 'public', canCreateChild: false, children: [
+        { id: 'guide', slug: 'guide', title: 'Guide', visibility: 'public', canCreateChild: false, children: [] },
+      ] },
+    ])
     getSubtreeContentMock.mockReset().mockResolvedValue([
       { id: 'guide', title: 'Guide', slug: 'guide', path: '/docs/guide', depth: 0, content: 'Intro text', tags: [], updatedAt: '' },
       { id: 'install', title: 'Installation', slug: 'install', path: '/docs/guide/install', depth: 1, content: 'Install text', tags: [], updatedAt: '' },
@@ -46,7 +53,7 @@ describe('PrintSubtree', () => {
     renderAt('/print/docs/guide')
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Guide' })).toBeInTheDocument()
-    expect(getPageByPathMock).toHaveBeenCalledWith(['docs', 'guide'])
+    expect(getPageByPathMock).not.toHaveBeenCalled()
     expect(getSubtreeContentMock).toHaveBeenCalledWith('guide')
     const contents = screen.getByRole('navigation', { name: 'Sommaire' })
     expect(within(contents).getByRole('link', { name: 'Installation' })).toHaveAttribute('href', '#print-page-install')
@@ -90,5 +97,16 @@ describe('PrintSubtree', () => {
     screen.getByRole('button', { name: 'Imprimer quand même' }).click()
     expect(print).toHaveBeenCalledTimes(1)
     vi.useRealTimers()
+  })
+
+  it('falls back to the page lookup when the page is not reachable from the top of the tree', async () => {
+    vi.spyOn(window, 'print').mockImplementation(() => {})
+    getTreeMock.mockResolvedValue([])
+
+    renderAt('/print/docs/guide')
+
+    await screen.findByText('Intro text')
+    expect(getPageByPathMock).toHaveBeenCalledWith(['docs', 'guide'])
+    expect(getSubtreeContentMock).toHaveBeenCalledWith('guide')
   })
 })

@@ -98,52 +98,51 @@ describe('MediaService', () => {
     });
   });
 
-  describe('readForExport', () => {
-    it('returns the file of a media the user may read', async () => {
+  describe('findExportable', () => {
+    it('checks access up front and downloads the file only when it is read', async () => {
       attachmentsRepository.findById.mockResolvedValue(
         buildAttachment({ pageId: 'p1' }),
       );
 
-      const file = await service.readForExport(ATTACHMENT_ID);
+      const media = await service.findExportable(ATTACHMENT_ID);
 
       expect(pagesService.getByIdOrFail).toHaveBeenCalledWith('p1', undefined);
+      expect(media?.filename).toBe('image.png');
+      expect(storageService.download).not.toHaveBeenCalled();
+      expect(await media?.read()).toEqual(Buffer.from('png'));
       expect(storageService.download).toHaveBeenCalledWith(
         'bucket',
         buildAttachment().minioKey,
       );
-      expect(file).toEqual({ filename: 'image.png', data: Buffer.from('png') });
     });
 
-    it('returns null when the media is missing, unreadable or its file is gone', async () => {
-      attachmentsRepository.findById.mockResolvedValueOnce(null);
-      expect(await service.readForExport(ATTACHMENT_ID)).toBeNull();
-
-      attachmentsRepository.findById.mockResolvedValue(
-        buildAttachment({ pageId: 'p1' }),
-      );
-      pagesService.getByIdOrFail.mockRejectedValueOnce(new Error('forbidden'));
-      expect(await service.readForExport(ATTACHMENT_ID)).toBeNull();
-
-      storageService.download.mockRejectedValueOnce(new Error('gone'));
-      expect(await service.readForExport(ATTACHMENT_ID)).toBeNull();
-    });
-
-    it('logs a storage failure but not a refused access', async () => {
+    it('returns null for a missing media or one the caller may not read, without logging', async () => {
       const warn = vi
         .spyOn(Logger.prototype, 'warn')
         .mockImplementation(() => undefined);
+      attachmentsRepository.findById.mockResolvedValueOnce(null);
+      expect(await service.findExportable(ATTACHMENT_ID)).toBeNull();
+
       attachmentsRepository.findById.mockResolvedValue(
         buildAttachment({ pageId: 'p1' }),
       );
-
       pagesService.getByIdOrFail.mockRejectedValueOnce(new Error('forbidden'));
-      await service.readForExport(ATTACHMENT_ID);
+      expect(await service.findExportable(ATTACHMENT_ID)).toBeNull();
       expect(warn).not.toHaveBeenCalled();
+      warn.mockRestore();
+    });
 
+    it('logs a storage failure and reads nothing', async () => {
+      const warn = vi
+        .spyOn(Logger.prototype, 'warn')
+        .mockImplementation(() => undefined);
       storageService.download.mockRejectedValueOnce(
         new Error('bucket offline'),
       );
-      await service.readForExport(ATTACHMENT_ID);
+
+      const media = await service.findExportable(ATTACHMENT_ID);
+
+      expect(await media?.read()).toBeNull();
       expect(warn).toHaveBeenCalledWith(expect.stringContaining(ATTACHMENT_ID));
       warn.mockRestore();
     });

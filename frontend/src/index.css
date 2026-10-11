@@ -175,9 +175,27 @@ body {
   blockquote,
   figure,
   img,
-  wiki-callout,
-  wiki-mermaid {
+  .katex-display,
+  [data-callout],
+  [data-slot='mermaid-diagram'] {
     break-inside: avoid;
+  }
+
+  pre,
+  pre code {
+    white-space: pre-wrap !important;
+    overflow: visible !important;
+    overflow-wrap: anywhere;
+  }
+
+  [data-sonner-toaster] {
+    display: none !important;
+  }
+
+  .shiki,
+  [data-callout] {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
   }
 
   h1,

@@ -31,15 +31,61 @@ describe('streamZip', () => {
     expect(output.destroyed).toBe(true);
   });
 
-  it('stops archiving when the output closes early', async () => {
+  it('reads lazy entries one at a time and skips the ones that return nothing', async () => {
     const output = new PassThrough();
-    const done = streamZip(
-      [{ name: 'big.bin', data: Buffer.alloc(5 * 1024 * 1024) }],
+    const written = collect(output);
+    const events: string[] = [];
+    const lazy = (name: string, value: string | null) => () => {
+      events.push(`read ${name}`);
+      return new Promise<Buffer | null>((resolve) =>
+        setTimeout(() => {
+          events.push(`done ${name}`);
+          resolve(value === null ? null : Buffer.from(value));
+        }, 5),
+      );
+    };
+
+    await streamZip(
+      [
+        { name: 'a.png', data: lazy('a', 'A') },
+        { name: 'missing.png', data: lazy('missing', null) },
+        { name: 'b.png', data: lazy('b', 'B') },
+      ],
       output,
     );
 
-    output.destroy();
+    expect(events).toEqual([
+      'read a',
+      'done a',
+      'read missing',
+      'done missing',
+      'read b',
+      'done b',
+    ]);
+    const zip = await written;
+    expect(zip.includes(Buffer.from('a.png'))).toBe(true);
+    expect(zip.includes(Buffer.from('missing.png'))).toBe(false);
+  });
 
-    await expect(done).resolves.toBeUndefined();
+  it('stops reading entries once the output is closed', async () => {
+    const output = new PassThrough();
+    const reads: string[] = [];
+    const lazy = (name: string) => () => {
+      reads.push(name);
+      if (name === 'first') {
+        output.destroy();
+      }
+      return Promise.resolve(Buffer.from(name));
+    };
+
+    await streamZip(
+      [
+        { name: 'first.png', data: lazy('first') },
+        { name: 'second.png', data: lazy('second') },
+      ],
+      output,
+    );
+
+    expect(reads).toEqual(['first']);
   });
 });

@@ -1,8 +1,9 @@
-import { useSyncExternalStore } from 'react'
+import { useEffect, useSyncExternalStore } from 'react'
 import { isPrintableContentReady } from '#utils/printable-content'
 
 const READY_CHECK_INTERVAL_MS = 100
 const READY_TIMEOUT_MS = 5000
+const MENU_CLOSE_DELAY_MS = 300
 
 let printMode = false
 const listeners = new Set<() => void>()
@@ -27,21 +28,37 @@ export function usePrintMode(): boolean {
 function waitForPrintableContent(): Promise<void> {
   const startedAt = Date.now()
   return new Promise((resolve) => {
-    const timer = window.setInterval(() => {
+    const check = () => {
       if (isPrintableContentReady(document.body) || Date.now() - startedAt > READY_TIMEOUT_MS) {
-        window.clearInterval(timer)
         resolve()
+      } else {
+        window.setTimeout(check, READY_CHECK_INTERVAL_MS)
       }
-    }, READY_CHECK_INTERVAL_MS)
+    }
+    window.setTimeout(check, MENU_CLOSE_DELAY_MS)
   })
 }
 
 export async function printWithLightDiagrams(): Promise<void> {
   setPrintMode(true)
-  try {
-    await waitForPrintableContent()
-    window.print()
-  } finally {
-    setPrintMode(false)
-  }
+  window.addEventListener('afterprint', () => setPrintMode(false), { once: true })
+  await waitForPrintableContent()
+  window.print()
+}
+
+function isPrintShortcut(event: KeyboardEvent): boolean {
+  return (event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey && event.key.toLowerCase() === 'p'
+}
+
+export function usePrintShortcut(): void {
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (isPrintShortcut(event)) {
+        event.preventDefault()
+        void printWithLightDiagrams()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
 }

@@ -25,6 +25,7 @@ import {
   ApiNoContentResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
+  ApiPayloadTooLargeResponse,
   ApiOperation,
   ApiParam,
   ApiQuery,
@@ -43,6 +44,10 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard.js';
 import { OptionalJwtAuthGuard } from '../common/guards/optional-jwt-auth.guard.js';
 import { RolesGuard } from '../common/guards/roles.guard.js';
 import type { AuthenticatedUser } from '../common/strategies/jwt.strategy.js';
+import {
+  EXPORT_MAX_MEDIA,
+  EXPORT_MAX_PAGES,
+} from '../common/variables.global.js';
 import { CreateCommentDto } from '../comments/dto/in/create-comment.dto.js';
 import { CommentResponseDto } from '../comments/dto/out/comment-response.dto.js';
 import { CommentMapper } from '../comments/mapper/comment.mapper.js';
@@ -93,6 +98,8 @@ import { PagesService } from './services/pages.service.js';
 
 const COMMENT_CREATE_THROTTLE_LIMIT = 10;
 const COMMENT_CREATE_THROTTLE_TTL_MS = 60000;
+const EXPORT_THROTTLE_LIMIT = 10;
+const EXPORT_THROTTLE_TTL_MS = 60000;
 
 @ApiTags('Pages')
 @Controller('pages')
@@ -473,6 +480,9 @@ export class PagesController {
 
   @Get(':id/subtree-content')
   @UseGuards(OptionalJwtAuthGuard)
+  @Throttle({
+    default: { limit: EXPORT_THROTTLE_LIMIT, ttl: EXPORT_THROTTLE_TTL_MS },
+  })
   @ApiOperation({
     summary: "Récupérer le contenu d'une page et de ses sous-pages",
     description:
@@ -499,6 +509,9 @@ export class PagesController {
 
   @Get(':id/export')
   @UseGuards(OptionalJwtAuthGuard)
+  @Throttle({
+    default: { limit: EXPORT_THROTTLE_LIMIT, ttl: EXPORT_THROTTLE_TTL_MS },
+  })
   @ApiOperation({
     summary: 'Exporter une page en Markdown brut',
     description:
@@ -508,6 +521,10 @@ export class PagesController {
   @ApiOkResponse({ description: 'Fichier .md ou archive .zip.' })
   @ApiBadRequestResponse({
     description: 'scope invalide.',
+    type: ErrorResponseDto,
+  })
+  @ApiPayloadTooLargeResponse({
+    description: `Plus de ${EXPORT_MAX_PAGES} pages ou de ${EXPORT_MAX_MEDIA} médias.`,
     type: ErrorResponseDto,
   })
   @ApiForbiddenResponse({

@@ -208,5 +208,5 @@ export async function downloadPageExport(id: string, scope: PageExportScope): Pr
   link.href = url
   link.download = filenameFromDisposition(response.headers['content-disposition'] as string | undefined, fallback)
   link.click()
-  URL.revokeObjectURL(url)
+  setTimeout(() => URL.revokeObjectURL(url), 0)
 }

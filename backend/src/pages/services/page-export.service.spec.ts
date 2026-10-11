@@ -1,7 +1,12 @@
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { ExportTooLargeException } from '../../common/exceptions/pages/export-too-large.exception.js';
 import { ValidationException } from '../../common/exceptions/validation.exception.js';
+import {
+  EXPORT_MAX_MEDIA,
+  EXPORT_MAX_PAGES,
+} from '../../common/variables.global.js';
 import { PageAccessForbiddenException } from '../../common/exceptions/pages/page-access-forbidden.exception.js';
 import { MediaService } from '../../media/services/media.service.js';
 import { TagsService } from '../../tags/services/tags.service.js';
@@ -63,13 +68,18 @@ describe('PageExportService', () => {
   let pagesRepository: { findCurrentVersions: ReturnType<typeof vi.fn> };
   let pageTrashRepository: { findPaths: ReturnType<typeof vi.fn> };
   let tagsService: {
-    listTagsOfAlreadyAuthorizedPage: ReturnType<typeof vi.fn>;
+    listTagNamesOfAlreadyAuthorizedPages: ReturnType<typeof vi.fn>;
   };
-  let mediaService: { readForExport: ReturnType<typeof vi.fn> };
+  let mediaService: { findExportable: ReturnType<typeof vi.fn> };
+  let readShot: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
     pagesService = {
-      getByIdOrFail: vi.fn().mockResolvedValue({ id: 'guide', slug: 'guide' }),
+      getByIdOrFail: vi.fn().mockResolvedValue({
+        id: 'guide',
+        slug: 'guide',
+        title: 'Title guide',
+      }),
       getTree: vi.fn().mockResolvedValue(TREE),
     };
     pagesRepository = {
@@ -94,16 +104,15 @@ describe('PageExportService', () => {
       ),
     };
     tagsService = {
-      listTagsOfAlreadyAuthorizedPage: vi.fn((id: string) =>
-        Promise.resolve(id === 'guide' ? [{ name: 'howto' }] : []),
+      listTagNamesOfAlreadyAuthorizedPages: vi.fn(() =>
+        Promise.resolve(new Map([['guide', ['howto']]])),
       ),
     };
+    readShot = vi.fn().mockResolvedValue(Buffer.from('png'));
     mediaService = {
-      readForExport: vi.fn((id: string) =>
+      findExportable: vi.fn((id: string) =>
         Promise.resolve(
-          id === MEDIA_ID
-            ? { filename: 'shot.png', data: Buffer.from('png') }
-            : null,
+          id === MEDIA_ID ? { filename: 'shot.png', read: readShot } : null,
         ),
       ),
     };
@@ -179,7 +188,8 @@ describe('PageExportService', () => {
           `# Guide\n\n[Install](${INSTANCE_URL}/pages/docs/guide/install) [FAQ](${INSTANCE_URL}/pages/faq)\n\n![shot](${INSTANCE_URL}/api/media/${MEDIA_ID}/raw)`,
         ].join('\n'),
       );
-      expect(mediaService.readForExport).not.toHaveBeenCalled();
+      expect(mediaService.findExportable).not.toHaveBeenCalled();
+      expect(pagesService.getTree).not.toHaveBeenCalled();
     });
   });
 
@@ -195,8 +205,40 @@ describe('PageExportService', () => {
         'guide/api.md',
         `_media/${MEDIA_ID}-shot.png`,
       ]);
-      expect(mediaService.readForExport).toHaveBeenCalledTimes(2);
-      expect(archive.entries[4].data).toEqual(Buffer.from('png'));
+      expect(mediaService.findExportable).toHaveBeenCalledTimes(2);
+      expect(readShot).not.toHaveBeenCalled();
+      const media = archive.entries[4].data;
+      expect(typeof media).toBe('function');
+      expect(await (media as () => Promise<Buffer | null>)()).toEqual(
+        Buffer.from('png'),
+      );
+    });
+
+    it('refuses a subtree with too many pages or media', async () => {
+      const wide = node(
+        'guide',
+        'guide',
+        Array.from({ length: EXPORT_MAX_PAGES }, (_, index) =>
+          node(`p${index}`, `p${index}`),
+        ),
+      );
+      pagesService.getTree.mockResolvedValueOnce([wide]);
+      await expect(service.exportSubtree('guide')).rejects.toBeInstanceOf(
+        ExportTooLargeException,
+      );
+
+      const manyMedia = Array.from(
+        { length: EXPORT_MAX_MEDIA + 1 },
+        (_, index) =>
+          `![m](/api/media/${String(index).padStart(8, '0')}-2222-4333-8444-555555555555/raw)`,
+      ).join('\n');
+      pagesRepository.findCurrentVersions.mockResolvedValueOnce([
+        { pageId: 'guide', content: manyMedia, createdAt: UPDATED_AT },
+      ]);
+      pagesService.getTree.mockResolvedValueOnce([node('guide', 'guide')]);
+      await expect(service.exportSubtree('guide')).rejects.toBeInstanceOf(
+        ExportTooLargeException,
+      );
     });
 
     it('rewrites links between exported pages and to exported media relatively', async () => {

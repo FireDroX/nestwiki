@@ -7,51 +7,60 @@ export interface LinkRewriteContext {
   instanceUrl: string;
 }
 
-const MARKDOWN_TARGET = /(\]\(<?)([^)\s>]+)/g;
-const HTML_TARGET = /(\b(?:src|href)=["'])([^"']+)/g;
-const REFERENCE_DEFINITION = /^( {0,3}\[[^\]\n]+\]:[ \t]*<?)([^\s>]+)/gm;
+const LINK_TARGETS = [
+  /(\]\(<?)([^)\s>]+)/g,
+  /(\b(?:src|href)\s*=\s*["'])([^"']+)/g,
+  /^( {0,3}\[[^\]\n]+\]:[ \t]*<?)([^\s>]+)/gm,
+];
 const MEDIA_PATH = /^\/api\/media\/([0-9a-f-]{36})\/raw(?:\?[^#]*)?$/i;
-const MEDIA_REFERENCE = /\/api\/media\/([0-9a-f-]{36})\/raw/gi;
 const PAGE_PATH = /^\/pages(\/[^#?]*)(?:\?[^#]*)?(#.*)?$/;
-const CODE = /^(`{3,}|~{3,})[^\n]*\n[\s\S]*?^\1[^\n]*$|`[^`\n]+`/gm;
+const CODE =
+  /^[ \t]*(`{3,}|~{3,})[^\n]*\n[\s\S]*?(?:^[ \t]*\1[^\n]*$|(?![\s\S]))|(`+)(?!`)(?:(?!\n[ \t]*\n)[\s\S])*?[^`]\2(?!`)/gm;
 
 export class MarkdownLinkRewriter {
   static rewrite(content: string, context: LinkRewriteContext): string {
-    let result = '';
-    let cursor = 0;
-    for (const code of content.matchAll(CODE)) {
-      result += MarkdownLinkRewriter.rewriteText(
-        content.slice(cursor, code.index),
-        context,
-      );
-      result += code[0];
-      cursor = code.index + code[0].length;
-    }
-    return (
-      result + MarkdownLinkRewriter.rewriteText(content.slice(cursor), context)
+    return MarkdownLinkRewriter.mapOutsideCode(content, (text) =>
+      LINK_TARGETS.reduce(
+        (rewritten, pattern) =>
+          rewritten.replace(
+            pattern,
+            (_match: string, prefix: string, url: string) =>
+              `${prefix}${MarkdownLinkRewriter.rewriteUrl(url, context)}`,
+          ),
+        text,
+      ),
     );
   }
 
-  static findMediaIds(content: string): string[] {
-    return [
-      ...new Set(
-        [...content.matchAll(MEDIA_REFERENCE)].map((match) =>
-          match[1].toLowerCase(),
-        ),
-      ),
-    ];
+  static findMediaIds(content: string, instanceUrl: string): string[] {
+    const ids = new Set<string>();
+    MarkdownLinkRewriter.mapOutsideCode(content, (text) => {
+      for (const pattern of LINK_TARGETS) {
+        for (const [, , url] of text.matchAll(pattern)) {
+          const path = MarkdownLinkRewriter.toInstancePath(url, instanceUrl);
+          const media = path === null ? null : MEDIA_PATH.exec(path);
+          if (media) {
+            ids.add(media[1].toLowerCase());
+          }
+        }
+      }
+      return text;
+    });
+    return [...ids];
   }
 
-  private static rewriteText(
-    text: string,
-    context: LinkRewriteContext,
+  private static mapOutsideCode(
+    content: string,
+    transform: (text: string) => string,
   ): string {
-    const replaceTarget = (_match: string, prefix: string, url: string) =>
-      `${prefix}${MarkdownLinkRewriter.rewriteUrl(url, context)}`;
-    return text
-      .replace(MARKDOWN_TARGET, replaceTarget)
-      .replace(HTML_TARGET, replaceTarget)
-      .replace(REFERENCE_DEFINITION, replaceTarget);
+    let result = '';
+    let cursor = 0;
+    for (const code of content.matchAll(CODE)) {
+      result += transform(content.slice(cursor, code.index));
+      result += code[0];
+      cursor = code.index + code[0].length;
+    }
+    return result + transform(content.slice(cursor));
   }
 
   private static rewriteUrl(url: string, context: LinkRewriteContext): string {

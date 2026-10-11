@@ -11,4 +11,5 @@ export interface TagRepository {
   createPageTag(pageId: string, tagId: string): Promise<PageTag>;
   deletePageTag(pageId: string, tagId: string): Promise<void>;
   findTagsByPageId(pageId: string): Promise<Tag[]>;
+  findTagNamesByPageIds(pageIds: string[]): Promise<Map<string, string[]>>;
 }
