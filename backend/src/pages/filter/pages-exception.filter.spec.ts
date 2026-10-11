@@ -3,6 +3,8 @@ import { ThrottlerException } from '@nestjs/throttler';
 import type { Response } from 'express';
 import { describe, expect, it, vi } from 'vitest';
 import { PageNotFoundException } from '../../common/exceptions/pages/page-not-found.exception.js';
+import { PageNotInTrashException } from '../../common/exceptions/pages/page-not-in-trash.exception.js';
+import { ParentInTrashException } from '../../common/exceptions/pages/parent-in-trash.exception.js';
 import { PagesExceptionFilter } from './pages-exception.filter.js';
 
 function catchWith(exception: Error): {
@@ -28,6 +30,15 @@ describe('PagesExceptionFilter', () => {
     expect(response.json).toHaveBeenCalledWith({
       error: new PageNotFoundException().message,
     });
+  });
+
+  it('maps the trash exceptions', () => {
+    expect(catchWith(new PageNotInTrashException()).status).toHaveBeenCalledWith(
+      404,
+    );
+    expect(catchWith(new ParentInTrashException()).status).toHaveBeenCalledWith(
+      409,
+    );
   });
 
   it('lets a throttler 429 through instead of answering 500', () => {
