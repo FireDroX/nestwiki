@@ -115,6 +115,11 @@ Chaque module vit directement sous `src/` (pas de dossier `modules/` intermédia
 | createdById      | uuid                  | FK → User                              |
 | createdAt        | datetime              |                                        |
 | updatedAt        | datetime              |                                        |
+| deletedAt        | datetime nullable     | soft delete : la page est dans la corbeille |
+| deletedById      | uuid nullable         | FK → User, auteur de la suppression    |
+| deletionRootId   | uuid nullable         | id de la page sur laquelle la suppression a été demandée, partagé par toute la cascade ; restaurer ou purger agit sur ce lot |
+
+L'unicité du slug par branche porte sur une colonne générée `active_slug` (`slug` si la page n'est pas supprimée, `NULL` sinon) : une page en corbeille ne réserve plus son slug. `trash` est un slug racine réservé.
 
 ### PageVersion
 
@@ -285,7 +290,10 @@ Toutes les routes `/admin/users` sont accessibles aux administrateurs ou à quic
 | PATCH   | /pages/:id         | `page.edit` sur la page | Éditer (nouvelle version) |
 | POST    | /pages/:id/merge-preview | `page.edit` sur la page | Prévisualiser une fusion à 3 voies (base/mine/theirs) sans sauvegarder |
 | PATCH   | /pages/:id/move    | `page.move` sur la page | Déplacer dans l'arbre     |
-| DELETE  | /pages/:id         | `page.delete` sur la page | Supprimer                 |
+| DELETE  | /pages/:id         | `page.delete` sur la page | Déplacer dans la corbeille (`?cascade=true` obligatoire si la page a des enfants) |
+| GET     | /pages/trash       | connecté         | Pages en corbeille sur lesquelles l'appelant a `page.delete` (racines de suppression : titre, ancien chemin, auteur, date, nombre de sous-pages) |
+| POST    | /pages/:id/restore | `page.delete` sur la page | Restaurer une racine de suppression et son lot ; 409 si le parent est en corbeille ou si le slug a été repris |
+| DELETE  | /pages/:id/purge   | admin            | Supprimer définitivement une page de la corbeille et toutes ses sous-pages supprimées (versions, commentaires, suivis) ; les médias restent dans la médiathèque |
 | PATCH   | /pages/:id/visibility | `page.manage_visibility` sur la page | Changer la visibilité (cascade aux enfants) |
 
 ### Groupes et permissions

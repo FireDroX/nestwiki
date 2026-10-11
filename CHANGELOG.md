@@ -2,6 +2,15 @@
 
 All notable changes to NestWiki are documented here, newest first, one `## <version> — <date>` section per release. This file is the single source for the in-app "Notes de version" page, which groups releases by minor version (`1.0`, `0.31`…). Entries up to 0.31.10 were written in French, the project's original language.
 
+## 1.2.0 — 2026-10-11
+
+- Supprimer une page depuis son en-tête : bouton « Supprimer », visible si vous avez le droit de suppression sur la page. Une page qui a des sous-pages les emporte avec elle, après confirmation.
+- Nouvelle corbeille (menu utilisateur → Corbeille) : une page supprimée n'est plus effacée, elle y reste et peut être restaurée avec ses sous-pages par toute personne ayant le droit de la supprimer. Les administrateurs peuvent la supprimer définitivement ; les images qu'elle utilisait restent alors dans la médiathèque.
+- L'adresse d'une page supprimée est libérée : on peut recréer une page au même endroit avec la même adresse.
+- Une image utilisée par une page de la corbeille ne peut plus être supprimée de la médiathèque, pour que la restauration ne casse pas la page.
+- Intégration MCP : nouveaux outils `wiki_list_trash` et `wiki_restore_page`.
+- ⚠️ `trash` devient une adresse de page racine réservée : une page racine existante à l'adresse `/pages/trash` n'est plus accessible et doit être renommée.
+
 ## 1.1.6 — 2026-10-09
 
 - Déploiements plus rapides : une mise à jour ne retélécharge plus que ce qui a changé (quelques Mo) au lieu de toute l'image, tant que les dépendances ne bougent pas. Le backend redémarre aussi plus vite : il s'arrête dès que Docker le lui demande au lieu d'attendre 10 secondes.
