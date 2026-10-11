@@ -30,6 +30,7 @@ import {
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
+import { Roles } from '../common/decorators/roles.decorator.js';
 import { ErrorResponseDto } from '../common/dto/error-response.dto.js';
 import { PaginatedResponseDto } from '../common/dto/paginated-response.dto.js';
 import { ResponseDto } from '../common/dto/response.dto.js';
@@ -38,6 +39,7 @@ import { PageNotFoundException } from '../common/exceptions/pages/page-not-found
 import { VersionNotFoundException } from '../common/exceptions/pages/version-not-found.exception.js';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard.js';
 import { OptionalJwtAuthGuard } from '../common/guards/optional-jwt-auth.guard.js';
+import { RolesGuard } from '../common/guards/roles.guard.js';
 import type { AuthenticatedUser } from '../common/strategies/jwt.strategy.js';
 import { CreateCommentDto } from '../comments/dto/in/create-comment.dto.js';
 import { CommentResponseDto } from '../comments/dto/out/comment-response.dto.js';
@@ -75,10 +77,12 @@ import { PageMergePreviewResponseDto } from './dto/out/page-merge-preview-respon
 import { PageResponseDto } from './dto/out/page-response.dto.js';
 import { PageStatsResponseDto } from './dto/out/page-stats-response.dto.js';
 import { PageTreeNodeDto } from './dto/out/page-tree-node.dto.js';
+import type { TrashEntryResponseDto } from './dto/out/trash-entry-response.dto.js';
 import { PageUpdateResponseDto } from './dto/out/page-update-response.dto.js';
 import { PagesExceptionFilter } from './filter/pages-exception.filter.js';
 import { PageMapper } from './mapper/page.mapper.js';
 import { PageStatsService } from './services/page-stats.service.js';
+import { PageTrashService } from './services/page-trash.service.js';
 import { PagesService } from './services/pages.service.js';
 
 const COMMENT_CREATE_THROTTLE_LIMIT = 10;
@@ -95,6 +99,7 @@ export class PagesController {
     private readonly tagsService: TagsService,
     private readonly accessRulesService: AccessRulesService,
     private readonly pageStatsService: PageStatsService,
+    private readonly pageTrashService: PageTrashService,
   ) {}
 
   @Post()
@@ -355,6 +360,90 @@ export class PagesController {
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<void> {
     await this.pagesService.deletePage(id, query, user.id);
+  }
+
+  @Get('trash')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Lister les pages de la corbeille' })
+  @ApiOkResponse({
+    description:
+      "Pages supprimées que l'appelant peut restaurer (droit de suppression), les plus récentes d'abord.",
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Authentification requise.',
+    type: ErrorResponseDto,
+  })
+  async listTrash(
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<ResponseDto<TrashEntryResponseDto[]>> {
+    return new ResponseDto(await this.pageTrashService.listTrash(user.id));
+  }
+
+  @Post(':id/restore')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({
+    summary:
+      'Restaurer une page de la corbeille, avec les sous-pages supprimées en même temps',
+  })
+  @ApiParam({ name: 'id', description: 'Identifiant de la page' })
+  @ApiNoContentResponse({ description: 'Page restaurée.' })
+  @ApiUnauthorizedResponse({
+    description: 'Authentification requise.',
+    type: ErrorResponseDto,
+  })
+  @ApiForbiddenResponse({
+    description: 'Droit de suppression insuffisant sur cette page.',
+    type: ErrorResponseDto,
+  })
+  @ApiNotFoundResponse({
+    description: "La page n'est pas dans la corbeille.",
+    type: ErrorResponseDto,
+  })
+  @ApiConflictResponse({
+    description:
+      'La page parente est encore dans la corbeille, ou une autre page utilise déjà ce slug.',
+    type: ErrorResponseDto,
+  })
+  async restore(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<void> {
+    await this.pageTrashService.restore(id, user.id);
+  }
+
+  @Delete(':id/purge')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('admin')
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({
+    summary: 'Supprimer définitivement une page de la corbeille (admin)',
+  })
+  @ApiParam({ name: 'id', description: 'Identifiant de la page' })
+  @ApiNoContentResponse({
+    description:
+      'Page et sous-pages supprimées définitivement ; les médias restent dans la médiathèque.',
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Authentification requise.',
+    type: ErrorResponseDto,
+  })
+  @ApiForbiddenResponse({
+    description: 'Réservé aux administrateurs.',
+    type: ErrorResponseDto,
+  })
+  @ApiNotFoundResponse({
+    description: "La page n'est pas dans la corbeille.",
+    type: ErrorResponseDto,
+  })
+  async purge(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<void> {
+    await this.pageTrashService.purge(id, user.id);
   }
 
   @Get('tree')
