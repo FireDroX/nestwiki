@@ -42,6 +42,7 @@
     "openSidebar": "Open navigation",
     "searchPlaceholder": "Search the wiki...",
     "profile": "Profile",
+    "trash": "Trash",
     "administration": "Administration",
     "logout": "Sign out",
     "toggleTheme": "Toggle theme"
@@ -111,6 +112,25 @@
     "deleteConfirmDescendants_other": "Its {{count}} sub-pages will be moved to the trash too.",
     "deleteConfirmAction": "Move to trash",
     "deleted": "Page moved to the trash."
+  },
+  "trash": {
+    "title": "Trash",
+    "description": "Deleted pages you can restore. A restored page goes back to its old place with the sub-pages deleted along with it.",
+    "columnPage": "Page",
+    "columnDeletedBy": "Deleted by",
+    "columnDeletedAt": "Deleted",
+    "columnDescendants": "Sub-pages",
+    "unknownDeleter": "Unknown",
+    "restore": "Restore",
+    "restored": "Page restored.",
+    "purge": "Delete permanently",
+    "purgeConfirmTitle": "Permanently delete “{{title}}”?",
+    "purgeConfirmDescription_zero": "The page, its history and comments will be erased. Images stay in the media library. This cannot be undone.",
+    "purgeConfirmDescription_one": "The page, its history and comments will be erased, along with its sub-page. Images stay in the media library. This cannot be undone.",
+    "purgeConfirmDescription_other": "The page, its history and comments will be erased, along with its {{count}} sub-pages. Images stay in the media library. This cannot be undone.",
+    "purged": "Page permanently deleted.",
+    "empty": "The trash is empty.",
+    "loadError": "Unable to load the trash."
   },
   "pageEditor": {
     "newPageTitle": "New page",
