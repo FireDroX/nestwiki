@@ -12,14 +12,23 @@ const HTML_TARGET = /(\b(?:src|href)=")([^"]+)/g;
 const MEDIA_PATH = /^\/api\/media\/([0-9a-f-]{36})\/raw$/i;
 const MEDIA_REFERENCE = /\/api\/media\/([0-9a-f-]{36})\/raw/gi;
 const PAGE_PATH = /^\/pages(\/[^#?]*)(#.*)?$/;
+const CODE = /^(`{3,}|~{3,})[^\n]*\n[\s\S]*?^\1[^\n]*$|`[^`\n]+`/gm;
 
 export class MarkdownLinkRewriter {
   static rewrite(content: string, context: LinkRewriteContext): string {
-    const replaceTarget = (_match: string, prefix: string, url: string) =>
-      `${prefix}${MarkdownLinkRewriter.rewriteUrl(url, context)}`;
-    return content
-      .replace(MARKDOWN_TARGET, replaceTarget)
-      .replace(HTML_TARGET, replaceTarget);
+    let result = '';
+    let cursor = 0;
+    for (const code of content.matchAll(CODE)) {
+      result += MarkdownLinkRewriter.rewriteText(
+        content.slice(cursor, code.index),
+        context,
+      );
+      result += code[0];
+      cursor = code.index + code[0].length;
+    }
+    return (
+      result + MarkdownLinkRewriter.rewriteText(content.slice(cursor), context)
+    );
   }
 
   static findMediaIds(content: string): string[] {
@@ -30,6 +39,17 @@ export class MarkdownLinkRewriter {
         ),
       ),
     ];
+  }
+
+  private static rewriteText(
+    text: string,
+    context: LinkRewriteContext,
+  ): string {
+    const replaceTarget = (_match: string, prefix: string, url: string) =>
+      `${prefix}${MarkdownLinkRewriter.rewriteUrl(url, context)}`;
+    return text
+      .replace(MARKDOWN_TARGET, replaceTarget)
+      .replace(HTML_TARGET, replaceTarget);
   }
 
   private static rewriteUrl(url: string, context: LinkRewriteContext): string {

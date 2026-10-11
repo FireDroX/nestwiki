@@ -14,7 +14,6 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
-import { ZipArchive } from 'archiver';
 import type { Response } from 'express';
 import {
   ApiBadRequestResponse,
@@ -88,6 +87,7 @@ import { PagesExceptionFilter } from './filter/pages-exception.filter.js';
 import { PageMapper } from './mapper/page.mapper.js';
 import { PageExportService } from './services/page-export.service.js';
 import { PageStatsService } from './services/page-stats.service.js';
+import { streamZip } from './services/zip-stream.js';
 import { PageTrashService } from './services/page-trash.service.js';
 import { PagesService } from './services/pages.service.js';
 
@@ -536,14 +536,9 @@ export class PagesController {
       id,
       user,
     );
-    const archive = new ZipArchive();
     res.attachment(filename);
     res.type('application/zip');
-    archive.pipe(res);
-    for (const entry of entries) {
-      archive.append(entry.data, { name: entry.name });
-    }
-    await archive.finalize();
+    await streamZip(entries, res);
   }
 
   @Get(':id/versions')

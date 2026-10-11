@@ -96,4 +96,23 @@ describe('MarkdownLinkRewriter', () => {
       ),
     ).toEqual([MEDIA_ID, OTHER_MEDIA_ID]);
   });
+
+  it('leaves links inside code blocks and inline code untouched', () => {
+    const content = [
+      'See [Install](/pages/docs/guide/install).',
+      '',
+      '```md',
+      '[Install](/pages/docs/guide/install)',
+      '```',
+      '',
+      'Write `[x](/pages/docs/guide)` to link.',
+    ].join('\n');
+
+    expect(rewrite(content)).toBe(
+      content.replace(
+        'See [Install](/pages/docs/guide/install).',
+        'See [Install](guide/install.md).',
+      ),
+    );
+  });
 });
