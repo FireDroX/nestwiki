@@ -71,6 +71,7 @@ export function PageEditor() {
   const [baseVersionId, setBaseVersionId] = useState('')
   const [conflict, setConflict] = useState<MergeConflictDetails | null>(null)
   const [conflictKey, setConflictKey] = useState(0)
+  const [conflictVersionId, setConflictVersionId] = useState<string | null>(null)
   const schema = useMemo(() => createPageMetadataSchema(t), [t])
 
   const { control, setValue, watch, getValues, reset } = useForm<PageMetadataFormValues>({
@@ -102,34 +103,51 @@ export function PageEditor() {
     getBaseVersionId: () => baseVersionId,
     getContent: () => editor.content,
     onMergeResult: (result) => {
-      setBaseVersionId(result.newBaseVersionId)
       if (result.conflict) {
-        openConflict({
-          segments: result.segments ?? [],
-          currentVersionAuthorName: result.currentVersionAuthorName ?? null,
-          currentVersionCreatedAt: result.currentVersionCreatedAt ?? new Date().toISOString(),
-        })
+        openConflict(buildConflictDetails(result), result.newBaseVersionId)
         return
       }
       editor.setContent(result.mergedContent)
+      setBaseVersionId(result.newBaseVersionId)
+      closeConflict()
       toast.success(t('pageEditor.realtimeMergedToast'))
     },
   })
 
-  function openConflict(details: MergeConflictDetails) {
+  function buildConflictDetails(result: Partial<MergeConflictDetails>): MergeConflictDetails {
+    return {
+      segments: result.segments ?? [],
+      currentVersionAuthorName: result.currentVersionAuthorName ?? null,
+      currentVersionCreatedAt: result.currentVersionCreatedAt ?? new Date().toISOString(),
+    }
+  }
+
+  function openConflict(details: MergeConflictDetails, versionId: string) {
     setConflict(details)
+    setConflictVersionId(versionId)
     setConflictKey((key) => key + 1)
+  }
+
+  function closeConflict() {
+    setConflict(null)
+    setConflictVersionId(null)
   }
 
   function handleConflictApplied(content: string) {
     editor.setContent(content)
-    setConflict(null)
+    if (conflictVersionId) {
+      setBaseVersionId(conflictVersionId)
+    }
+    closeConflict()
     toast.success(t('pageEditor.conflict.applied'))
   }
 
   function handleConflictDiscarded(theirContent: string) {
     editor.reset(getValues('title'), theirContent)
-    setConflict(null)
+    if (conflictVersionId) {
+      setBaseVersionId(conflictVersionId)
+    }
+    closeConflict()
   }
 
   async function handleParentChange(newParentId: string | null) {
@@ -193,12 +211,7 @@ export function PageEditor() {
       })
 
       if (result.conflict) {
-        setBaseVersionId(result.currentVersionId)
-        openConflict({
-          segments: result.segments ?? [],
-          currentVersionAuthorName: result.currentVersionAuthorName ?? null,
-          currentVersionCreatedAt: result.currentVersionCreatedAt ?? new Date().toISOString(),
-        })
+        openConflict(buildConflictDetails(result), result.currentVersionId)
         return
       }
 
