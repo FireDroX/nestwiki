@@ -29,6 +29,6 @@ export interface AttachmentsRepository {
   findLibrary(params: FindLibraryParams): Promise<FindLibraryResult>;
   findPagesReferencing(
     minioKey: string,
-  ): Promise<{ id: string; title: string }[]>;
+  ): Promise<{ id: string; title: string; inTrash: boolean }[]>;
   delete(id: string): Promise<void>;
 }

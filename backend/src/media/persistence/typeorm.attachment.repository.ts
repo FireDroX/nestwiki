@@ -107,20 +107,27 @@ export class TypeormAttachmentsRepository implements AttachmentsRepository {
 
   async findPagesReferencing(
     minioKey: string,
-  ): Promise<{ id: string; title: string }[]> {
+  ): Promise<{ id: string; title: string; inTrash: boolean }[]> {
     const lastSegment = minioKey.split('/').pop() ?? minioKey;
     const uuidMatch = lastSegment.match(
       /^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i,
     );
     const needle = uuidMatch ? uuidMatch[1] : minioKey;
 
-    return this.dataSource.query<{ id: string; title: string }[]>(
-      `SELECT p.id AS id, pv.title AS title
+    const rows = await this.dataSource.query<
+      { id: string; title: string; inTrash: number | string }[]
+    >(
+      `SELECT p.id AS id, pv.title AS title, (p.deleted_at IS NOT NULL) AS inTrash
        FROM pages p
        INNER JOIN page_versions pv ON pv.id = p.current_version_id
-       WHERE p.deleted_at IS NULL AND pv.content LIKE ?`,
+       WHERE pv.content LIKE ?`,
       [`%${needle}%`],
     );
+    return rows.map((row) => ({
+      id: row.id,
+      title: row.title,
+      inTrash: Number(row.inTrash) === 1,
+    }));
   }
 
   async delete(id: string): Promise<void> {
