@@ -167,9 +167,9 @@ export class PagesController {
     @Body() dto: UpdatePageDto,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<ResponseDto<PageUpdateResponseDto>> {
-    const { page, version, conflict, mergedContent } =
-      await this.pagesService.updatePage(id, dto, user.id);
-    return PageMapper.toUpdateResponse(page, version, conflict, mergedContent);
+    return PageMapper.toUpdateResponse(
+      await this.pagesService.updatePage(id, dto, user.id),
+    );
   }
 
   @Post(':id/merge-preview')
@@ -625,7 +625,7 @@ export class PagesController {
           user.id,
           `Restored from version ${versionId}`,
         );
-      return PageMapper.toUpdateResponse(page, version);
+      return PageMapper.toUpdateResponse({ page, version, conflict: false });
     } catch (error) {
       if (error instanceof PageNotFoundException) {
         throw new VersionNotFoundException();

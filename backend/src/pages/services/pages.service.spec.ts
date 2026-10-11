@@ -174,6 +174,7 @@ describe('PagesService', () => {
       merge: vi.fn().mockImplementation((base: string, mine: string) => ({
         conflict: false,
         content: mine,
+        segments: [{ type: 'ok', lines: mine.split('\n') }],
       })),
     };
     eventEmitter = { emit: vi.fn() };
@@ -194,6 +195,43 @@ describe('PagesService', () => {
 
     service = module.get(PagesService);
   });
+
+  function arrangeConflict() {
+    const page = buildPage({ currentVersionId: 'version-2' });
+    const baseVersion = buildVersion({ id: 'version-1', content: 'base' });
+    const currentVersion = buildVersion({
+      id: 'version-2',
+      content: 'theirs',
+      authorId: 'other-user',
+      createdAt: new Date('2026-10-11T10:00:00Z'),
+    });
+    const segments = [
+      {
+        type: 'conflict' as const,
+        mine: ['mine'],
+        base: ['base'],
+        theirs: ['theirs'],
+      },
+    ];
+    pagesRepository.findById.mockResolvedValue(page);
+    pagesRepository.findVersionById.mockImplementation((id: string) =>
+      Promise.resolve(id === 'version-1' ? baseVersion : currentVersion),
+    );
+    pageMergeService.merge.mockReturnValue({
+      conflict: true,
+      content: '<<<<<<<',
+      segments,
+    });
+    return { page, currentVersion, segments };
+  }
+
+  function removeCurrentVersionAuthor() {
+    usersService.findById.mockImplementation((id: string) =>
+      id === 'other-user'
+        ? Promise.reject(new Error('gone'))
+        : Promise.resolve(buildUser({ id })),
+    );
+  }
 
   describe('updatePage', () => {
     it('creates a new PageVersion and never mutates the existing one', async () => {
@@ -378,6 +416,47 @@ describe('PagesService', () => {
       expect(eventEmitter.emit).not.toHaveBeenCalled();
     });
 
+    it('returns the merge segments and the current version author on conflict', async () => {
+      const { page, currentVersion, segments } = arrangeConflict();
+
+      const result = await service.updatePage(
+        page.id,
+        { content: 'mine', baseVersionId: 'version-1' },
+        'user-1',
+      );
+
+      expect(result).toMatchObject({
+        conflict: true,
+        mergedContent: '<<<<<<<',
+        segments,
+        currentVersionAuthorName: 'User',
+        currentVersionCreatedAt: currentVersion.createdAt,
+        currentVersionContent: currentVersion.content,
+      });
+      expect(pagesRepository.updateWithNewVersion).not.toHaveBeenCalled();
+    });
+
+    it('returns a null author name when the current version author no longer exists', async () => {
+      const { page, currentVersion, segments } = arrangeConflict();
+      removeCurrentVersionAuthor();
+
+      const result = await service.updatePage(
+        page.id,
+        { content: 'mine', baseVersionId: 'version-1' },
+        'user-1',
+      );
+
+      expect(result).toMatchObject({
+        conflict: true,
+        mergedContent: '<<<<<<<',
+        segments,
+        currentVersionAuthorName: null,
+        currentVersionCreatedAt: currentVersion.createdAt,
+        currentVersionContent: currentVersion.content,
+      });
+      expect(pagesRepository.updateWithNewVersion).not.toHaveBeenCalled();
+    });
+
     it('skips merging entirely when baseVersionId matches the current version', async () => {
       const page = buildPage();
       const currentVersion = buildVersion();
@@ -538,6 +617,62 @@ describe('PagesService', () => {
       });
       expect(pagesRepository.updateWithNewVersion).not.toHaveBeenCalled();
       expect(eventEmitter.emit).not.toHaveBeenCalled();
+    });
+
+    it('returns the segments and the current version author on conflict', async () => {
+      const { currentVersion, segments } = arrangeConflict();
+
+      const result = await service.mergePreview(
+        'page-1',
+        'version-1',
+        'mine',
+        'user-1',
+      );
+
+      expect(result).toEqual({
+        conflict: true,
+        mergedContent: '<<<<<<<',
+        newBaseVersionId: 'version-2',
+        segments,
+        currentVersionAuthorName: 'User',
+        currentVersionCreatedAt: currentVersion.createdAt,
+        currentVersionContent: currentVersion.content,
+      });
+    });
+
+    it('returns a null author name on conflict when the author no longer exists', async () => {
+      arrangeConflict();
+      removeCurrentVersionAuthor();
+
+      const result = await service.mergePreview(
+        'page-1',
+        'version-1',
+        'mine',
+        'user-1',
+      );
+
+      expect(result.currentVersionAuthorName).toBeNull();
+    });
+
+    it('omits the segments when there is no conflict', async () => {
+      const page = buildPage({ currentVersionId: 'version-2' });
+      pagesRepository.findById.mockResolvedValue(page);
+      pagesRepository.findVersionById.mockImplementation((id: string) =>
+        Promise.resolve(
+          buildVersion({ id, content: id === 'version-1' ? 'base' : 'theirs' }),
+        ),
+      );
+
+      const result = await service.mergePreview(
+        'page-1',
+        'version-1',
+        'mine',
+        'user-1',
+      );
+
+      expect(result.conflict).toBe(false);
+      expect(result).not.toHaveProperty('segments');
+      expect(result).not.toHaveProperty('currentVersionAuthorName');
     });
 
     it('throws VersionNotFoundException when baseVersionId does not exist', async () => {

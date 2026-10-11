@@ -5,6 +5,7 @@ import { PageMergePreviewResponseDto } from '../dto/out/page-merge-preview-respo
 import { PageResponseDto } from '../dto/out/page-response.dto.js';
 import { PageStatsResponseDto } from '../dto/out/page-stats-response.dto.js';
 import { PageUpdateResponseDto } from '../dto/out/page-update-response.dto.js';
+import { UpdatePageResultDto } from '../dto/out/update-page-result.dto.js';
 import { PageVersion } from '../entities/page-version.entity.js';
 import { Page } from '../entities/page.entity.js';
 
@@ -76,11 +77,9 @@ export class PageMapper {
   }
 
   static toPageUpdateResponseDto(
-    page: Page,
-    version: PageVersion,
-    conflict = false,
-    mergedContent?: string,
+    result: UpdatePageResultDto,
   ): PageUpdateResponseDto {
+    const { page, version } = result;
     return {
       id: page.id,
       slug: page.slug,
@@ -88,32 +87,24 @@ export class PageMapper {
       content: version.content,
       currentVersionId: page.currentVersionId!,
       updatedAt: page.updatedAt,
-      conflict,
-      mergedContent,
+      conflict: result.conflict,
+      mergedContent: result.mergedContent,
+      segments: result.segments,
+      currentVersionAuthorName: result.currentVersionAuthorName,
+      currentVersionCreatedAt: result.currentVersionCreatedAt,
+      currentVersionContent: result.currentVersionContent,
     };
   }
 
   static toUpdateResponse(
-    page: Page,
-    version: PageVersion,
-    conflict = false,
-    mergedContent?: string,
+    result: UpdatePageResultDto,
   ): ResponseDto<PageUpdateResponseDto> {
-    return new ResponseDto(
-      PageMapper.toPageUpdateResponseDto(
-        page,
-        version,
-        conflict,
-        mergedContent,
-      ),
-    );
+    return new ResponseDto(PageMapper.toPageUpdateResponseDto(result));
   }
 
-  static toMergePreviewResponse(result: {
-    conflict: boolean;
-    mergedContent: string;
-    newBaseVersionId: string;
-  }): ResponseDto<PageMergePreviewResponseDto> {
+  static toMergePreviewResponse(
+    result: PageMergePreviewResponseDto,
+  ): ResponseDto<PageMergePreviewResponseDto> {
     return new ResponseDto(result);
   }
 }

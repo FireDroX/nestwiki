@@ -89,4 +89,62 @@ describe('usePageRealtimeSync', () => {
 
     expect(mergePreviewMock).not.toHaveBeenCalled()
   })
+
+  it('retries with the current draft when it changed while the preview was in flight', async () => {
+    const onMergeResult = vi.fn()
+    let content = 'draft before apply'
+    let baseVersionId = 'version-1'
+    let resolveFirst: (value: unknown) => void = () => {}
+    mergePreviewMock
+      .mockImplementationOnce(() => new Promise((resolve) => (resolveFirst = resolve)))
+      .mockResolvedValueOnce({ conflict: false, mergedContent: 'resolved', newBaseVersionId: 'version-3' })
+
+    renderHook(() =>
+      usePageRealtimeSync('page-1', {
+        getBaseVersionId: () => baseVersionId,
+        getContent: () => content,
+        onMergeResult,
+      }),
+    )
+
+    handlers['page:version-created']({ pageId: 'page-1' })
+    content = 'resolved'
+    baseVersionId = 'version-2'
+    resolveFirst({ conflict: false, mergedContent: 'stale merge', newBaseVersionId: 'version-3' })
+
+    await waitFor(() => {
+      expect(onMergeResult).toHaveBeenCalledWith({
+        conflict: false,
+        mergedContent: 'resolved',
+        newBaseVersionId: 'version-3',
+      })
+    })
+    expect(onMergeResult).toHaveBeenCalledTimes(1)
+    expect(mergePreviewMock).toHaveBeenLastCalledWith('page-1', { baseVersionId: 'version-2', content: 'resolved' })
+  })
+
+  it('only reports the result of the latest event when previews overlap', async () => {
+    const onMergeResult = vi.fn()
+    let resolveFirst: (value: unknown) => void = () => {}
+    mergePreviewMock
+      .mockImplementationOnce(() => new Promise((resolve) => (resolveFirst = resolve)))
+      .mockResolvedValueOnce({ conflict: false, mergedContent: 'latest', newBaseVersionId: 'version-3' })
+
+    renderHook(() =>
+      usePageRealtimeSync('page-1', {
+        getBaseVersionId: () => 'version-1',
+        getContent: () => 'my draft',
+        onMergeResult,
+      }),
+    )
+
+    handlers['page:version-created']({ pageId: 'page-1' })
+    handlers['page:version-created']({ pageId: 'page-1' })
+    await waitFor(() => expect(onMergeResult).toHaveBeenCalledTimes(1))
+    resolveFirst({ conflict: false, mergedContent: 'older', newBaseVersionId: 'version-2' })
+    await Promise.resolve()
+
+    expect(onMergeResult).toHaveBeenCalledTimes(1)
+    expect(onMergeResult).toHaveBeenCalledWith(expect.objectContaining({ mergedContent: 'latest' }))
+  })
 })

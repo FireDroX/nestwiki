@@ -156,7 +156,24 @@
     "commentsDisabled": "Commentaires désactivés.",
     "commentsEnabledChangeFailed": "Échec de la mise à jour des commentaires.",
     "realtimeMergedToast": "Vos modifications ont été fusionnées automatiquement avec celles de quelqu'un d'autre.",
-    "realtimeConflictBanner": "Conflit détecté avec une sauvegarde concurrente : résolvez les marqueurs <<<<<<< / ======= / >>>>>>> ci-dessous avant de sauvegarder à nouveau."
+    "conflict": {
+      "title": "Conflit avec une modification concurrente",
+      "description": "{{author}} a enregistré cette page {{date}} pendant que vous l'éditiez. Choisissez, pour chaque bloc, la version à garder.",
+      "unknownAuthor": "Quelqu'un",
+      "progress": "{{resolved}} / {{total}} conflits résolus",
+      "mergedLines_one": "{{count}} ligne sans conflit",
+      "mergedLines_other": "{{count}} lignes sans conflit",
+      "mine": "Ma version",
+      "theirs": "Leur version",
+      "emptySide": "(supprimé)",
+      "keepMine": "Garder la mienne",
+      "keepTheirs": "Garder la leur",
+      "keepBoth": "Garder les deux",
+      "apply": "Appliquer",
+      "discard": "Abandonner mes modifications",
+      "unavailable": "Quelqu'un a modifié cette page entre-temps, mais le détail du conflit n'a pas pu être chargé. Copiez vos modifications puis rechargez la page.",
+      "applied": "Conflits résolus : relisez puis enregistrez."
+    }
   },
   "pageMetadataForm": {
     "titleLabel": "Titre",

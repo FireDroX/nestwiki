@@ -45,6 +45,17 @@ export interface UpdatePagePayload {
   baseVersionId?: string
 }
 
+export type MergeSegment =
+  | { type: 'ok'; lines: string[] }
+  | { type: 'conflict'; mine: string[]; base: string[]; theirs: string[] }
+
+export interface MergeConflictDetails {
+  segments: MergeSegment[]
+  currentVersionAuthorName: string | null
+  currentVersionCreatedAt: string
+  currentVersionContent: string
+}
+
 export interface PageUpdateResult {
   id: string
   slug: string
@@ -54,6 +65,10 @@ export interface PageUpdateResult {
   updatedAt: string
   conflict: boolean
   mergedContent?: string
+  segments?: MergeSegment[]
+  currentVersionAuthorName?: string | null
+  currentVersionCreatedAt?: string
+  currentVersionContent?: string
 }
 
 export async function updatePage(id: string, payload: UpdatePagePayload): Promise<PageUpdateResult> {
@@ -137,6 +152,10 @@ export interface MergePreviewResult {
   conflict: boolean
   mergedContent: string
   newBaseVersionId: string
+  segments?: MergeSegment[]
+  currentVersionAuthorName?: string | null
+  currentVersionCreatedAt?: string
+  currentVersionContent?: string
 }
 
 export async function mergePreview(id: string, payload: MergePreviewPayload): Promise<MergePreviewResult> {

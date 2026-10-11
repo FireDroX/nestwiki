@@ -95,6 +95,7 @@ describe('PageTrashService', () => {
       countBatches: vi.fn().mockResolvedValue(new Map()),
       findTrashedById: vi.fn().mockResolvedValue(null),
       findByIdWithDeleted: vi.fn().mockResolvedValue(null),
+      findPaths: vi.fn().mockResolvedValue(new Map()),
       restoreBatch: vi.fn().mockResolvedValue(undefined),
       findTrashedSubtreeIds: vi.fn().mockResolvedValue([]),
       purge: vi.fn().mockResolvedValue(undefined),
@@ -130,12 +131,6 @@ describe('PageTrashService', () => {
 
   describe('listTrash', () => {
     it('returns only deletion roots the user may delete, with path, deleter and descendant count', async () => {
-      const parent = buildPage({
-        id: 'parent',
-        slug: 'docs',
-        deletedAt: new Date(),
-        deletionRootId: 'parent',
-      });
       const root = trashedRoot({ parentId: 'parent' });
       const hidden = trashedRoot({ id: 'hidden', deletionRootId: 'hidden' });
       pageTrashRepository.findDeletionRoots.mockResolvedValue([root, hidden]);
@@ -148,8 +143,8 @@ describe('PageTrashService', () => {
       pageTrashRepository.countBatches.mockResolvedValue(
         new Map([['root', 3]]),
       );
-      pageTrashRepository.findByIdWithDeleted.mockImplementation((id) =>
-        Promise.resolve(id === 'parent' ? parent : null),
+      pageTrashRepository.findPaths.mockResolvedValue(
+        new Map([['root', '/docs/guide']]),
       );
 
       const entries = await service.listTrash('me');
@@ -160,6 +155,8 @@ describe('PageTrashService', () => {
         includeDeleted: true,
       });
       expect(pageTrashRepository.countBatches).toHaveBeenCalledWith(['root']);
+      expect(pageTrashRepository.findPaths).toHaveBeenCalledWith(['root']);
+      expect(pageTrashRepository.findByIdWithDeleted).not.toHaveBeenCalled();
       expect(entries).toEqual([
         {
           id: 'root',

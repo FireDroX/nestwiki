@@ -51,6 +51,32 @@ export class TypeormPageTrashRepository implements PageTrashRepository {
     return this.repository.findOne({ where: { id }, withDeleted: true });
   }
 
+  async findPaths(pageIds: string[]): Promise<Map<string, string>> {
+    const paths = new Map<string, string>();
+    if (pageIds.length === 0) {
+      return paths;
+    }
+    const placeholders = pageIds.map(() => '?').join(', ');
+    const rows: { root_id: string; slug: string }[] =
+      await this.dataSource.query(
+        `WITH RECURSIVE chain AS (
+          SELECT id, parent_id, slug, id AS root_id, 0 AS depth
+          FROM pages
+          WHERE id IN (${placeholders})
+          UNION ALL
+          SELECT p.id, p.parent_id, p.slug, c.root_id, c.depth + 1
+          FROM pages p
+          INNER JOIN chain c ON p.id = c.parent_id
+        )
+        SELECT root_id, slug FROM chain ORDER BY root_id, depth DESC`,
+        pageIds,
+      );
+    for (const row of rows) {
+      paths.set(row.root_id, `${paths.get(row.root_id) ?? ''}/${row.slug}`);
+    }
+    return paths;
+  }
+
   async restoreBatch(rootId: string): Promise<void> {
     await this.repository.update(
       { deletionRootId: rootId },

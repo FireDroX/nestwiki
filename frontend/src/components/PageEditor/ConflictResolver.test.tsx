@@ -1,0 +1,126 @@
+import { describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen, within } from '@testing-library/react'
+import type { MergeConflictDetails } from '#api/pages'
+import { ConflictResolver } from './ConflictResolver'
+
+const conflict: MergeConflictDetails = {
+  segments: [
+    { type: 'ok', lines: ['Intro', 'Second line'] },
+    { type: 'conflict', mine: ['Mine A'], base: ['Base A'], theirs: ['Theirs A'] },
+    { type: 'conflict', mine: ['Mine B'], base: ['Base B'], theirs: ['Theirs B'] },
+  ],
+  currentVersionAuthorName: 'Alice',
+  currentVersionCreatedAt: new Date().toISOString(),
+  currentVersionContent: 'Intro\nSecond line edited by them\nTheirs A\nTheirs B',
+}
+
+describe('ConflictResolver', () => {
+  it('enables apply only once every conflict is resolved and applies the recomposed content', () => {
+    const onApply = vi.fn()
+    render(<ConflictResolver conflict={conflict} onApply={onApply} onDiscard={vi.fn()} />)
+
+    const apply = screen.getByRole('button', { name: 'Appliquer' })
+    expect(apply).toBeDisabled()
+    expect(screen.getByText('0 / 2 conflits résolus')).toBeInTheDocument()
+
+    const [first, second] = screen.getAllByTestId('merge-conflict')
+    fireEvent.click(within(first).getByRole('button', { name: 'Garder la mienne' }))
+    expect(apply).toBeDisabled()
+    fireEvent.click(within(second).getByRole('button', { name: 'Garder les deux' }))
+
+    expect(screen.getByText('2 / 2 conflits résolus')).toBeInTheDocument()
+    expect(apply).toBeEnabled()
+    fireEvent.click(apply)
+    expect(onApply).toHaveBeenCalledWith('Intro\nSecond line\nMine A\nMine B\nTheirs B')
+  })
+
+  it('lets a choice be changed before applying', () => {
+    const onApply = vi.fn()
+    render(<ConflictResolver conflict={conflict} onApply={onApply} onDiscard={vi.fn()} />)
+    const [first, second] = screen.getAllByTestId('merge-conflict')
+
+    fireEvent.click(within(first).getByRole('button', { name: 'Garder la mienne' }))
+    fireEvent.click(within(first).getByRole('button', { name: 'Garder la leur' }))
+    fireEvent.click(within(second).getByRole('button', { name: 'Garder la leur' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Appliquer' }))
+
+    expect(onApply).toHaveBeenCalledWith('Intro\nSecond line\nTheirs A\nTheirs B')
+  })
+
+  it('names the author of the other version', () => {
+    render(<ConflictResolver conflict={conflict} onApply={vi.fn()} onDiscard={vi.fn()} />)
+    expect(screen.getAllByText(/Alice/).length).toBeGreaterThan(0)
+  })
+
+  it('collapses lines merged without conflict', () => {
+    render(<ConflictResolver conflict={conflict} onApply={vi.fn()} onDiscard={vi.fn()} />)
+    expect(screen.queryByText(/Second line/)).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: '2 lignes sans conflit' }))
+    expect(screen.getByText(/Second line/)).toBeInTheDocument()
+  })
+
+  it('ignores blank lines at the edges of a merged block and hides blank-only blocks', () => {
+    const withBlanks: MergeConflictDetails = {
+      ...conflict,
+      segments: [
+        { type: 'ok', lines: ['', 'Paragraph', ''] },
+        { type: 'conflict', mine: ['Mine A'], base: ['Base A'], theirs: ['Theirs A'] },
+        { type: 'ok', lines: [''] },
+      ],
+    }
+    render(<ConflictResolver conflict={withBlanks} onApply={vi.fn()} onDiscard={vi.fn()} />)
+
+    expect(screen.getAllByRole('button', { name: /sans conflit/ })).toHaveLength(1)
+    fireEvent.click(screen.getByRole('button', { name: '1 ligne sans conflit' }))
+    expect(screen.getByText('Paragraph', { selector: 'pre' }).textContent).toBe('Paragraph')
+  })
+
+  it('discards my changes by reloading the current version content, edits outside conflicts included', () => {
+    const onDiscard = vi.fn()
+    render(<ConflictResolver conflict={conflict} onApply={vi.fn()} onDiscard={onDiscard} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Abandonner mes modifications' }))
+    expect(onDiscard).toHaveBeenCalledWith('Intro\nSecond line edited by them\nTheirs A\nTheirs B')
+  })
+
+  it('exposes whether a merged block is expanded', () => {
+    render(<ConflictResolver conflict={conflict} onApply={vi.fn()} onDiscard={vi.fn()} />)
+    const toggle = screen.getByRole('button', { name: '2 lignes sans conflit' })
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    fireEvent.click(toggle)
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+  })
+
+  it('keeps the choices when the same conflict is received again', () => {
+    const { rerender } = render(<ConflictResolver conflict={conflict} onApply={vi.fn()} onDiscard={vi.fn()} />)
+    const [first] = screen.getAllByTestId('merge-conflict')
+    fireEvent.click(within(first).getByRole('button', { name: 'Garder la mienne' }))
+
+    rerender(
+      <ConflictResolver
+        conflict={{ ...conflict, segments: structuredClone(conflict.segments) }}
+        onApply={vi.fn()}
+        onDiscard={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText('1 / 2 conflits résolus')).toBeInTheDocument()
+  })
+
+  it('resets the choices when the conflicting blocks change', () => {
+    const { rerender } = render(<ConflictResolver conflict={conflict} onApply={vi.fn()} onDiscard={vi.fn()} />)
+    const [first] = screen.getAllByTestId('merge-conflict')
+    fireEvent.click(within(first).getByRole('button', { name: 'Garder la mienne' }))
+
+    const changed: MergeConflictDetails = {
+      ...conflict,
+      segments: [
+        { type: 'ok', lines: ['Intro', 'Second line'] },
+        { type: 'conflict', mine: ['Mine A'], base: ['Base A'], theirs: ['Theirs A, edited again'] },
+        { type: 'conflict', mine: ['Mine B'], base: ['Base B'], theirs: ['Theirs B'] },
+      ],
+    }
+    rerender(<ConflictResolver conflict={changed} onApply={vi.fn()} onDiscard={vi.fn()} />)
+
+    expect(screen.getByText('0 / 2 conflits résolus')).toBeInTheDocument()
+  })
+})

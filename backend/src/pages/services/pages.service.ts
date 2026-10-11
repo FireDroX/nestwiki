@@ -51,7 +51,11 @@ import type { PagesRepository } from '../persistence/page.repository.js';
 import { PermissionsService } from '../../permissions/services/permissions.service.js';
 import type { User } from '../../users/entities/user.entity.js';
 import { UsersService } from '../../users/services/users.service.js';
-import { PageMergeService } from './page-merge.service.js';
+import {
+  PageMergeService,
+  type MergeSegment,
+  type PageMergeResult,
+} from './page-merge.service.js';
 
 const MYSQL_DUPLICATE_ENTRY_CODE = 'ER_DUP_ENTRY';
 
@@ -455,6 +459,7 @@ export class PagesService {
           version: currentVersion,
           conflict: true,
           mergedContent: merged.content,
+          ...(await this.describeConflict(merged, currentVersion)),
         };
       }
 
@@ -530,6 +535,30 @@ export class PagesService {
       conflict: merged.conflict,
       mergedContent: merged.content,
       newBaseVersionId: page.currentVersionId,
+      ...(merged.conflict
+        ? await this.describeConflict(merged, currentVersion)
+        : {}),
+    };
+  }
+
+  private async describeConflict(
+    merged: PageMergeResult,
+    currentVersion: PageVersion,
+  ): Promise<{
+    segments: MergeSegment[];
+    currentVersionAuthorName: string | null;
+    currentVersionCreatedAt: Date;
+    currentVersionContent: string;
+  }> {
+    const currentVersionAuthorName = await this.usersService
+      .findById(currentVersion.authorId)
+      .then((author) => author.displayName)
+      .catch(() => null);
+    return {
+      segments: merged.segments,
+      currentVersionAuthorName,
+      currentVersionCreatedAt: currentVersion.createdAt,
+      currentVersionContent: currentVersion.content,
     };
   }
 

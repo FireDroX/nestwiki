@@ -225,6 +225,10 @@ NestWiki est un monorepo pnpm avec deux packages : \`backend/\` (NestJS + TypeOR
 
 </div>
 
+## Éditer à plusieurs
+
+Si quelqu'un enregistre la page pendant que vous l'éditez, ses modifications sont fusionnées automatiquement avec les vôtres tant qu'elles ne touchent pas les mêmes lignes. Dans le cas contraire, un écran de résolution affiche chaque bloc en conflit côte à côte (votre version / la sienne), avec les actions « Garder la mienne », « Garder la leur » et « Garder les deux ». « Appliquer » remet le résultat dans l'éditeur pour relecture avant d'enregistrer, et « Abandonner mes modifications » reprend la version enregistrée.
+
 ## Étapes suivantes
 
 - Créez votre première page depuis le bouton "Nouvelle page" de la barre latérale.

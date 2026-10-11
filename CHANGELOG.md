@@ -2,6 +2,13 @@
 
 All notable changes to NestWiki are documented here, newest first, one `## <version> — <date>` section per release. This file is the single source for the in-app "Notes de version" page, which groups releases by minor version (`1.0`, `0.31`…). Entries up to 0.31.10 were written in French, the project's original language.
 
+## 1.2.1 — 2026-10-11
+
+- Édition simultanée : quand vos modifications et celles d'une autre personne touchent les mêmes lignes, un écran de résolution remplace les marqueurs `<<<<<<<` dans l'éditeur. Chaque bloc en conflit est affiché côte à côte (votre version / la sienne, avec son auteur) et se règle d'un clic : garder la vôtre, la sienne ou les deux. Le résultat revient dans l'éditeur pour relecture avant d'enregistrer, et vous pouvez aussi abandonner vos modifications pour reprendre la version enregistrée.
+- Pendant la résolution, vos choix sont conservés si une autre modification arrive sans toucher aux blocs en conflit, et une fusion automatique en retard ne peut plus écraser une résolution déjà appliquée ou du texte tapé entre-temps.
+- Corbeille : le bouton « Supprimer » attend que l'arborescence soit chargée, pour annoncer correctement les sous-pages emportées, et la liste de la corbeille se charge plus vite.
+- API : en cas de conflit, `PATCH /pages/:id` et `POST /pages/:id/merge-preview` renvoient en plus `segments`, `currentVersionAuthorName`, `currentVersionCreatedAt` et `currentVersionContent`. `mergedContent` est inchangé.
+
 ## 1.2.0 — 2026-10-11
 
 - Supprimer une page depuis son en-tête : bouton « Supprimer », visible si vous avez le droit de suppression sur la page. Une page qui a des sous-pages les emporte avec elle, après confirmation.
