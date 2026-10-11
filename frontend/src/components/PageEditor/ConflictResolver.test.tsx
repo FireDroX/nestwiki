@@ -81,4 +81,46 @@ describe('ConflictResolver', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Abandonner mes modifications' }))
     expect(onDiscard).toHaveBeenCalledWith('Intro\nSecond line edited by them\nTheirs A\nTheirs B')
   })
+
+  it('exposes whether a merged block is expanded', () => {
+    render(<ConflictResolver conflict={conflict} onApply={vi.fn()} onDiscard={vi.fn()} />)
+    const toggle = screen.getByRole('button', { name: '2 lignes sans conflit' })
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    fireEvent.click(toggle)
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+  })
+
+  it('keeps the choices when the same conflict is received again', () => {
+    const { rerender } = render(<ConflictResolver conflict={conflict} onApply={vi.fn()} onDiscard={vi.fn()} />)
+    const [first] = screen.getAllByTestId('merge-conflict')
+    fireEvent.click(within(first).getByRole('button', { name: 'Garder la mienne' }))
+
+    rerender(
+      <ConflictResolver
+        conflict={{ ...conflict, segments: structuredClone(conflict.segments) }}
+        onApply={vi.fn()}
+        onDiscard={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText('1 / 2 conflits résolus')).toBeInTheDocument()
+  })
+
+  it('resets the choices when the conflicting blocks change', () => {
+    const { rerender } = render(<ConflictResolver conflict={conflict} onApply={vi.fn()} onDiscard={vi.fn()} />)
+    const [first] = screen.getAllByTestId('merge-conflict')
+    fireEvent.click(within(first).getByRole('button', { name: 'Garder la mienne' }))
+
+    const changed: MergeConflictDetails = {
+      ...conflict,
+      segments: [
+        { type: 'ok', lines: ['Intro', 'Second line'] },
+        { type: 'conflict', mine: ['Mine A'], base: ['Base A'], theirs: ['Theirs A, edited again'] },
+        { type: 'conflict', mine: ['Mine B'], base: ['Base B'], theirs: ['Theirs B'] },
+      ],
+    }
+    rerender(<ConflictResolver conflict={changed} onApply={vi.fn()} onDiscard={vi.fn()} />)
+
+    expect(screen.getByText('0 / 2 conflits résolus')).toBeInTheDocument()
+  })
 })

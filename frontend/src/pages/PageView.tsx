@@ -89,7 +89,7 @@ export function PageView() {
   const canEdit = canOnPage(page, 'page.edit')
   const canManageAccess = canOnPage(page, 'page.manage_permissions')
   const canDelete = canOnPage(page, 'page.delete')
-  const { tree, refresh: refreshTree } = usePageTree()
+  const { status: treeStatus, tree, refresh: refreshTree } = usePageTree()
   const navigate = useNavigate()
   const [isDeleting, setIsDeleting] = useState(false)
   const descendantCount = page ? collectSubtreeIds(tree, page.id).length - 1 : 0
@@ -137,6 +137,7 @@ export function PageView() {
       navigate(parentSegments.length > 0 ? `/pages/${parentSegments.join('/')}` : '/')
     } catch (error) {
       toast.error(extractErrorMessage(error))
+      await refreshTree()
     } finally {
       setIsDeleting(false)
     }
@@ -197,7 +198,7 @@ export function PageView() {
                 <DeletePageDialog
                   title={page.title}
                   descendantCount={descendantCount}
-                  pending={isDeleting}
+                  pending={isDeleting || treeStatus !== 'success'}
                   onConfirm={handleDelete}
                 />
               )}

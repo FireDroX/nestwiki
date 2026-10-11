@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '#components/ui/button'
-import { cn } from '#lib/utils'
 import type { MergeConflictDetails } from '#api/pages'
 import { formatRelativeTime } from '#utils/relative-time'
 import { resolveMergeSegments, type ConflictChoice } from '#utils/resolve-merge-segments'
@@ -11,6 +10,8 @@ interface ConflictResolverProps {
   onApply: (content: string) => void
   onDiscard: (theirContent: string) => void
 }
+
+type Choices = Partial<Record<number, ConflictChoice>>
 
 const CHOICES: { choice: ConflictChoice; labelKey: string }[] = [
   { choice: 'mine', labelKey: 'pageEditor.conflict.keepMine' },
@@ -41,13 +42,24 @@ function trimBlankEdges(lines: string[]): string[] {
 
 export function ConflictResolver({ conflict, onApply, onDiscard }: ConflictResolverProps) {
   const { t } = useTranslation()
-  const [choices, setChoices] = useState<Partial<Record<number, ConflictChoice>>>({})
+  const signature = JSON.stringify(conflict.segments)
+  const [choiceState, setChoiceState] = useState<{ signature: string; choices: Choices }>({
+    signature,
+    choices: {},
+  })
+  const choices = choiceState.signature === signature ? choiceState.choices : {}
   const [expanded, setExpanded] = useState<Set<number>>(new Set())
 
   const author = conflict.currentVersionAuthorName ?? t('pageEditor.conflict.unknownAuthor')
   const total = conflict.segments.filter((segment) => segment.type === 'conflict').length
-  const resolved = Object.keys(choices).length
+  const resolved = conflict.segments.filter(
+    (segment, index) => segment.type === 'conflict' && choices[index] !== undefined,
+  ).length
   const recomposed = resolveMergeSegments(conflict.segments, choices)
+
+  const choose = (index: number, choice: ConflictChoice) => {
+    setChoiceState({ signature, choices: { ...choices, [index]: choice } })
+  }
 
   const toggleExpanded = (index: number) => {
     setExpanded((current) => {
@@ -82,7 +94,12 @@ export function ConflictResolver({ conflict, onApply, onDiscard }: ConflictResol
           }
           return (
             <div key={index} className="space-y-2">
-              <Button variant="ghost" size="sm" onClick={() => toggleExpanded(index)}>
+              <Button
+                variant="ghost"
+                size="sm"
+                aria-expanded={expanded.has(index)}
+                onClick={() => toggleExpanded(index)}
+              >
                 {t('pageEditor.conflict.mergedLines', { count: lines.length })}
               </Button>
               {expanded.has(index) && (
@@ -115,8 +132,7 @@ export function ConflictResolver({ conflict, onApply, onDiscard }: ConflictResol
                   size="sm"
                   variant={choices[index] === choice ? 'default' : 'outline'}
                   aria-pressed={choices[index] === choice}
-                  className={cn(choices[index] === choice && 'ring-2 ring-ring')}
-                  onClick={() => setChoices((current) => ({ ...current, [index]: choice }))}
+                  onClick={() => choose(index, choice)}
                 >
                   {t(labelKey)}
                 </Button>

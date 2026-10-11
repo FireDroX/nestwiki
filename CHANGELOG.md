@@ -5,7 +5,9 @@ All notable changes to NestWiki are documented here, newest first, one `## <vers
 ## 1.2.1 — 2026-10-11
 
 - Édition simultanée : quand vos modifications et celles d'une autre personne touchent les mêmes lignes, un écran de résolution remplace les marqueurs `<<<<<<<` dans l'éditeur. Chaque bloc en conflit est affiché côte à côte (votre version / la sienne, avec son auteur) et se règle d'un clic : garder la vôtre, la sienne ou les deux. Le résultat revient dans l'éditeur pour relecture avant d'enregistrer, et vous pouvez aussi abandonner vos modifications pour reprendre la version enregistrée.
-- API : en cas de conflit, `PATCH /pages/:id` et `POST /pages/:id/merge-preview` renvoient en plus `segments`, `currentVersionAuthorName` et `currentVersionCreatedAt`. `mergedContent` est inchangé.
+- Pendant la résolution, vos choix sont conservés si une autre modification arrive sans toucher aux blocs en conflit, et une fusion automatique en retard ne peut plus écraser une résolution déjà appliquée ou du texte tapé entre-temps.
+- Corbeille : le bouton « Supprimer » attend que l'arborescence soit chargée, pour annoncer correctement les sous-pages emportées, et la liste de la corbeille se charge plus vite.
+- API : en cas de conflit, `PATCH /pages/:id` et `POST /pages/:id/merge-preview` renvoient en plus `segments`, `currentVersionAuthorName`, `currentVersionCreatedAt` et `currentVersionContent`. `mergedContent` est inchangé.
 
 ## 1.2.0 — 2026-10-11
 

@@ -171,6 +171,7 @@
       "keepBoth": "Keep both",
       "apply": "Apply",
       "discard": "Discard my changes",
+      "unavailable": "Someone changed this page in the meantime, but the conflict details could not be loaded. Copy your changes, then reload the page.",
       "applied": "Conflicts resolved: review, then save."
     }
   },

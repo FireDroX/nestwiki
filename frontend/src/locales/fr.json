@@ -171,6 +171,7 @@
       "keepBoth": "Garder les deux",
       "apply": "Appliquer",
       "discard": "Abandonner mes modifications",
+      "unavailable": "Quelqu'un a modifié cette page entre-temps, mais le détail du conflit n'a pas pu être chargé. Copiez vos modifications puis rechargez la page.",
       "applied": "Conflits résolus : relisez puis enregistrez."
     }
   },

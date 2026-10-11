@@ -70,7 +70,6 @@ export function PageEditor() {
   const [commentsEnabled, setCommentsEnabledState] = useState(true)
   const [baseVersionId, setBaseVersionId] = useState('')
   const [conflict, setConflict] = useState<MergeConflictDetails | null>(null)
-  const [conflictKey, setConflictKey] = useState(0)
   const [conflictVersionId, setConflictVersionId] = useState<string | null>(null)
   const schema = useMemo(() => createPageMetadataSchema(t), [t])
 
@@ -104,7 +103,13 @@ export function PageEditor() {
     getContent: () => editor.content,
     onMergeResult: (result) => {
       if (result.conflict) {
-        openConflict(buildConflictDetails(result), result.newBaseVersionId)
+        const details = buildConflictDetails(result)
+        if (details) {
+          openConflict(details, result.newBaseVersionId)
+        }
+        return
+      }
+      if (result.newBaseVersionId === baseVersionId) {
         return
       }
       editor.setContent(result.mergedContent)
@@ -114,9 +119,12 @@ export function PageEditor() {
     },
   })
 
-  function buildConflictDetails(result: Partial<MergeConflictDetails>): MergeConflictDetails {
+  function buildConflictDetails(result: Partial<MergeConflictDetails>): MergeConflictDetails | null {
+    if (!result.segments?.length) {
+      return null
+    }
     return {
-      segments: result.segments ?? [],
+      segments: result.segments,
       currentVersionAuthorName: result.currentVersionAuthorName ?? null,
       currentVersionCreatedAt: result.currentVersionCreatedAt ?? new Date().toISOString(),
       currentVersionContent: result.currentVersionContent ?? editor.content,
@@ -126,7 +134,6 @@ export function PageEditor() {
   function openConflict(details: MergeConflictDetails, versionId: string) {
     setConflict(details)
     setConflictVersionId(versionId)
-    setConflictKey((key) => key + 1)
   }
 
   function closeConflict() {
@@ -212,7 +219,12 @@ export function PageEditor() {
       })
 
       if (result.conflict) {
-        openConflict(buildConflictDetails(result), result.currentVersionId)
+        const details = buildConflictDetails(result)
+        if (details) {
+          openConflict(details, result.currentVersionId)
+        } else {
+          setSaveError(t('pageEditor.conflict.unavailable'))
+        }
         return
       }
 
@@ -309,7 +321,6 @@ export function PageEditor() {
     >
       {conflict ? (
         <ConflictResolver
-          key={conflictKey}
           conflict={conflict}
           onApply={handleConflictApplied}
           onDiscard={handleConflictDiscarded}

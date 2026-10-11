@@ -30,21 +30,33 @@ export function usePageRealtimeSync(
     }
 
     const socket = getRealtimeSocket()
+    let latestRequest = 0
 
-    async function handleVersionCreated(payload: PageVersionCreatedPayload) {
-      if (payload.pageId !== pageId) {
-        return
-      }
+    async function previewMerge(currentPageId: string) {
+      const request = ++latestRequest
+      const baseVersionId = optionsRef.current.getBaseVersionId()
+      const content = optionsRef.current.getContent()
 
       try {
-        const result = await mergePreview(pageId as string, {
-          baseVersionId: optionsRef.current.getBaseVersionId(),
-          content: optionsRef.current.getContent(),
-        })
-
+        const result = await mergePreview(currentPageId, { baseVersionId, content })
+        if (request !== latestRequest) {
+          return
+        }
+        const draftChanged =
+          optionsRef.current.getBaseVersionId() !== baseVersionId || optionsRef.current.getContent() !== content
+        if (draftChanged) {
+          await previewMerge(currentPageId)
+          return
+        }
         optionsRef.current.onMergeResult(result)
       } catch (error) {
         console.error(error)
+      }
+    }
+
+    function handleVersionCreated(payload: PageVersionCreatedPayload) {
+      if (payload.pageId === pageId) {
+        void previewMerge(pageId)
       }
     }
 
