@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { PageTrashService } from '../../pages/services/page-trash.service.js';
 import { PagesService } from '../../pages/services/pages.service.js';
 import { PAGE_VISIBILITIES } from '../../pages/entities/page.entity.js';
 import { UsersService } from '../../users/services/users.service.js';
@@ -19,6 +20,7 @@ const PAGES_WRITE_SCOPE = 'pages:write';
 export function buildPagesTools(
   pagesService: PagesService,
   usersService: UsersService,
+  pageTrashService: PageTrashService,
 ): McpToolDefinition[] {
   return [
     defineMcpTool({
@@ -143,6 +145,27 @@ export function buildPagesTools(
           { cascade: input.cascade ? 'true' : undefined },
           ctx.userId,
         );
+        return { success: true };
+      },
+    }),
+    defineMcpTool({
+      name: 'wiki_list_trash',
+      description:
+        'Lister les pages de la corbeille que vous pouvez restaurer (titre, ancien chemin, auteur et date de suppression, nombre de sous-pages)',
+      inputSchema: {},
+      requiredScopes: [PAGES_READ_SCOPE],
+      handler: async (_input, ctx) => ({
+        pages: await pageTrashService.listTrash(ctx.userId),
+      }),
+    }),
+    defineMcpTool({
+      name: 'wiki_restore_page',
+      description:
+        'Restaurer une page de la corbeille avec les sous-pages supprimées en même temps (échoue si la page parente est encore dans la corbeille ou si le slug a été repris)',
+      inputSchema: { pageId: z.string() },
+      requiredScopes: [PAGES_WRITE_SCOPE],
+      handler: async (input, ctx) => {
+        await pageTrashService.restore(input.pageId, ctx.userId);
         return { success: true };
       },
     }),
