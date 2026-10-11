@@ -668,6 +668,42 @@ describe('PermissionsService', () => {
       expect(groupsRepository.findGroupIdsForUser).not.toHaveBeenCalled();
     });
 
+    it('resolves a deleted page through its deleted ancestors when includeDeleted is set', async () => {
+      const member = buildUser();
+      pageHierarchyRepository.findChains.mockResolvedValue(
+        new Map([
+          [
+            'trashed',
+            {
+              pageId: 'trashed',
+              visibility: 'private',
+              chainIds: ['trashed', 'parent'],
+            },
+          ],
+        ]),
+      );
+      pageAccessRulesRepository.findByUserId.mockResolvedValue([
+        buildRule({
+          userId: member.id,
+          pageId: 'parent',
+          appliesTo: 'subtree',
+          actions: ['page.delete'],
+        }),
+      ]);
+
+      const result = await service.getEffectivePageActionsBulk(
+        member,
+        ['trashed'],
+        { includeDeleted: true },
+      );
+
+      expect(pageHierarchyRepository.findChains).toHaveBeenCalledWith(
+        ['trashed'],
+        { includeDeleted: true },
+      );
+      expect(result.get('trashed')).toContain('page.delete');
+    });
+
     it('maps a missing page to an empty action list', async () => {
       pageHierarchyRepository.findChains.mockResolvedValue(new Map());
       const result = await service.getEffectivePageActionsBulk(buildUser(), [

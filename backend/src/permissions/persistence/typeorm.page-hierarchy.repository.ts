@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { PageVisibility } from '../../pages/entities/page.entity.js';
 import {
+  FindChainsOptions,
   PageChain,
   PageHierarchyRepository,
 } from './page-hierarchy.repository.js';
@@ -17,22 +18,30 @@ interface ChainRow {
 export class TypeormPageHierarchyRepository implements PageHierarchyRepository {
   constructor(private readonly dataSource: DataSource) {}
 
-  async findChains(pageIds: string[]): Promise<Map<string, PageChain>> {
+  async findChains(
+    pageIds: string[],
+    options: FindChainsOptions = {},
+  ): Promise<Map<string, PageChain>> {
     const result = new Map<string, PageChain>();
     if (pageIds.length === 0) {
       return result;
     }
+
+    const startFilter = options.includeDeleted ? '' : ' AND deleted_at IS NULL';
+    const ancestorFilter = options.includeDeleted
+      ? ''
+      : ' AND p.deleted_at IS NULL';
 
     const placeholders = pageIds.map(() => '?').join(', ');
     const rows: ChainRow[] = await this.dataSource.query(
       `WITH RECURSIVE chain AS (
         SELECT id, parent_id, visibility, id AS root_id, 0 AS depth
         FROM pages
-        WHERE id IN (${placeholders}) AND deleted_at IS NULL
+        WHERE id IN (${placeholders})${startFilter}
         UNION ALL
         SELECT p.id, p.parent_id, p.visibility, c.root_id, c.depth + 1
         FROM pages p
-        INNER JOIN chain c ON p.id = c.parent_id AND p.deleted_at IS NULL
+        INNER JOIN chain c ON p.id = c.parent_id${ancestorFilter}
       )
       SELECT root_id, id, visibility, depth FROM chain ORDER BY root_id, depth ASC`,
       pageIds,
