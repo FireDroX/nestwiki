@@ -33,9 +33,9 @@ describe('PagesExceptionFilter', () => {
   });
 
   it('maps the trash exceptions', () => {
-    expect(catchWith(new PageNotInTrashException()).status).toHaveBeenCalledWith(
-      404,
-    );
+    expect(
+      catchWith(new PageNotInTrashException()).status,
+    ).toHaveBeenCalledWith(404);
     expect(catchWith(new ParentInTrashException()).status).toHaveBeenCalledWith(
       409,
     );

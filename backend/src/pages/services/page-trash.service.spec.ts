@@ -145,7 +145,9 @@ describe('PageTrashService', () => {
           ['hidden', ['page.read']],
         ]),
       );
-      pageTrashRepository.countBatches.mockResolvedValue(new Map([['root', 3]]));
+      pageTrashRepository.countBatches.mockResolvedValue(
+        new Map([['root', 3]]),
+      );
       pageTrashRepository.findByIdWithDeleted.mockImplementation((id) =>
         Promise.resolve(id === 'parent' ? parent : null),
       );
@@ -175,7 +177,9 @@ describe('PageTrashService', () => {
         trashedRoot({ deletedById: null }),
       ]);
       allowDelete();
-      pageTrashRepository.countBatches.mockResolvedValue(new Map([['root', 1]]));
+      pageTrashRepository.countBatches.mockResolvedValue(
+        new Map([['root', 1]]),
+      );
 
       const [entry] = await service.listTrash('me');
 
