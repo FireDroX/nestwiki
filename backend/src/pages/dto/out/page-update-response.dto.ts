@@ -1,3 +1,5 @@
+import type { MergeSegment } from '../../services/page-merge.service.js';
+
 export interface PageUpdateResponseDto {
   id: string;
   slug: string;
@@ -7,4 +9,7 @@ export interface PageUpdateResponseDto {
   updatedAt: Date;
   conflict: boolean;
   mergedContent?: string;
+  segments?: MergeSegment[];
+  currentVersionAuthorName?: string | null;
+  currentVersionCreatedAt?: Date;
 }
