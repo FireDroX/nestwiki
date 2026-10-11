@@ -229,6 +229,17 @@ NestWiki est un monorepo pnpm avec deux packages : \`backend/\` (NestJS + TypeOR
 
 Si quelqu'un enregistre la page pendant que vous l'éditez, ses modifications sont fusionnées automatiquement avec les vôtres tant qu'elles ne touchent pas les mêmes lignes. Dans le cas contraire, un écran de résolution affiche chaque bloc en conflit côte à côte (votre version / la sienne), avec les actions « Garder la mienne », « Garder la leur » et « Garder les deux ». « Appliquer » remet le résultat dans l'éditeur pour relecture avant d'enregistrer, et « Abandonner mes modifications » reprend la version enregistrée.
 
+## Exporter une page
+
+Le bouton « Exporter » d'une page propose :
+
+- **PDF (cette page)** : ouvre l'impression du navigateur, qui enregistre la page en PDF avec le même rendu que sur le site (encadrés, formules, diagrammes, code coloré). Les sections repliables sont dépliées et le thème clair est utilisé le temps de l'impression.
+- **PDF avec les sous-pages** : ouvre un nouvel onglet avec une page de garde, un sommaire et chaque sous-page lisible à la suite, puis lance l'impression.
+- **Markdown brut (.md)** : le texte source de la page, précédé d'un en-tête (titre, tags, date, adresse d'origine). Les liens vers le wiki et les images pointent vers l'adresse complète de l'instance.
+- **Markdown avec les sous-pages (.zip)** : une archive avec un fichier par page (les sous-pages dans un dossier du même nom) et les images utilisées dans \`_media/\`. Les liens entre pages exportées deviennent des liens relatifs entre fichiers.
+
+Seules les pages que vous pouvez lire sont exportées.
+
 ## Étapes suivantes
 
 - Créez votre première page depuis le bouton "Nouvelle page" de la barre latérale.

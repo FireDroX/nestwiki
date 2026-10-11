@@ -77,5 +77,9 @@ export function MermaidDiagram({ children }: { children?: ReactNode }) {
     )
   }
 
-  return <MermaidSource code={code} />
+  return (
+    <div data-slot="mermaid-loading">
+      <MermaidSource code={code} />
+    </div>
+  )
 }

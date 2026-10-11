@@ -91,6 +91,12 @@
       "selfHost": "Host your own NestWiki"
     }
   },
+  "printView": {
+    "loading": "Preparing the print…",
+    "error": "These pages could not be prepared for printing.",
+    "contents": "Contents",
+    "generatedOn": "Exported on {{date}}"
+  },
   "pageView": {
     "history": "History",
     "edit": "Edit",
@@ -111,6 +117,12 @@
     "deleteConfirmDescendants_one": "Its sub-page will be moved to the trash too.",
     "deleteConfirmDescendants_other": "Its {{count}} sub-pages will be moved to the trash too.",
     "deleteConfirmAction": "Move to trash",
+    "export": "Export",
+    "exportPdfPage": "PDF (this page)",
+    "exportPdfSubtree": "PDF with sub-pages",
+    "exportMarkdownPage": "Raw Markdown (.md)",
+    "exportMarkdownSubtree": "Markdown with sub-pages (.zip)",
+    "exportFailed": "Export failed.",
     "deleted": "Page moved to the trash."
   },
   "trash": {

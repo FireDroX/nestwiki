@@ -47,6 +47,17 @@ function TableOfContentsList({ headings, activeId }: TableOfContentsListProps) {
   )
 }
 
+export function TableOfContentsPrint({ headings }: { headings: TocHeading[] }) {
+  const { t } = useTranslation()
+
+  return (
+    <nav aria-label={t('markdown.toc')} className="hidden print:block">
+      <p className="mb-2.5 text-xs font-semibold uppercase">{t('markdown.toc')}</p>
+      <TableOfContentsList headings={headings} activeId={null} />
+    </nav>
+  )
+}
+
 export function TableOfContentsSidebar({ headings, activeId }: TableOfContentsListProps) {
   const { t } = useTranslation()
 

@@ -2,6 +2,14 @@
 
 All notable changes to NestWiki are documented here, newest first, one `## <version> — <date>` section per release. This file is the single source for the in-app "Notes de version" page, which groups releases by minor version (`1.0`, `0.31`…). Entries up to 0.31.10 were written in French, the project's original language.
 
+## 1.2.2 — 2026-10-11
+
+- Nouveau bouton « Exporter » sur chaque page :
+  - **PDF** de la page, avec le même rendu que sur le site (encadrés, formules, diagrammes, code coloré), via l'impression du navigateur. Les sections repliables sont dépliées et le thème clair est utilisé à l'impression.
+  - **PDF avec les sous-pages** : page de garde, sommaire, puis chaque sous-page lisible, dans un nouvel onglet qui lance l'impression.
+  - **Markdown brut** d'une page (`.md`), ou de la page et de ses sous-pages (`.zip`, avec les images utilisées et des liens relatifs entre fichiers), pour sauvegarder ou migrer du contenu.
+- API : `GET /pages/:id/subtree-content` et `GET /pages/:id/export?scope=page|subtree`.
+
 ## 1.2.1 — 2026-10-11
 
 - Édition simultanée : quand vos modifications et celles d'une autre personne touchent les mêmes lignes, un écran de résolution remplace les marqueurs `<<<<<<<` dans l'éditeur. Chaque bloc en conflit est affiché côte à côte (votre version / la sienne, avec son auteur) et se règle d'un clic : garder la vôtre, la sienne ou les deux. Le résultat revient dans l'éditeur pour relecture avant d'enregistrer, et vous pouvez aussi abandonner vos modifications pour reprendre la version enregistrée.

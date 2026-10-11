@@ -162,3 +162,37 @@ export async function mergePreview(id: string, payload: MergePreviewPayload): Pr
   const { data } = await apiClient.post<ResponseDto<MergePreviewResult>>(`/pages/${id}/merge-preview`, payload)
   return data.data
 }
+
+export interface SubtreePage {
+  id: string
+  title: string
+  slug: string
+  path: string
+  depth: number
+  content: string
+  tags: string[]
+  updatedAt: string
+}
+
+export async function getSubtreeContent(id: string): Promise<SubtreePage[]> {
+  const { data } = await apiClient.get<ResponseDto<SubtreePage[]>>(`/pages/${id}/subtree-content`)
+  return data.data
+}
+
+export type PageExportScope = 'page' | 'subtree'
+
+function filenameFromDisposition(disposition: string | undefined, fallback: string): string {
+  const match = disposition?.match(/filename="([^"]+)"/)
+  return match ? match[1] : fallback
+}
+
+export async function downloadPageExport(id: string, scope: PageExportScope): Promise<void> {
+  const response = await apiClient.get<Blob>(`/pages/${id}/export`, { params: { scope }, responseType: 'blob' })
+  const fallback = scope === 'page' ? 'page.md' : 'pages.zip'
+  const url = URL.createObjectURL(response.data)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filenameFromDisposition(response.headers['content-disposition'] as string | undefined, fallback)
+  link.click()
+  URL.revokeObjectURL(url)
+}

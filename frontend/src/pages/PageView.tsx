@@ -10,10 +10,15 @@ import { Skeleton } from '#components/ui/skeleton'
 import { PageBreadcrumb } from '#components/layout/PageBreadcrumb'
 import { CommentThread } from '#components/PageView/CommentThread'
 import { DeletePageDialog } from '#components/PageView/DeletePageDialog'
+import { ExportMenu } from '#components/PageView/ExportMenu'
 import { ContributorsList } from '#components/PageView/ContributorsList'
 import { FollowButton } from '#components/PageView/FollowButton'
 import { PageTagList } from '#components/PageView/PageTagList'
-import { TableOfContentsCollapsible, TableOfContentsSidebar } from '#components/PageView/TableOfContents'
+import {
+  TableOfContentsCollapsible,
+  TableOfContentsPrint,
+  TableOfContentsSidebar,
+} from '#components/PageView/TableOfContents'
 import { PageAccessPanel } from '#components/PageAccessPanel/PageAccessPanel'
 import { useActiveHeading } from '#hooks/useActiveHeading'
 import { useAuth } from '#hooks/useAuth'
@@ -23,6 +28,7 @@ import { usePageRoom } from '#hooks/usePageRoom'
 import { usePageTags } from '#hooks/usePageTags'
 import { usePageTree } from '#hooks/usePageTree'
 import { usePermissions } from '#hooks/usePermissions'
+import { usePrintPreparation } from '#hooks/usePrintPreparation'
 import { useScrollToHash } from '#hooks/useScrollToHash'
 import { useTableOfContents } from '#hooks/useTableOfContents'
 import { extractErrorMessage } from '#lib/api-errors'
@@ -98,6 +104,7 @@ export function PageView() {
   const headings = useTableOfContents(contentRef, page?.content)
   const activeHeadingId = useActiveHeading(headings)
   useScrollToHash(page?.content)
+  usePrintPreparation()
 
   useEffect(() => {
     setHasNewVersion(false)
@@ -178,7 +185,7 @@ export function PageView() {
     <div className="flex min-h-full">
       <article className={cn(PAGE_PADDING, 'min-w-0 flex-1 space-y-6')}>
         <div className="space-y-3">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4 print:hidden">
             <PageBreadcrumb title={page.title} parentId={page.parentId} />
             <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
               {user && <FollowButton key={page.id} pageId={page.id} initialFollowed={page.isFollowed} />}
@@ -202,13 +209,14 @@ export function PageView() {
                   onConfirm={handleDelete}
                 />
               )}
+              <ExportMenu pageId={page.id} pathSegments={pathSegments} hasChildren={descendantCount > 0} />
               {canManageAccess && <PageAccessPanel pageId={page.id} availableActions={page.permissions} />}
             </div>
           </div>
           <PageTagList tags={tags} />
         </div>
         {hasNewVersion && (
-          <div className="flex items-center justify-between rounded-md border border-primary/30 bg-primary/5 px-4 py-2 text-sm">
+          <div className="flex items-center justify-between rounded-md border border-primary/30 bg-primary/5 px-4 py-2 text-sm print:hidden">
             <span>{t('pageView.newVersionBanner')}</span>
             <Button size="sm" variant="outline" onClick={handleReload}>
               {t('pageView.reloadButton')}
@@ -216,18 +224,23 @@ export function PageView() {
           </div>
         )}
         {hasTableOfContents && (
-          <div className="xl:hidden">
-            <TableOfContentsCollapsible headings={headings} activeId={activeHeadingId} />
-          </div>
+          <>
+            <div className="xl:hidden print:hidden">
+              <TableOfContentsCollapsible headings={headings} activeId={activeHeadingId} />
+            </div>
+            <TableOfContentsPrint headings={headings} />
+          </>
         )}
         <div ref={contentRef}>
           <MarkdownRenderer content={page.content} mode="full" />
         </div>
-        {page.commentsEnabled && <CommentThread pageId={page.id} />}
-        <ContributorsList pageId={page.id} />
+        <div className="space-y-6 print:hidden">
+          {page.commentsEnabled && <CommentThread pageId={page.id} />}
+          <ContributorsList pageId={page.id} />
+        </div>
       </article>
       {hasTableOfContents && (
-        <aside className="hidden w-[220px] shrink-0 border-l border-border xl:block">
+        <aside className="hidden w-[220px] shrink-0 border-l border-border xl:block print:hidden">
           <TableOfContentsSidebar headings={headings} activeId={activeHeadingId} />
         </aside>
       )}
