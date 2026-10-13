@@ -31,13 +31,12 @@ export function OAuthClientsTable({ clients, pendingTokenId, onRevoke }: OAuthCl
       id: 'client',
       header: t('admin.oauthClients.columnClient'),
       primary: true,
-      className: 'align-top font-medium',
+      className: 'font-medium',
       cell: (client) => client.name,
     },
     {
       id: 'activeTokens',
       header: t('admin.oauthClients.columnActiveTokens'),
-      className: 'align-top',
       cell: (client) =>
         client.activeTokens.length === 0 ? (
           <span className="text-sm text-muted-foreground">{t('admin.oauthClients.noActiveTokens')}</span>
@@ -92,7 +91,7 @@ export function OAuthClientsTable({ clients, pendingTokenId, onRevoke }: OAuthCl
     {
       id: 'created',
       header: t('admin.oauthClients.columnCreated'),
-      className: 'align-top text-muted-foreground',
+      className: 'text-muted-foreground',
       cell: (client) => <Badge variant="outline">{formatRelativeTime(client.createdAt)}</Badge>,
     },
   ]

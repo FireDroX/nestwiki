@@ -1,6 +1,8 @@
 import { apiClient } from '#lib/api-client'
 import type { ResponseDto } from '#api/response-dto'
 
+export const OAUTH_AUDIT_KEY_PREFIX = 'oauth:'
+
 export interface OAuthActiveTokenSummary {
   id: string
   userId: string

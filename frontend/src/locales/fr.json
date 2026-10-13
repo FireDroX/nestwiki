@@ -516,7 +516,8 @@
       }
     },
     "mcpAudit": {
-      "allKeys": "Toutes les clés",
+      "allKeys": "Toutes les clés et clients OAuth",
+      "oauthClientOption": "{{name}} (OAuth)",
       "loadError": "Échec du chargement du journal.",
       "empty": "Aucune action enregistrée.",
       "columnKey": "Clé API",

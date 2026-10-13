@@ -3,6 +3,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Brackets, Repository } from 'typeorm';
 import { McpApiKey } from '../entities/mcp-api-key.entity.js';
 import { McpAuditLog } from '../entities/mcp-audit-log.entity.js';
+import { OAuthClient } from '../entities/oauth-client.entity.js';
+import { OAUTH_AUDIT_KEY_PREFIX } from '../guards/mcp-oauth.guard.js';
 import {
   CreateMcpAuditLogInput,
   McpAuditLogFilters,
@@ -28,9 +30,15 @@ export class TypeormMcpAuditLogRepository implements McpAuditLogRepository {
   ): Promise<{ items: McpAuditLogRow[]; total: number }> {
     const query = this.repository
       .createQueryBuilder('log')
-      .innerJoin(McpApiKey, 'key', 'key.id = log.apiKeyId')
+      .leftJoin(McpApiKey, 'key', 'key.id = log.apiKeyId')
+      .leftJoin(
+        OAuthClient,
+        'client',
+        'log.apiKeyId = CONCAT(:oauthPrefix, client.id)',
+        { oauthPrefix: OAUTH_AUDIT_KEY_PREFIX },
+      )
       .select('log.id', 'id')
-      .addSelect('key.name', 'apiKeyName')
+      .addSelect('COALESCE(key.name, client.name, log.apiKeyId)', 'apiKeyName')
       .addSelect('log.toolName', 'toolName')
       .addSelect('log.input', 'input')
       .addSelect('log.output', 'output')
@@ -38,8 +46,8 @@ export class TypeormMcpAuditLogRepository implements McpAuditLogRepository {
       .addSelect('log.errorMessage', 'errorMessage')
       .addSelect('log.createdAt', 'createdAt')
       .orderBy('log.createdAt', 'DESC')
-      .skip((page - 1) * limit)
-      .take(limit);
+      .offset((page - 1) * limit)
+      .limit(limit);
 
     if (filters.apiKeyId) {
       query.andWhere('log.apiKeyId = :apiKeyId', {
@@ -60,10 +68,9 @@ export class TypeormMcpAuditLogRepository implements McpAuditLogRepository {
       const search = `%${filters.search}%`;
       query.andWhere(
         new Brackets((qb) => {
-          qb.where('log.toolName LIKE :search', { search }).orWhere(
-            'key.name LIKE :search',
-            { search },
-          );
+          qb.where('log.toolName LIKE :search', { search })
+            .orWhere('key.name LIKE :search', { search })
+            .orWhere('client.name LIKE :search', { search });
         }),
       );
     }
