@@ -141,7 +141,11 @@ export class CommentsService {
       action: 'comment.deleted_by_moderator',
       targetType: 'Comment',
       targetId: comment.id,
-      metadata: { count: deletedIds.length, ids: deletedIds },
+      metadata: {
+        pageId: comment.pageId,
+        count: deletedIds.length,
+        ids: deletedIds,
+      },
     });
   }
 

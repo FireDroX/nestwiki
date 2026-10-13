@@ -1,4 +1,4 @@
-import { Link, useNavigate, useParams } from 'react-router'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { History, Pencil } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -86,6 +86,7 @@ function PageStatusMessage({ title, description }: PageStatusMessageProps) {
 export function PageView() {
   const { t } = useTranslation()
   const params = useParams()
+  const [searchParams] = useSearchParams()
   const pathSegments = useMemo(() => (params['*'] ?? '').split('/').filter(Boolean), [params])
   const { status, page, refresh } = usePage(pathSegments)
   const [hasNewVersion, setHasNewVersion] = useState(false)
@@ -212,7 +213,14 @@ export function PageView() {
                 />
               )}
               <ExportMenu pageId={page.id} pathSegments={pathSegments} hasChildren={descendantCount > 0} />
-              {canManageAccess && <PageAccessPanel pageId={page.id} availableActions={page.permissions} />}
+              {canManageAccess && (
+                <PageAccessPanel
+                  key={page.id}
+                  pageId={page.id}
+                  availableActions={page.permissions}
+                  defaultOpen={searchParams.get('access') === 'open'}
+                />
+              )}
             </div>
           </div>
           <PageTagList tags={tags} />

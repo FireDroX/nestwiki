@@ -2,6 +2,17 @@
 
 All notable changes to NestWiki are documented here, newest first, one `## <version> — <date>` section per release. This file is the single source for the in-app "Notes de version" page, which groups releases by minor version (`1.0`, `0.31`…). Entries up to 0.31.10 were written in French, the project's original language.
 
+## 1.2.3 — 2026-10-13
+
+- Administration : les lignes des journaux d'activité et d'audit sont cliquables et mènent à l'élément concerné :
+  - une page (créée, modifiée, déplacée, restaurée…) ouvre la page, une page supprimée ouvre la corbeille ;
+  - une connexion, un changement de mot de passe ou de rôle, un compte modifié… ouvre la fiche admin de l'utilisateur, sur l'onglet concerné (groupes, permissions) ;
+  - un groupe ouvre sa fiche, sur l'onglet concerné ;
+  - une règle d'accès ouvre la page avec son panneau « Accès » déjà ouvert, ou l'onglet « Accès » du bénéficiaire pour une règle sur tout le wiki ;
+  - un commentaire ou une image ouvre la page où il a été posté, un client OAuth la liste des clients OAuth.
+- Les fiches utilisateur et groupe acceptent `?tab=` dans l'adresse pour ouvrir directement un onglet, et une page `?access=open` pour ouvrir son panneau « Accès ».
+- API : les entrées d'audit `access_rule.update`, `access_rule.delete` et `comment.deleted_by_moderator` enregistrent désormais le `pageId` concerné dans `metadata`.
+
 ## 1.2.2 — 2026-10-11
 
 - Nouveau bouton « Exporter » sur chaque page :

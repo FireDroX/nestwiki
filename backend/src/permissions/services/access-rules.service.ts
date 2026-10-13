@@ -195,8 +195,8 @@ export class AccessRulesService {
     ruleId: string,
     actorId: string,
   ): Promise<void> {
-    await this.findOwnedRule(subject, ruleId);
-    await this.applyDelete(subject, ruleId, actorId);
+    const rule = await this.findOwnedRule(subject, ruleId);
+    await this.applyDelete(subject, rule, actorId);
   }
 
   async deleteAccessRuleForPage(
@@ -205,7 +205,7 @@ export class AccessRulesService {
     actorId: string,
   ): Promise<void> {
     const rule = await this.findRuleDirectlyOnPage(pageId, ruleId);
-    await this.applyDelete(AccessRulesService.subjectOf(rule), ruleId, actorId);
+    await this.applyDelete(AccessRulesService.subjectOf(rule), rule, actorId);
   }
 
   async listAccessRulesForPage(pageId: string): Promise<PageAccessRuleView[]> {
@@ -334,7 +334,12 @@ export class AccessRulesService {
       action: 'access_rule.update',
       targetType: subject.type,
       targetId: subject.id,
-      metadata: { ruleId: rule.id, actions, excludedPageIds },
+      metadata: {
+        ruleId: rule.id,
+        pageId: rule.pageId,
+        actions,
+        excludedPageIds,
+      },
     });
 
     return { ...AccessRulesService.toBaseView(rule), actions, excludedPageIds };
@@ -342,16 +347,16 @@ export class AccessRulesService {
 
   private async applyDelete(
     subject: AccessRuleSubject,
-    ruleId: string,
+    rule: PageAccessRule,
     actorId: string,
   ): Promise<void> {
-    await this.pageAccessRulesRepository.delete(ruleId);
+    await this.pageAccessRulesRepository.delete(rule.id);
     await this.adminAuditLogService.record({
       adminId: actorId,
       action: 'access_rule.delete',
       targetType: subject.type,
       targetId: subject.id,
-      metadata: { ruleId },
+      metadata: { ruleId: rule.id, pageId: rule.pageId },
     });
   }
 

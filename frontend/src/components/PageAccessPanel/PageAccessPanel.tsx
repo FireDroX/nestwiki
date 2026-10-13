@@ -27,14 +27,15 @@ import { extractErrorMessage } from '#lib/api-errors'
 interface PageAccessPanelProps {
   pageId: string
   availableActions: PageAction[]
+  defaultOpen?: boolean
 }
 
 type Status = 'loading' | 'ready' | 'error'
 
-export function PageAccessPanel({ pageId, availableActions }: PageAccessPanelProps) {
+export function PageAccessPanel({ pageId, availableActions, defaultOpen = false }: PageAccessPanelProps) {
   const { t } = useTranslation()
   const { tree } = usePageTree()
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(defaultOpen)
   const [addOpen, setAddOpen] = useState(false)
   const [rules, setRules] = useState<PageAccessRule[]>([])
   const [status, setStatus] = useState<Status>('loading')

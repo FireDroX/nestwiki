@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router'
+import { Link, useParams, useSearchParams } from 'react-router'
 import { ChevronLeft } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { AdminNav } from '#components/AdminNav'
@@ -14,9 +14,14 @@ import { PAGE_PADDING } from '#utils/page-layout'
 
 type Status = 'loading' | 'ready' | 'error'
 
+const TABS = ['info', 'groups', 'permissions', 'access', 'effective']
+
 export function AdminUserDetail() {
   const { t } = useTranslation()
   const { id } = useParams<{ id: string }>()
+  const [searchParams] = useSearchParams()
+  const requestedTab = searchParams.get('tab')
+  const initialTab = requestedTab && TABS.includes(requestedTab) ? requestedTab : 'info'
   const [user, setUser] = useState<AdminUserDetailType | null>(null)
   const [status, setStatus] = useState<Status>('loading')
 
@@ -59,7 +64,7 @@ export function AdminUserDetail() {
         <>
           <h1 className="mb-4 text-xl font-semibold">{user.displayName}</h1>
 
-          <Tabs defaultValue="info" className="gap-6">
+          <Tabs defaultValue={initialTab} className="gap-6">
             <TabsList variant="line" className="max-w-full justify-start overflow-x-auto [scrollbar-width:none]">
               <TabsTrigger value="info">{t('admin.users.tabInfo')}</TabsTrigger>
               <TabsTrigger value="groups">{t('admin.groups.tabMembers')}</TabsTrigger>

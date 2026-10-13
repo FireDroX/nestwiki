@@ -1,6 +1,9 @@
+import { useNavigate } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { ResponsiveTable, type ResponsiveColumn } from '#components/ResponsiveTable'
 import type { AdminAuditLogItem } from '#api/admin-audit-log'
+import { LogTargetCell } from '#components/LogTargetCell'
+import { useLogTargetLink } from '#hooks/useLogTargetLink'
 import { formatRelativeTime } from '#utils/relative-time'
 
 interface AdminAuditLogTableProps {
@@ -9,6 +12,8 @@ interface AdminAuditLogTableProps {
 
 export function AdminAuditLogTable({ items }: AdminAuditLogTableProps) {
   const { t } = useTranslation()
+  const navigate = useNavigate()
+  const linkFor = useLogTargetLink()
 
   const columns: ResponsiveColumn<AdminAuditLogItem>[] = [
     {
@@ -29,9 +34,22 @@ export function AdminAuditLogTable({ items }: AdminAuditLogTableProps) {
       id: 'target',
       header: t('admin.auditLog.columnTarget'),
       className: 'font-mono text-muted-foreground',
-      cell: (item) => `${item.targetType}${item.targetId ? ` · ${item.targetId}` : ''}`,
+      cell: (item) => <LogTargetCell targetType={item.targetType} targetId={item.targetId} href={linkFor(item)} />,
     },
   ]
 
-  return <ResponsiveTable columns={columns} rows={items} rowKey={(item) => item.id} />
+  function handleRowClick(item: AdminAuditLogItem) {
+    const href = linkFor(item)
+    if (href) navigate(href)
+  }
+
+  return (
+    <ResponsiveTable
+      columns={columns}
+      rows={items}
+      rowKey={(item) => item.id}
+      rowClassName={(item) => (linkFor(item) ? undefined : 'cursor-default')}
+      onRowClick={handleRowClick}
+    />
+  )
 }
