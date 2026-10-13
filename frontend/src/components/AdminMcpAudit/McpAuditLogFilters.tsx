@@ -2,11 +2,13 @@ import { useTranslation } from 'react-i18next'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '#components/ui/select'
 import { Input } from '#components/ui/input'
 import type { McpApiKeySummary } from '#api/admin-mcp'
+import { OAUTH_AUDIT_KEY_PREFIX, type OAuthClientSummary } from '#api/admin-oauth'
 
 const ALL_KEYS_VALUE = 'all'
 
 interface McpAuditLogFiltersProps {
   apiKeys: McpApiKeySummary[]
+  oauthClients: OAuthClientSummary[]
   apiKeyId: string | undefined
   dateFrom: string | undefined
   dateTo: string | undefined
@@ -21,6 +23,7 @@ interface McpAuditLogFiltersProps {
 
 export function McpAuditLogFilters({
   apiKeys,
+  oauthClients,
   apiKeyId,
   dateFrom,
   dateTo,
@@ -43,6 +46,11 @@ export function McpAuditLogFilters({
           {apiKeys.map((key) => (
             <SelectItem key={key.id} value={key.id}>
               {key.name}
+            </SelectItem>
+          ))}
+          {oauthClients.map((client) => (
+            <SelectItem key={client.id} value={`${OAUTH_AUDIT_KEY_PREFIX}${client.id}`}>
+              {t('admin.mcpAudit.oauthClientOption', { name: client.name })}
             </SelectItem>
           ))}
         </SelectContent>

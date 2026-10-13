@@ -7,6 +7,7 @@ import { McpAuditLogDetailDialog } from '#components/AdminMcpAudit/McpAuditLogDe
 import { McpAuditLogFilters } from '#components/AdminMcpAudit/McpAuditLogFilters'
 import { McpAuditLogTable } from '#components/AdminMcpAudit/McpAuditLogTable'
 import { getAuditLog, listApiKeys, type McpApiKeySummary, type McpAuditLogItem } from '#api/admin-mcp'
+import { listOAuthClients, type OAuthClientSummary } from '#api/admin-oauth'
 import { PAGE_PADDING } from '#utils/page-layout'
 
 const PAGE_LIMIT = 50
@@ -28,6 +29,7 @@ export function AdminMcpAudit() {
   const page = parsePage(searchParams.get('page'))
 
   const [apiKeys, setApiKeys] = useState<McpApiKeySummary[]>([])
+  const [oauthClients, setOAuthClients] = useState<OAuthClientSummary[]>([])
   const [items, setItems] = useState<McpAuditLogItem[]>([])
   const [total, setTotal] = useState(0)
   const [status, setStatus] = useState<Status>('loading')
@@ -35,6 +37,7 @@ export function AdminMcpAudit() {
 
   useEffect(() => {
     void listApiKeys().then(setApiKeys).catch(() => undefined)
+    void listOAuthClients().then(setOAuthClients).catch(() => undefined)
   }, [])
 
   useEffect(() => {
@@ -94,6 +97,7 @@ export function AdminMcpAudit() {
       <div className="mt-5 mb-4">
         <McpAuditLogFilters
           apiKeys={apiKeys}
+          oauthClients={oauthClients}
           apiKeyId={apiKeyId}
           dateFrom={dateFrom}
           dateTo={dateTo}

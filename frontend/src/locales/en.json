@@ -516,7 +516,8 @@
       }
     },
     "mcpAudit": {
-      "allKeys": "All keys",
+      "allKeys": "All keys and OAuth clients",
+      "oauthClientOption": "{{name}} (OAuth)",
       "loadError": "Failed to load the log.",
       "empty": "No actions recorded.",
       "columnKey": "API key",

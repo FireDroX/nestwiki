@@ -2,6 +2,13 @@
 
 All notable changes to NestWiki are documented here, newest first, one `## <version> — <date>` section per release. This file is the single source for the in-app "Notes de version" page, which groups releases by minor version (`1.0`, `0.31`…). Entries up to 0.31.10 were written in French, the project's original language.
 
+## 1.2.4 — 2026-10-13
+
+- Administration : le journal d'activité MCP affiche enfin les appels faits par les IA connectées en OAuth. Ils étaient bien enregistrés, mais n'apparaissaient pas dans la liste. Le nom du client OAuth est affiché à la place du nom de la clé.
+- Ce journal affiche aussi à nouveau les appels faits avec une clé API supprimée depuis.
+- Le filtre du journal MCP propose les clients OAuth en plus des clés API, et la recherche porte aussi sur leur nom.
+- La pagination du journal MCP fonctionne correctement : chaque page n'affiche plus que ses 50 lignes au lieu de tout l'historique.
+
 ## 1.2.3 — 2026-10-13
 
 - Administration : les lignes des journaux d'activité et d'audit sont cliquables et mènent à l'élément concerné :

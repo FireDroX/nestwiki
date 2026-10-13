@@ -10,6 +10,7 @@ import type { McpAuthenticatedRequest } from './mcp-api-key.guard.js';
 
 const BEARER_PREFIX = 'Bearer ';
 const API_KEY_PREFIX = 'sk_';
+export const OAUTH_AUDIT_KEY_PREFIX = 'oauth:';
 
 @Injectable()
 export class McpOAuthGuard implements CanActivate {
@@ -56,7 +57,7 @@ export class McpOAuthGuard implements CanActivate {
         throw new Error('Not an OAuth access token');
       }
       return {
-        apiKeyId: `oauth:${payload.clientId}`,
+        apiKeyId: `${OAUTH_AUDIT_KEY_PREFIX}${payload.clientId}`,
         scopes: payload.scopes,
         createdById: payload.sub,
       };
