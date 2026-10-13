@@ -1,8 +1,11 @@
 import { useTranslation } from 'react-i18next'
+import { CodeBlock } from '#components/CodeBlock'
 import { Badge } from '#components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '#components/ui/dialog'
 import type { McpAuditLogItem } from '#api/admin-mcp'
 import { formatDateTime } from '#utils/relative-time'
+
+const PAYLOAD_CLASS_NAME = '[&_pre]:max-h-64 [&_pre]:overflow-auto [&_pre]:p-3 [&_pre]:text-xs'
 
 interface McpAuditLogDetailDialogProps {
   item: McpAuditLogItem | null
@@ -34,24 +37,22 @@ export function McpAuditLogDetailDialog({ item, onClose }: McpAuditLogDetailDial
           <p className="rounded-md bg-destructive/10 p-2 text-sm text-destructive">{item.errorMessage}</p>
         )}
 
-        <div className="space-y-3">
-          <div>
-            <p className="mb-1 text-xs font-medium text-muted-foreground uppercase">
-              {t('admin.mcpAudit.detailInput')}
-            </p>
-            <pre className="max-h-48 overflow-auto rounded-md border border-border bg-muted p-2 text-xs">
-              {JSON.stringify(item?.input, null, 2)}
-            </pre>
+        {item && (
+          <div className="min-w-0 space-y-3">
+            <div>
+              <p className="mb-1 text-xs font-medium text-muted-foreground uppercase">
+                {t('admin.mcpAudit.detailInput')}
+              </p>
+              <CodeBlock language="json" code={JSON.stringify(item.input, null, 2)} className={PAYLOAD_CLASS_NAME} />
+            </div>
+            <div>
+              <p className="mb-1 text-xs font-medium text-muted-foreground uppercase">
+                {t('admin.mcpAudit.detailOutput')}
+              </p>
+              <CodeBlock language="json" code={JSON.stringify(item.output, null, 2)} className={PAYLOAD_CLASS_NAME} />
+            </div>
           </div>
-          <div>
-            <p className="mb-1 text-xs font-medium text-muted-foreground uppercase">
-              {t('admin.mcpAudit.detailOutput')}
-            </p>
-            <pre className="max-h-48 overflow-auto rounded-md border border-border bg-muted p-2 text-xs">
-              {JSON.stringify(item?.output, null, 2)}
-            </pre>
-          </div>
-        </div>
+        )}
       </DialogContent>
     </Dialog>
   )

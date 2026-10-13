@@ -1,4 +1,4 @@
-import { type ComponentProps, memo, type ReactNode, useEffect, useId, useState } from 'react'
+import { type ComponentProps, memo, type ReactNode, useId } from 'react'
 import type { Element } from 'hast'
 import ReactMarkdown from 'react-markdown'
 import rehypeKatex from 'rehype-katex'
@@ -8,6 +8,7 @@ import remarkGfm from 'remark-gfm'
 import remarkMath from 'remark-math'
 import 'katex/dist/katex.min.css'
 import { ApiReferenceViewer } from '#components/ApiReferenceViewer'
+import { CodeBlock } from '#components/CodeBlock'
 import { MarkdownCallout } from '#components/MarkdownCallout'
 import { MarkdownHeading } from '#components/MarkdownHeading'
 import { MermaidDiagram } from '#components/MermaidDiagram'
@@ -46,48 +47,6 @@ function isHighlightedCodeBlock(pre: Element | undefined): boolean {
 const MARKDOWN_SANITIZE_SCHEMA = {
   ...defaultSchema,
   tagNames: [...(defaultSchema.tagNames ?? []), 'api-reference'],
-}
-
-const SHIKI_THEME = 'github-dark'
-
-interface CodeBlockProps {
-  language: string
-  code: string
-}
-
-function CodeBlock({ language, code }: CodeBlockProps) {
-  const [html, setHtml] = useState<string | null>(null)
-
-  useEffect(() => {
-    let cancelled = false
-
-    import('shiki').then(({ codeToHtml }) =>
-      codeToHtml(code, { lang: language, theme: SHIKI_THEME }).catch(() =>
-        codeToHtml(code, { lang: 'text', theme: SHIKI_THEME }),
-      ),
-    ).then((result) => {
-      if (!cancelled) setHtml(result)
-    })
-
-    return () => {
-      cancelled = true
-    }
-  }, [code, language])
-
-  if (!html) {
-    return (
-      <pre className="overflow-x-auto rounded-md bg-muted p-4 text-sm">
-        <code>{code}</code>
-      </pre>
-    )
-  }
-
-  return (
-    <div
-      className="[&_pre]:overflow-x-auto [&_pre]:rounded-md [&_pre]:p-4 [&_pre]:text-sm"
-      dangerouslySetInnerHTML={{ __html: html }}
-    />
-  )
 }
 
 interface MarkdownRendererProps {
