@@ -8,6 +8,7 @@ All notable changes to NestWiki are documented here, newest first, one `## <vers
 - Ce journal affiche aussi à nouveau les appels faits avec une clé API supprimée depuis.
 - Le filtre du journal MCP propose les clients OAuth en plus des clés API, et la recherche porte aussi sur leur nom.
 - La pagination du journal MCP fonctionne correctement : chaque page n'affiche plus que ses 50 lignes au lieu de tout l'historique.
+- Liste des clients OAuth : le contenu des lignes du tableau est centré verticalement.
 
 ## 1.2.3 — 2026-10-13
 
