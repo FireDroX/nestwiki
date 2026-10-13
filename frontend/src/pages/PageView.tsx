@@ -191,7 +191,7 @@ export function PageView() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4 print:hidden">
             <PageBreadcrumb title={page.title} parentId={page.parentId} />
             <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
-              {user && <FollowButton key={page.id} pageId={page.id} initialFollowed={page.isFollowed} />}
+              {user && <FollowButton key={`follow-${page.id}`} pageId={page.id} initialFollowed={page.isFollowed} />}
               <Button variant="outline" size="sm" asChild>
                 <Link to={`/history/${pathSegments.join('/')}`}>
                   <History /> {t('pageView.history')}
@@ -215,7 +215,7 @@ export function PageView() {
               <ExportMenu pageId={page.id} pathSegments={pathSegments} hasChildren={descendantCount > 0} />
               {canManageAccess && (
                 <PageAccessPanel
-                  key={page.id}
+                  key={`access-${page.id}`}
                   pageId={page.id}
                   availableActions={page.permissions}
                   defaultOpen={searchParams.get('access') === 'open'}
