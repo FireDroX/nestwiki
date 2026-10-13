@@ -564,6 +564,28 @@ describe('AccessRulesService', () => {
         ['page.read'],
       );
     });
+
+    it('records the rule page in the audit entry when deleting a rule', async () => {
+      pageAccessRulesRepository.findById.mockResolvedValue(
+        buildRule({ id: 'rule-1', pageId: 'page-1', userId: 'user-1' }),
+      );
+
+      await service.deleteAccessRule(
+        { type: 'user', id: 'user-1' },
+        'rule-1',
+        'admin-1',
+      );
+
+      expect(pageAccessRulesRepository.delete).toHaveBeenCalledWith('rule-1');
+      expect(adminAuditLogService.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'access_rule.delete',
+          targetType: 'user',
+          targetId: 'user-1',
+          metadata: { ruleId: 'rule-1', pageId: 'page-1' },
+        }),
+      );
+    });
   });
 
   describe('applyUpdate escalation checks', () => {

@@ -182,6 +182,7 @@ describe('CommentsService', () => {
         action: 'comment.deleted_by_moderator',
         targetType: 'Comment',
         targetId: 'comment-1',
+        metadata: { pageId: 'page-1', count: 1, ids: ['comment-1'] },
       }),
     );
   });
