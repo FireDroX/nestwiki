@@ -2,6 +2,11 @@
 
 All notable changes to NestWiki are documented here, newest first, one `## <version> — <date>` section per release. This file is the single source for the in-app "Notes de version" page, which groups releases by minor version (`1.0`, `0.31`…). Entries up to 0.31.10 were written in French, the project's original language.
 
+## 1.2.5 — 2026-10-17
+
+- Les images Docker du backend et du frontend tournent désormais sous Node.js 24 (LTS) au lieu de Node.js 22. Rien à faire de votre côté : il suffit de récupérer les nouvelles images.
+- Mise à jour de dépendances : NestJS 12.1.3, Zod 4.6.7, Vite 8.3.4, lucide-react 1.58.0.
+
 ## 1.2.4 — 2026-10-13
 
 - Administration : le journal d'activité MCP affiche enfin les appels faits par les IA connectées en OAuth. Ils étaient bien enregistrés, mais n'apparaissaient pas dans la liste. Le nom du client OAuth est affiché à la place du nom de la clé.
