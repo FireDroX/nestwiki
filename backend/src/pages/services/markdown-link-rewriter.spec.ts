@@ -174,4 +174,78 @@ describe('MarkdownLinkRewriter', () => {
       rewrite("It's ` alone\n\n[Install](/pages/docs/guide/install)"),
     ).toBe("It's ` alone\n\n[Install](guide/install.md)");
   });
+
+  describe('findPagePaths', () => {
+    function findPagePaths(content: string): string[] {
+      return MarkdownLinkRewriter.findPagePaths(content, INSTANCE_URL);
+    }
+
+    it('collects the page paths of inline links, reference definitions and HTML attributes', () => {
+      expect(
+        findPagePaths(
+          [
+            '[Install](/pages/docs/install)',
+            '<a href="/pages/docs/faq">FAQ</a>',
+            '[guide]: /pages/docs/guide',
+          ].join('\n'),
+        ),
+      ).toEqual(['/docs/install', '/docs/faq', '/docs/guide']);
+    });
+
+    it('treats absolute links to the instance like relative ones and ignores other hosts', () => {
+      expect(
+        findPagePaths(
+          `[a](${INSTANCE_URL}/pages/docs/a) [b](https://elsewhere.org/pages/docs/b)`,
+        ),
+      ).toEqual(['/docs/a']);
+    });
+
+    it('strips the anchor, the query string and trailing slashes', () => {
+      expect(
+        findPagePaths(
+          '[a](/pages/docs/a#setup) [b](/pages/docs/b?tab=1) [c](/pages/docs/c/)',
+        ),
+      ).toEqual(['/docs/a', '/docs/b', '/docs/c']);
+    });
+
+    it('lists each target once', () => {
+      expect(
+        findPagePaths('[a](/pages/docs/a) [again](/pages/docs/a#other)'),
+      ).toEqual(['/docs/a']);
+    });
+
+    it('ignores links inside code blocks and inline code', () => {
+      expect(
+        findPagePaths(
+          [
+            '`[a](/pages/docs/a)`',
+            '```',
+            '[b](/pages/docs/b)',
+            '```',
+            '[c](/pages/docs/c)',
+          ].join('\n'),
+        ),
+      ).toEqual(['/docs/c']);
+    });
+
+    it('decodes percent-encoded segments and lowercases the path like slugs', () => {
+      expect(findPagePaths('[a](/pages/Docs/caf%C3%A9)')).toEqual([
+        '/docs/café',
+      ]);
+    });
+
+    it('ignores links that do not point to a page', () => {
+      expect(
+        findPagePaths(
+          [
+            '[root](/pages/)',
+            '[trash](/pages/trash)',
+            '[media](/api/media/x/raw)',
+            '[anchor](#top)',
+            '[broken](/pages/docs/%E0%A4%A)',
+          ].join(' '),
+        ),
+      ).toEqual([]);
+    });
+  });
 });

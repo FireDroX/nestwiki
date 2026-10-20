@@ -36,7 +36,9 @@ export const RESERVED_CHILD_OF_ROOT_PAGE_SLUGS: readonly string[] = [
   'tags',
   'access-rules',
   'stats',
+  'backlinks',
 ];
+export const PAGE_LINK_TARGET_MAX_LENGTH = 700;
 export const TITLE_MAX_LENGTH = 255;
 export const CHANGE_SUMMARY_MAX_LENGTH = 255;
 export const UUID_REGEX =

@@ -26,6 +26,8 @@ describe('McpServerService', () => {
   let getPresignedUrl: ReturnType<typeof vi.fn>;
   let listTrash: ReturnType<typeof vi.fn>;
   let restore: ReturnType<typeof vi.fn>;
+  let getBacklinks: ReturnType<typeof vi.fn>;
+  let getBacklinksByPath: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
     uploadFile = vi.fn().mockResolvedValue({
@@ -38,6 +40,12 @@ describe('McpServerService', () => {
     });
     listTrash = vi.fn().mockResolvedValue([{ id: 'p1', title: 'Guide' }]);
     restore = vi.fn().mockResolvedValue(undefined);
+    getBacklinks = vi
+      .fn()
+      .mockResolvedValue([{ id: 'p2', title: 'FAQ', path: '/faq' }]);
+    getBacklinksByPath = vi
+      .fn()
+      .mockResolvedValue([{ id: 'p3', title: 'Index', path: '/index' }]);
     const moduleRef = await Test.createTestingModule({
       providers: [
         McpServerService,
@@ -60,8 +68,14 @@ describe('McpServerService', () => {
     registry = moduleRef.get(McpToolsRegistry);
     registry.register(
       ...buildPagesTools(
-        {} as PagesService,
-        {} as UsersService,
+        { getBacklinks, getBacklinksByPath } as unknown as PagesService,
+        {
+          findById: vi.fn().mockResolvedValue({
+            id: 'user-1',
+            email: 'owner@example.com',
+            role: 'member',
+          }),
+        } as unknown as UsersService,
         { listTrash, restore } as unknown as PageTrashService,
       ),
       ...buildMediaTools(
@@ -127,6 +141,31 @@ describe('McpServerService', () => {
       arguments: { pageId: 'p1' },
     });
     expect(restore).toHaveBeenCalledWith('p1', 'user-1');
+  });
+
+  it('lists the backlinks of a page by id or by path, with the key owner rights', async () => {
+    const client = await connect(['pages:read']);
+    const owner = { id: 'user-1', email: 'owner@example.com', role: 'member' };
+
+    const byId = await client.callTool({
+      name: 'wiki_get_backlinks',
+      arguments: { pageId: 'p1' },
+    });
+    const [byIdContent] = byId.content as { type: string; text: string }[];
+    expect(JSON.parse(byIdContent.text)).toEqual({
+      pages: [{ id: 'p2', title: 'FAQ', path: '/faq' }],
+    });
+    expect(getBacklinks).toHaveBeenCalledWith('p1', {}, owner);
+
+    const byPath = await client.callTool({
+      name: 'wiki_get_backlinks',
+      arguments: { slug: '/docs/guide/' },
+    });
+    const [byPathContent] = byPath.content as { type: string; text: string }[];
+    expect(JSON.parse(byPathContent.text)).toEqual({
+      pages: [{ id: 'p3', title: 'Index', path: '/index' }],
+    });
+    expect(getBacklinksByPath).toHaveBeenCalledWith(['docs', 'guide'], owner);
   });
 
   it('points the page writing tools to the formatting guide', async () => {

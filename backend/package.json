@@ -1,6 +1,6 @@
 {
   "name": "backend",
-  "version": "1.2.5",
+  "version": "1.3.0",
   "description": "NestWiki API: NestJS + TypeORM (MySQL) backend with object storage, real-time updates and an MCP server.",
   "keywords": [
     "wiki",
@@ -40,7 +40,8 @@
     "migration:revert": "tsx --import ./scripts/register-stream-json-case-loader.mjs ./node_modules/typeorm/cli.js migration:revert -d src/config/data-source.ts",
     "seed:admin": "tsx src/database/run-admin-seed.ts",
     "seed:content": "tsx src/database/content-seed.ts",
-    "backfill:avatars": "tsx --import ./scripts/register-stream-json-case-loader.mjs src/database/run-avatar-backfill.ts"
+    "backfill:avatars": "tsx --import ./scripts/register-stream-json-case-loader.mjs src/database/run-avatar-backfill.ts",
+    "backfill:links": "tsx src/database/run-page-links-backfill.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.32.1",

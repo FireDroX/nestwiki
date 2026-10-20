@@ -26,10 +26,12 @@ import {
 import { ChangeVisibilityDto } from '../dto/in/change-visibility.dto.js';
 import { CreatePageDto } from '../dto/in/create-page.dto.js';
 import { DeletePageQueryDto } from '../dto/in/delete-page-query.dto.js';
+import { GetBacklinksQueryDto } from '../dto/in/get-backlinks-query.dto.js';
 import { MovePageDto } from '../dto/in/move-page.dto.js';
 import { SetCommentsEnabledDto } from '../dto/in/set-comments-enabled.dto.js';
 import { UpdatePageDto } from '../dto/in/update-page.dto.js';
 import { FindByPathResultDto } from '../dto/out/find-by-path-result.dto.js';
+import { PageBacklinkDto } from '../dto/out/page-backlink-response.dto.js';
 import { PageMergePreviewResponseDto } from '../dto/out/page-merge-preview-response.dto.js';
 import { PageTreeNodeDto } from '../dto/out/page-tree-node.dto.js';
 import { PublicPageByPathResultDto } from '../dto/out/public-page-by-path-result.dto.js';
@@ -51,11 +53,13 @@ import type { PagesRepository } from '../persistence/page.repository.js';
 import { PermissionsService } from '../../permissions/services/permissions.service.js';
 import type { User } from '../../users/entities/user.entity.js';
 import { UsersService } from '../../users/services/users.service.js';
+import { PageLinksService } from './page-links.service.js';
 import {
   PageMergeService,
   type MergeSegment,
   type PageMergeResult,
 } from './page-merge.service.js';
+import { PagePathIndex } from './page-path-index.js';
 
 const MYSQL_DUPLICATE_ENTRY_CODE = 'ER_DUP_ENTRY';
 
@@ -71,6 +75,7 @@ export class PagesService {
     private readonly pageMergeService: PageMergeService,
     private readonly eventEmitter: EventEmitter2,
     private readonly userActivityLogService: UserActivityLogService,
+    private readonly pageLinksService: PageLinksService,
   ) {}
 
   private async resolveFullUser(
@@ -89,7 +94,7 @@ export class PagesService {
   async createPage(
     dto: CreatePageDto,
     createdById: string,
-  ): Promise<{ page: Page; version: PageVersion }> {
+  ): Promise<{ page: Page; version: PageVersion; brokenLinks: string[] }> {
     this.validateCreatePage(dto);
 
     const parentId = dto.parentId ?? null;
@@ -142,7 +147,7 @@ export class PagesService {
         metadata: { title: dto.title, slug: dto.slug },
       });
       this.eventEmitter.emit(PAGE_TREE_CHANGED_EVENT);
-      return result;
+      return { ...result, brokenLinks: await this.indexLinks(result) };
     } catch (error) {
       if (PagesService.isDuplicateSlugError(error)) {
         throw new SlugAlreadyExistsException();
@@ -185,7 +190,11 @@ export class PagesService {
       page.id,
     );
 
-    return { page, version, isFollowed, permissions };
+    const brokenLinks = await this.pageLinksService.findBrokenTargets(
+      version.content,
+    );
+
+    return { page, version, isFollowed, permissions, brokenLinks };
   }
 
   async getReadableWithCurrentVersion(
@@ -392,6 +401,11 @@ export class PagesService {
       changeSummary,
       authorId,
     });
+    await this.pageLinksService.syncPage(
+      result.page.id,
+      result.version.id,
+      result.version.content,
+    );
     this.eventEmitter.emit(
       PAGE_VERSION_CREATED_EVENT,
       new PageVersionCreatedEvent(
@@ -496,7 +510,80 @@ export class PagesService {
       targetId: id,
       metadata: { changeSummary },
     });
-    return { ...result, conflict: false };
+    return {
+      ...result,
+      conflict: false,
+      brokenLinks: await this.indexLinks(result),
+    };
+  }
+
+  async getBacklinks(
+    id: string,
+    query: GetBacklinksQueryDto,
+    currentUser?: AuthenticatedUser,
+  ): Promise<PageBacklinkDto[]> {
+    const page = await this.getByIdOrFail(id, currentUser);
+    return this.listBacklinks(page, query.subtree === 'true', currentUser);
+  }
+
+  async getBacklinksByPath(
+    segments: string[],
+    currentUser?: AuthenticatedUser,
+  ): Promise<PageBacklinkDto[]> {
+    const page = (await this.findChainByPath(segments))?.at(-1);
+    if (!page) {
+      throw new PageNotFoundException();
+    }
+    await this.assertAccessible(page, currentUser);
+    return this.listBacklinks(page, false, currentUser);
+  }
+
+  private async listBacklinks(
+    page: Page,
+    includeDescendants: boolean,
+    currentUser?: AuthenticatedUser,
+  ): Promise<PageBacklinkDto[]> {
+    const pages = await this.pagesRepository.findAll();
+    const index = new PagePathIndex(pages);
+    const pagePath = index.pathOf(page.id);
+    if (pagePath === undefined) {
+      return [];
+    }
+
+    const sourceIds = new Set(
+      await this.pageLinksService.findLinkingPageIds(
+        pagePath,
+        includeDescendants,
+      ),
+    );
+    const sources = pages.filter(
+      (source) =>
+        source.id !== page.id &&
+        sourceIds.has(source.id) &&
+        index.pathOf(source.id) !== undefined,
+    );
+    const readable = await this.filterAccessible(sources, currentUser);
+
+    return readable
+      .map((source) => ({
+        id: source.id,
+        title: source.title,
+        path: index.pathOf(source.id)!,
+        updatedAt: source.updatedAt,
+      }))
+      .sort((a, b) => a.title.localeCompare(b.title));
+  }
+
+  private async indexLinks(result: {
+    page: Page;
+    version: PageVersion;
+  }): Promise<string[]> {
+    await this.pageLinksService.syncPage(
+      result.page.id,
+      result.version.id,
+      result.version.content,
+    );
+    return this.pageLinksService.findBrokenTargets(result.version.content);
   }
 
   async mergePreview(

@@ -118,8 +118,20 @@ Chaque module vit directement sous `src/` (pas de dossier `modules/` intermédia
 | deletedAt        | datetime nullable     | soft delete : la page est dans la corbeille |
 | deletedById      | uuid nullable         | FK → User, auteur de la suppression    |
 | deletionRootId   | uuid nullable         | id de la page sur laquelle la suppression a été demandée, partagé par toute la cascade ; restaurer ou purger agit sur ce lot |
+| linksVersionId   | uuid nullable         | version dont les liens sont indexés dans `PageLink` ; différente de `currentVersionId` → réindexée au démarrage |
 
 L'unicité du slug par branche porte sur une colonne générée `active_slug` (`slug` si la page n'est pas supprimée, `NULL` sinon) : une page en corbeille ne réserve plus son slug. `trash` est un slug racine réservé.
+
+### PageLink
+
+Index des liens internes, recalculé à chaque nouvelle version d'une page (création, édition, fusion, restauration de version).
+
+| Champ        | Type          | Notes                                                                 |
+| ------------ | ------------- | --------------------------------------------------------------------- |
+| sourcePageId | uuid          | PK, FK → Page (`ON DELETE CASCADE`), page qui contient le lien        |
+| targetPath   | varchar(700)  | PK, chemin visé en minuscules, sans ancre, query ni slash final (ex. `/documentation/guide`) |
+
+Liens indexés : `/pages/<chemin>` et `<FRONTEND_URL>/pages/<chemin>`, en lien Markdown, définition de référence ou attribut `href`/`src`, hors code. Le chemin n'est résolu qu'à la lecture, contre l'arborescence des pages actives : un lien est cassé quand aucune page active n'a ce chemin (page déplacée, en corbeille, jamais créée), et redevient valide dès qu'une page reprend ce chemin. Les liens d'une page en corbeille ne comptent pas. Au démarrage, les pages dont `linksVersionId` ≠ `currentVersionId` sont réindexées (rattrapage, contenu écrit par `seed:content`) ; `pnpm run backfill:links` fait la même chose hors de Nest.
 
 ### PageVersion
 
@@ -283,10 +295,12 @@ Toutes les routes `/admin/users` sont accessibles aux administrateurs ou à quic
 
 | Méthode | Route              | Auth             | Description               |
 | ------- | ------------------ | ---------------- | ------------------------- |
-| POST    | /pages             | `page.create_root` (racine) ou `page.create_child` (sur le parent) | Créer une page |
+| POST    | /pages             | `page.create_root` (racine) ou `page.create_child` (sur le parent) | Créer une page ; la réponse contient `brokenLinks` (chemins des liens internes cassés du contenu), comme `PATCH /pages/:id` et `GET /pages/*path` |
 | GET     | /pages/tree        | selon visibilité | Arborescence complète     |
 | GET     | /pages/*path       | selon visibilité | Lire une page par son chemin complet (slugs des ancêtres, comme dans l'URL) |
 | GET     | /pages/:id/stats   | selon visibilité | Stats d'une page (vues, dernière modification, versions, commentaires, contributeurs) — n'incrémente pas les vues |
+| GET     | /pages/:id/backlinks | selon visibilité | Pages lisibles par l'appelant qui contiennent un lien vers la page (`id`, `title`, `path`, `updatedAt`, triées par titre, sans la page elle-même) ; `?subtree=true` inclut les liens vers ses sous-pages |
+| GET     | /admin/links/broken | admin | Liens internes cassés de tout le wiki, paginés (`page`, `limit`) : `{ items: [{ sourcePage: { id, title, path }, targetPath }], total }`, triés par chemin de la page source |
 | PATCH   | /pages/:id         | `page.edit` sur la page | Éditer (nouvelle version) ; avec un `baseVersionId` périmé, fusion à 3 voies automatique, ou en cas de conflit réponse `conflict: true` avec `segments` (blocs `ok`/`conflict`), `currentVersionAuthorName`, `currentVersionCreatedAt`, `currentVersionContent` (contenu de la version courante, rechargé si l'utilisateur abandonne ses modifications) et `mergedContent` (marqueurs, conservé pour l'API/MCP), sans rien enregistrer |
 | POST    | /pages/:id/merge-preview | `page.edit` sur la page | Prévisualiser une fusion à 3 voies (base/mine/theirs) sans sauvegarder ; en cas de conflit, renvoie aussi `segments`, `currentVersionAuthorName`, `currentVersionCreatedAt` et `currentVersionContent` |
 | PATCH   | /pages/:id/move    | `page.move` sur la page | Déplacer dans l'arbre     |
