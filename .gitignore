@@ -33,3 +33,6 @@ graphify-out/
 
 # Claude
 .claude/
+
+# Vidéos de présentation
+videos/
