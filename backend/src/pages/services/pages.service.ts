@@ -130,8 +130,9 @@ export class PagesService {
       throw new SlugAlreadyExistsException();
     }
 
+    let result: { page: Page; version: PageVersion };
     try {
-      const result = await this.pagesRepository.createWithFirstVersion({
+      result = await this.pagesRepository.createWithFirstVersion({
         slug: dto.slug,
         title: dto.title,
         content: dto.content,
@@ -139,21 +140,21 @@ export class PagesService {
         visibility: dto.visibility,
         createdById,
       });
-      void this.userActivityLogService.record({
-        userId: createdById,
-        action: 'page.created',
-        targetType: 'page',
-        targetId: result.page.id,
-        metadata: { title: dto.title, slug: dto.slug },
-      });
-      this.eventEmitter.emit(PAGE_TREE_CHANGED_EVENT);
-      return { ...result, brokenLinks: await this.indexLinks(result) };
     } catch (error) {
       if (PagesService.isDuplicateSlugError(error)) {
         throw new SlugAlreadyExistsException();
       }
       throw error;
     }
+    void this.userActivityLogService.record({
+      userId: createdById,
+      action: 'page.created',
+      targetType: 'page',
+      targetId: result.page.id,
+      metadata: { title: dto.title, slug: dto.slug },
+    });
+    this.eventEmitter.emit(PAGE_TREE_CHANGED_EVENT);
+    return { ...result, brokenLinks: await this.indexLinks(result, user) };
   }
 
   async getTree(currentUser?: AuthenticatedUser): Promise<PageTreeNodeDto[]> {
@@ -185,13 +186,15 @@ export class PagesService {
       ? await this.pageFollowRepository.isFollowing(currentUser.id, page.id)
       : false;
 
+    const reader = await this.resolveFullUser(currentUser);
     const permissions = await this.permissionsService.getEffectivePageActions(
-      await this.resolveFullUser(currentUser),
+      reader,
       page.id,
     );
 
     const brokenLinks = await this.pageLinksService.findBrokenTargets(
       version.content,
+      reader,
     );
 
     return { page, version, isFollowed, permissions, brokenLinks };
@@ -513,7 +516,10 @@ export class PagesService {
     return {
       ...result,
       conflict: false,
-      brokenLinks: await this.indexLinks(result),
+      brokenLinks: await this.indexLinks(
+        result,
+        await this.usersService.findById(authorId),
+      ),
     };
   }
 
@@ -574,16 +580,18 @@ export class PagesService {
       .sort((a, b) => a.title.localeCompare(b.title));
   }
 
-  private async indexLinks(result: {
-    page: Page;
-    version: PageVersion;
-  }): Promise<string[]> {
+  private async indexLinks(
+    result: { page: Page; version: PageVersion },
+    author: User,
+  ): Promise<string[]> {
     await this.pageLinksService.syncPage(
       result.page.id,
       result.version.id,
       result.version.content,
     );
-    return this.pageLinksService.findBrokenTargets(result.version.content);
+    return this.pageLinksService
+      .findBrokenTargets(result.version.content, author)
+      .catch(() => []);
   }
 
   async mergePreview(

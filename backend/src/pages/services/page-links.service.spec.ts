@@ -1,6 +1,8 @@
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
+import { PermissionsService } from '../../permissions/services/permissions.service.js';
+import type { User } from '../../users/entities/user.entity.js';
 import { Page } from '../entities/page.entity.js';
 import type { PageLinkRepository } from '../persistence/page-link.repository.js';
 import type { PagesRepository } from '../persistence/page.repository.js';
@@ -20,6 +22,7 @@ function page(
 const docs = page('docs', 'docs', null, 'Documentation');
 const guide = page('guide', 'guide', 'docs', 'Guide');
 const faq = page('faq', 'faq', null, 'FAQ');
+const reader = { id: 'reader', role: 'member' } as User;
 
 describe('PageLinksService', () => {
   let service: PageLinksService;
@@ -27,6 +30,9 @@ describe('PageLinksService', () => {
     [K in keyof PageLinkRepository]: Mock<PageLinkRepository[K]>;
   };
   let pagesRepository: { findAll: Mock<PagesRepository['findAll']> };
+  let permissionsService: {
+    filterReadable: Mock<PermissionsService['filterReadable']>;
+  };
 
   beforeEach(async () => {
     pageLinksRepository = {
@@ -37,12 +43,20 @@ describe('PageLinksService', () => {
     pagesRepository = {
       findAll: vi.fn().mockResolvedValue([docs, guide, faq]),
     };
+    permissionsService = {
+      filterReadable: vi
+        .fn()
+        .mockImplementation((_user: User | undefined, pages: Page[]) =>
+          Promise.resolve(pages),
+        ),
+    };
 
     const moduleRef = await Test.createTestingModule({
       providers: [
         PageLinksService,
         { provide: 'PageLinksRepository', useValue: pageLinksRepository },
         { provide: 'PagesRepository', useValue: pagesRepository },
+        { provide: PermissionsService, useValue: permissionsService },
         {
           provide: ConfigService,
           useValue: { get: vi.fn().mockReturnValue(`${INSTANCE_URL}/`) },
@@ -82,6 +96,7 @@ describe('PageLinksService', () => {
       await expect(
         service.findBrokenTargets(
           '[ok](/pages/docs/guide) [ko](/pages/docs/missing) [case](/pages/FAQ)',
+          reader,
         ),
       ).resolves.toEqual(['/docs/missing']);
     });
@@ -92,22 +107,41 @@ describe('PageLinksService', () => {
       const newGuide = page('guide-2', 'guide', 'docs', 'Guide v2');
 
       pagesRepository.findAll.mockResolvedValueOnce([docs, movedGuide, faq]);
-      await expect(service.findBrokenTargets(content)).resolves.toEqual([
-        '/docs/guide',
-      ]);
+      await expect(service.findBrokenTargets(content, reader)).resolves.toEqual(
+        ['/docs/guide'],
+      );
 
       pagesRepository.findAll.mockResolvedValueOnce([docs, faq]);
-      await expect(service.findBrokenTargets(content)).resolves.toEqual([
-        '/docs/guide',
-      ]);
+      await expect(service.findBrokenTargets(content, reader)).resolves.toEqual(
+        ['/docs/guide'],
+      );
 
       pagesRepository.findAll.mockResolvedValueOnce([docs, newGuide, faq]);
-      await expect(service.findBrokenTargets(content)).resolves.toEqual([]);
+      await expect(service.findBrokenTargets(content, reader)).resolves.toEqual(
+        [],
+      );
+    });
+
+    it('treats a link to a page the reader cannot read as broken', async () => {
+      permissionsService.filterReadable.mockImplementation((_user, pages) =>
+        Promise.resolve(pages.filter((p) => p.id !== 'guide')),
+      );
+
+      await expect(
+        service.findBrokenTargets(
+          '[private](/pages/docs/guide) [public](/pages/faq)',
+          undefined,
+        ),
+      ).resolves.toEqual(['/docs/guide']);
+      expect(permissionsService.filterReadable).toHaveBeenCalledWith(
+        undefined,
+        [guide, faq],
+      );
     });
 
     it('does not load the pages when the content has no internal link', async () => {
       await expect(
-        service.findBrokenTargets('[out](https://example.org)'),
+        service.findBrokenTargets('[out](https://example.org)', reader),
       ).resolves.toEqual([]);
       expect(pagesRepository.findAll).not.toHaveBeenCalled();
     });

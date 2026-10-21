@@ -1816,8 +1816,26 @@ describe('PagesService', () => {
       );
       expect(pageLinksService.findBrokenTargets).toHaveBeenCalledWith(
         '[x](/pages/gone)',
+        expect.objectContaining({ id: 'user-1' }),
       );
       expect(result.brokenLinks).toEqual(['/gone']);
+    });
+
+    it('still returns the created page when the broken links cannot be checked', async () => {
+      pagesRepository.findBySlugAndParent.mockResolvedValue(null);
+      pagesRepository.createWithFirstVersion.mockResolvedValue({
+        page: buildPage({ id: 'new-1' }),
+        version: buildVersion({ id: 'v-new' }),
+      });
+      pageLinksService.findBrokenTargets.mockRejectedValue(new Error('down'));
+
+      const result = await service.createPage(
+        { slug: 'new', title: 'New', content: 'x', visibility: 'public' },
+        'user-1',
+      );
+
+      expect(result.page.id).toBe('new-1');
+      expect(result.brokenLinks).toEqual([]);
     });
 
     it('indexes the links of a saved version and reports the broken ones', async () => {
@@ -1841,7 +1859,31 @@ describe('PagesService', () => {
         'version-2',
         'saved',
       );
+      expect(pageLinksService.findBrokenTargets).toHaveBeenCalledWith(
+        'saved',
+        expect.objectContaining({ id: 'user-1' }),
+      );
       expect(result.brokenLinks).toEqual(['/old']);
+    });
+
+    it('still reports a saved version when the broken links cannot be checked', async () => {
+      const page = buildPage();
+      pagesRepository.findById.mockResolvedValue(page);
+      pagesRepository.findVersionById.mockResolvedValue(buildVersion());
+      pagesRepository.updateWithNewVersion.mockResolvedValue({
+        page: { ...page, currentVersionId: 'version-2' },
+        version: buildVersion({ id: 'version-2', content: 'saved' }),
+      });
+      pageLinksService.findBrokenTargets.mockRejectedValue(new Error('down'));
+
+      const result = await service.updatePage(
+        'page-1',
+        { content: 'saved' },
+        'user-1',
+      );
+
+      expect(result.version.id).toBe('version-2');
+      expect(result.brokenLinks).toEqual([]);
     });
 
     it('leaves the index untouched when a save ends in a conflict', async () => {
@@ -1889,7 +1931,27 @@ describe('PagesService', () => {
 
       const result = await service.findByPath(['docs'], member);
 
+      expect(pageLinksService.findBrokenTargets).toHaveBeenCalledWith(
+        '[x](/pages/gone)',
+        expect.objectContaining({ id: member.id }),
+      );
       expect(result.brokenLinks).toEqual(['/gone']);
+    });
+
+    it('checks the broken links of a page read anonymously as an anonymous reader', async () => {
+      pagesRepository.findBySlugAndParent.mockResolvedValue(
+        buildPage({ slug: 'docs' }),
+      );
+      pagesRepository.findVersionById.mockResolvedValue(
+        buildVersion({ content: '[x](/pages/hr)' }),
+      );
+
+      await service.findByPath(['docs']);
+
+      expect(pageLinksService.findBrokenTargets).toHaveBeenCalledWith(
+        '[x](/pages/hr)',
+        undefined,
+      );
     });
   });
 

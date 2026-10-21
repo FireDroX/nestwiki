@@ -295,7 +295,7 @@ Toutes les routes `/admin/users` sont accessibles aux administrateurs ou à quic
 
 | Méthode | Route              | Auth             | Description               |
 | ------- | ------------------ | ---------------- | ------------------------- |
-| POST    | /pages             | `page.create_root` (racine) ou `page.create_child` (sur le parent) | Créer une page ; la réponse contient `brokenLinks` (chemins des liens internes cassés du contenu), comme `PATCH /pages/:id` et `GET /pages/*path` |
+| POST    | /pages             | `page.create_root` (racine) ou `page.create_child` (sur le parent) | Créer une page ; la réponse contient `brokenLinks` (chemins des liens internes du contenu vers une page inexistante, en corbeille ou illisible pour l'appelant), comme `PATCH /pages/:id` et `GET /pages/*path` |
 | GET     | /pages/tree        | selon visibilité | Arborescence complète     |
 | GET     | /pages/*path       | selon visibilité | Lire une page par son chemin complet (slugs des ancêtres, comme dans l'URL) |
 | GET     | /pages/:id/stats   | selon visibilité | Stats d'une page (vues, dernière modification, versions, commentaires, contributeurs) — n'incrémente pas les vues |

@@ -5,6 +5,8 @@ import {
   DEFAULT_PAGE,
   MAX_LIMIT,
 } from '../../common/variables.global.js';
+import { PermissionsService } from '../../permissions/services/permissions.service.js';
+import type { User } from '../../users/entities/user.entity.js';
 import { ListBrokenPageLinksQueryDto } from '../dto/in/list-broken-page-links-query.dto.js';
 import {
   BrokenPageLinkDto,
@@ -25,6 +27,7 @@ export class PageLinksService {
     private readonly pageLinksRepository: PageLinkRepository,
     @Inject('PagesRepository')
     private readonly pagesRepository: PagesRepository,
+    private readonly permissionsService: PermissionsService,
     configService: ConfigService,
   ) {
     this.instanceUrl = (
@@ -50,7 +53,10 @@ export class PageLinksService {
     }
   }
 
-  async findBrokenTargets(content: string): Promise<string[]> {
+  async findBrokenTargets(
+    content: string,
+    reader: User | undefined,
+  ): Promise<string[]> {
     const targets = MarkdownLinkRewriter.findPagePaths(
       content,
       this.instanceUrl,
@@ -58,8 +64,23 @@ export class PageLinksService {
     if (targets.length === 0) {
       return [];
     }
-    const index = new PagePathIndex(await this.pagesRepository.findAll());
-    return targets.filter((target) => index.resolve(target) === undefined);
+    const pages = await this.pagesRepository.findAll();
+    const index = new PagePathIndex(pages);
+    const targetIds = new Set(
+      targets.map((target) => index.resolve(target)).filter(Boolean),
+    );
+    const readableIds = new Set(
+      (
+        await this.permissionsService.filterReadable(
+          reader,
+          pages.filter((page) => targetIds.has(page.id)),
+        )
+      ).map((page) => page.id),
+    );
+    return targets.filter((target) => {
+      const targetId = index.resolve(target);
+      return targetId === undefined || !readableIds.has(targetId);
+    });
   }
 
   findLinkingPageIds(
