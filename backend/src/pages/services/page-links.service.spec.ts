@@ -1,9 +1,15 @@
 import { ConfigService } from '@nestjs/config';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test } from '@nestjs/testing';
 import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 import { PermissionsService } from '../../permissions/services/permissions.service.js';
 import type { User } from '../../users/entities/user.entity.js';
+import { PageVersion } from '../entities/page-version.entity.js';
 import { Page } from '../entities/page.entity.js';
+import {
+  PAGE_VERSION_CREATED_EVENT,
+  PageVersionCreatedEvent,
+} from '../events/page-version-created.event.js';
 import type { PageLinkRepository } from '../persistence/page-link.repository.js';
 import type { PagesRepository } from '../persistence/page.repository.js';
 import { PageLinksService } from './page-links.service.js';
@@ -29,10 +35,19 @@ describe('PageLinksService', () => {
   let pageLinksRepository: {
     [K in keyof PageLinkRepository]: Mock<PageLinkRepository[K]>;
   };
-  let pagesRepository: { findAll: Mock<PagesRepository['findAll']> };
+  let pagesRepository: {
+    findAll: Mock<PagesRepository['findAll']>;
+    findById: Mock<PagesRepository['findById']>;
+    findVersionById: Mock<PagesRepository['findVersionById']>;
+    updateWithNewVersion: Mock<PagesRepository['updateWithNewVersion']>;
+  };
   let permissionsService: {
     filterReadable: Mock<PermissionsService['filterReadable']>;
+    getEffectivePageActionsBulk: Mock<
+      PermissionsService['getEffectivePageActionsBulk']
+    >;
   };
+  let eventEmitter: { emit: Mock };
 
   beforeEach(async () => {
     pageLinksRepository = {
@@ -42,6 +57,9 @@ describe('PageLinksService', () => {
     };
     pagesRepository = {
       findAll: vi.fn().mockResolvedValue([docs, guide, faq]),
+      findById: vi.fn(),
+      findVersionById: vi.fn(),
+      updateWithNewVersion: vi.fn(),
     };
     permissionsService = {
       filterReadable: vi
@@ -49,7 +67,13 @@ describe('PageLinksService', () => {
         .mockImplementation((_user: User | undefined, pages: Page[]) =>
           Promise.resolve(pages),
         ),
+      getEffectivePageActionsBulk: vi
+        .fn()
+        .mockImplementation((_user: User | undefined, pageIds: string[]) =>
+          Promise.resolve(new Map(pageIds.map((id) => [id, ['page.edit']]))),
+        ),
     };
+    eventEmitter = { emit: vi.fn() };
 
     const moduleRef = await Test.createTestingModule({
       providers: [
@@ -57,6 +81,7 @@ describe('PageLinksService', () => {
         { provide: 'PageLinksRepository', useValue: pageLinksRepository },
         { provide: 'PagesRepository', useValue: pagesRepository },
         { provide: PermissionsService, useValue: permissionsService },
+        { provide: EventEmitter2, useValue: eventEmitter },
         {
           provide: ConfigService,
           useValue: { get: vi.fn().mockReturnValue(`${INSTANCE_URL}/`) },
@@ -204,6 +229,144 @@ describe('PageLinksService', () => {
 
       expect(total).toBe(4);
       expect(items.map((item) => item.targetPath)).toEqual(['/nowhere']);
+    });
+  });
+
+  describe('rewriteAfterMove', () => {
+    const author = { id: 'mover', role: 'member' } as User;
+    const move = { from: '/docs/guide', to: '/archive/guide' };
+    const summary = 'Liens mis à jour après le déplacement de « Guide »';
+    const contents: Record<string, string> = {
+      faq: '[Guide](/pages/docs/guide) [Install](/pages/docs/guide/install#linux)',
+      guide: '[Install](/pages/docs/guide/install) [FAQ](/pages/faq)',
+      docs: '`[code](/pages/docs/guide)`',
+    };
+
+    beforeEach(() => {
+      pageLinksRepository.findSourcePageIds.mockResolvedValue([
+        'faq',
+        'guide',
+        'docs',
+      ]);
+      pagesRepository.findById.mockImplementation((id: string) => {
+        const source = [docs, guide, faq].find((p) => p.id === id);
+        return Promise.resolve(
+          source ? { ...source, currentVersionId: `${id}-v1` } : null,
+        );
+      });
+      pagesRepository.findVersionById.mockImplementation((id: string) => {
+        const pageId = id.replace(/-v1$/, '');
+        return Promise.resolve({
+          id,
+          pageId,
+          content: contents[pageId],
+        } as PageVersion);
+      });
+      pagesRepository.updateWithNewVersion.mockImplementation((input) =>
+        Promise.resolve({
+          page: { ...input.page, updatedAt: new Date('2026-10-21T10:00:00Z') },
+          version: {
+            id: `${input.page.id}-v2`,
+            pageId: input.page.id,
+            content: input.content,
+          } as PageVersion,
+        }),
+      );
+    });
+
+    it('gives every linking page a single new version with the moved paths, including pages of the moved subtree', async () => {
+      const result = await service.rewriteAfterMove(move, 'Guide', author);
+
+      expect(pageLinksRepository.findSourcePageIds).toHaveBeenCalledWith(
+        '/docs/guide',
+        true,
+      );
+      const [faqInput, guideInput, ...others] =
+        pagesRepository.updateWithNewVersion.mock.calls.map(([input]) => input);
+      expect(others).toEqual([]);
+      expect(faqInput.page.id).toBe('faq');
+      expect(faqInput).toMatchObject({
+        title: 'FAQ',
+        content:
+          '[Guide](/pages/archive/guide) [Install](/pages/archive/guide/install#linux)',
+        changeSummary: summary,
+        authorId: 'mover',
+      });
+      expect(guideInput.page.id).toBe('guide');
+      expect(guideInput.content).toBe(
+        '[Install](/pages/archive/guide/install) [FAQ](/pages/faq)',
+      );
+      expect(result).toEqual({
+        linksUpdated: 3,
+        pagesUpdated: 2,
+        pagesSkipped: 0,
+      });
+    });
+
+    it('reindexes each rewritten page and announces its new version', async () => {
+      await service.rewriteAfterMove(move, 'Guide', author);
+
+      expect(pageLinksRepository.replaceForPage).toHaveBeenCalledWith(
+        'faq',
+        'faq-v2',
+        ['/archive/guide', '/archive/guide/install'],
+      );
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        PAGE_VERSION_CREATED_EVENT,
+        new PageVersionCreatedEvent(
+          'faq',
+          'faq-v2',
+          'mover',
+          'FAQ',
+          '[Guide](/pages/archive/guide) [Install](/pages/archive/guide/install#linux)',
+          summary,
+          new Date('2026-10-21T10:00:00Z'),
+        ),
+      );
+    });
+
+    it('leaves the pages the author cannot edit untouched and counts them', async () => {
+      permissionsService.getEffectivePageActionsBulk.mockResolvedValue(
+        new Map([
+          ['faq', ['page.read']],
+          ['guide', ['page.read', 'page.edit']],
+          ['docs', []],
+        ]),
+      );
+
+      const result = await service.rewriteAfterMove(move, 'Guide', author);
+
+      expect(
+        permissionsService.getEffectivePageActionsBulk,
+      ).toHaveBeenCalledWith(author, ['faq', 'guide', 'docs']);
+      expect(
+        pagesRepository.updateWithNewVersion.mock.calls.map(
+          ([input]) => input.page.id,
+        ),
+      ).toEqual(['guide']);
+      expect(result).toEqual({
+        linksUpdated: 1,
+        pagesUpdated: 1,
+        pagesSkipped: 1,
+      });
+    });
+
+    it('keeps the change summary within its maximum length', async () => {
+      await service.rewriteAfterMove(move, 'x'.repeat(255), author);
+
+      const [[input]] = pagesRepository.updateWithNewVersion.mock.calls;
+      expect(input.changeSummary).toHaveLength(255);
+    });
+
+    it('does nothing when the page keeps its path', async () => {
+      await expect(
+        service.rewriteAfterMove(
+          { from: '/docs/guide', to: '/docs/guide' },
+          'Guide',
+          author,
+        ),
+      ).resolves.toEqual({ linksUpdated: 0, pagesUpdated: 0, pagesSkipped: 0 });
+      expect(pageLinksRepository.findSourcePageIds).not.toHaveBeenCalled();
     });
   });
 });

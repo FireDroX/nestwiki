@@ -43,7 +43,7 @@ describe('PageBacklinks', () => {
     expect(screen.getByRole('link', { name: 'Guide' })).toHaveAttribute('href', '/pages/docs/guide')
     expect(screen.getByRole('link', { name: 'FAQ' })).toHaveAttribute('href', '/pages/faq')
     expect(screen.getByText('Documentation')).toBeInTheDocument()
-    expect(getBacklinksMock).toHaveBeenCalledWith('target')
+    expect(getBacklinksMock).toHaveBeenCalledWith('target', { subtree: false })
   })
 
   it('stays hidden when no page links here', async () => {

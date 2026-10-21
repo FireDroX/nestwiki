@@ -1,12 +1,23 @@
 import { useEffect, useState } from 'react'
 import { getBacklinks, type PageBacklink } from '#api/pages'
 
-export function usePageBacklinks(pageId: string): PageBacklink[] {
+interface UsePageBacklinksOptions {
+  subtree?: boolean
+  refreshKey?: number
+}
+
+export function usePageBacklinks(
+  pageId: string | undefined,
+  { subtree = false, refreshKey = 0 }: UsePageBacklinksOptions = {},
+): PageBacklink[] {
   const [backlinks, setBacklinks] = useState<PageBacklink[]>([])
 
   useEffect(() => {
+    if (!pageId) {
+      return
+    }
     let cancelled = false
-    getBacklinks(pageId)
+    getBacklinks(pageId, { subtree })
       .then((result) => {
         if (!cancelled) setBacklinks(result)
       })
@@ -14,7 +25,7 @@ export function usePageBacklinks(pageId: string): PageBacklink[] {
     return () => {
       cancelled = true
     }
-  }, [pageId])
+  }, [pageId, subtree, refreshKey])
 
   return backlinks
 }

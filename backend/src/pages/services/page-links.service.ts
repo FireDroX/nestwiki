@@ -1,6 +1,8 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import {
+  CHANGE_SUMMARY_MAX_LENGTH,
   DEFAULT_LIMIT,
   DEFAULT_PAGE,
   MAX_LIMIT,
@@ -12,9 +14,17 @@ import {
   BrokenPageLinkDto,
   BrokenPageLinkListDto,
 } from '../dto/out/broken-page-link-response.dto.js';
+import { MovedPageLinksDto } from '../dto/out/moved-page-links.dto.js';
+import {
+  PAGE_VERSION_CREATED_EVENT,
+  PageVersionCreatedEvent,
+} from '../events/page-version-created.event.js';
 import type { PageLinkRepository } from '../persistence/page-link.repository.js';
 import type { PagesRepository } from '../persistence/page.repository.js';
-import { MarkdownLinkRewriter } from './markdown-link-rewriter.js';
+import {
+  MarkdownLinkRewriter,
+  type PagePathMove,
+} from './markdown-link-rewriter.js';
 import { PagePathIndex } from './page-path-index.js';
 
 @Injectable()
@@ -28,6 +38,7 @@ export class PageLinksService {
     @Inject('PagesRepository')
     private readonly pagesRepository: PagesRepository,
     private readonly permissionsService: PermissionsService,
+    private readonly eventEmitter: EventEmitter2,
     configService: ConfigService,
   ) {
     this.instanceUrl = (
@@ -91,6 +102,86 @@ export class PageLinksService {
       pagePath,
       includeDescendants,
     );
+  }
+
+  async rewriteAfterMove(
+    move: PagePathMove,
+    movedPageTitle: string,
+    author: User,
+  ): Promise<MovedPageLinksDto> {
+    const result: MovedPageLinksDto = {
+      linksUpdated: 0,
+      pagesUpdated: 0,
+      pagesSkipped: 0,
+    };
+    if (move.from === move.to) {
+      return result;
+    }
+
+    const sourceIds = await this.pageLinksRepository.findSourcePageIds(
+      move.from,
+      true,
+    );
+    const actionsByPageId =
+      await this.permissionsService.getEffectivePageActionsBulk(
+        author,
+        sourceIds,
+      );
+    const changeSummary =
+      `Liens mis à jour après le déplacement de « ${movedPageTitle} »`.slice(
+        0,
+        CHANGE_SUMMARY_MAX_LENGTH,
+      );
+
+    for (const sourceId of sourceIds) {
+      const page = await this.pagesRepository.findById(sourceId);
+      const version = page?.currentVersionId
+        ? await this.pagesRepository.findVersionById(page.currentVersionId)
+        : null;
+      if (!page || !version) {
+        continue;
+      }
+      const rewritten = MarkdownLinkRewriter.movePagePaths(
+        version.content,
+        move,
+        this.instanceUrl,
+      );
+      if (rewritten.linksUpdated === 0) {
+        continue;
+      }
+      if (!(actionsByPageId.get(sourceId) ?? []).includes('page.edit')) {
+        result.pagesSkipped += 1;
+        continue;
+      }
+
+      const updated = await this.pagesRepository.updateWithNewVersion({
+        page,
+        title: page.title,
+        content: rewritten.content,
+        changeSummary,
+        authorId: author.id,
+      });
+      await this.syncPage(
+        updated.page.id,
+        updated.version.id,
+        updated.version.content,
+      );
+      this.eventEmitter.emit(
+        PAGE_VERSION_CREATED_EVENT,
+        new PageVersionCreatedEvent(
+          updated.page.id,
+          updated.version.id,
+          author.id,
+          updated.page.title,
+          updated.version.content,
+          changeSummary,
+          updated.page.updatedAt,
+        ),
+      );
+      result.linksUpdated += rewritten.linksUpdated;
+      result.pagesUpdated += 1;
+    }
+    return result;
   }
 
   async listBroken(

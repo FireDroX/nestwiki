@@ -1093,7 +1093,22 @@ La même liste est disponible par l'API (\`GET /api/pages/:id/backlinks\`, avec 
 
 ## Quand un lien est cassé
 
-Un lien est cassé quand aucune page ne se trouve à son chemin : la page n'a jamais été créée, elle a été déplacée ailleurs dans l'arborescence ou elle est dans la corbeille. Il redevient valide de lui-même dès qu'une page reprend ce chemin, par exemple quand la page est restaurée depuis la corbeille.
+Un lien est cassé quand aucune page ne se trouve à son chemin : la page n'a jamais été créée, elle a été déplacée ailleurs dans l'arborescence sans mettre à jour ses liens, ou elle est dans la corbeille. Il redevient valide de lui-même dès qu'une page reprend ce chemin, par exemple quand la page est restaurée depuis la corbeille.
+
+## Déplacer une page sans casser ses liens
+
+Une page est adressée par son chemin complet : la déplacer change son adresse et celle de toutes ses sous-pages. Dans l'éditeur, sous « Page parente », NestWiki indique combien de pages contiennent des liens vers la page ou ses sous-pages, avec la case « Mettre à jour ces liens au déplacement », cochée par défaut.
+
+Case cochée, chaque page concernée reçoit, juste après le déplacement, une nouvelle version avec les chemins corrigés :
+
+- l'ancre et les paramètres sont conservés, et une adresse complète de l'instance reste une adresse complète ;
+- le code (blocs et code en ligne) n'est jamais modifié ;
+- les liens entre pages du sous-arbre déplacé sont corrigés aussi ;
+- une page qui contient plusieurs liens concernés ne reçoit qu'une seule nouvelle version, à votre nom, avec le résumé « Liens mis à jour après le déplacement de « titre » ». L'historique garde l'ancienne version, comme pour toute modification.
+
+Seules les pages que vous avez le droit de modifier sont corrigées. Les autres gardent leurs liens, désormais cassés : la notification qui suit le déplacement les compte, et elles apparaissent dans l'onglet « Liens cassés ». Aucune redirection n'est créée depuis l'ancien chemin.
+
+Par l'API, \`PATCH /api/pages/:id/move\` accepte \`updateLinks: true\` (désactivé par défaut) et renvoie \`linksUpdated\`, \`pagesUpdated\` et \`pagesSkipped\`.
 
 Un lien vers une page privée que vous n'avez pas le droit de lire est signalé de la même façon : NestWiki ne révèle pas qu'elle existe.
 

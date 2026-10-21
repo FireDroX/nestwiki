@@ -31,6 +31,7 @@ import { MovePageDto } from '../dto/in/move-page.dto.js';
 import { SetCommentsEnabledDto } from '../dto/in/set-comments-enabled.dto.js';
 import { UpdatePageDto } from '../dto/in/update-page.dto.js';
 import { FindByPathResultDto } from '../dto/out/find-by-path-result.dto.js';
+import { MovedPageLinksDto } from '../dto/out/moved-page-links.dto.js';
 import { PageBacklinkDto } from '../dto/out/page-backlink-response.dto.js';
 import { PageMergePreviewResponseDto } from '../dto/out/page-merge-preview-response.dto.js';
 import { PageTreeNodeDto } from '../dto/out/page-tree-node.dto.js';
@@ -661,7 +662,7 @@ export class PagesService {
     id: string,
     dto: MovePageDto,
     userId: string,
-  ): Promise<{ page: Page; version: PageVersion }> {
+  ): Promise<{ page: Page; version: PageVersion; links: MovedPageLinksDto }> {
     this.validateMovePage(dto);
 
     const page = await this.pagesRepository.findById(id);
@@ -725,23 +726,49 @@ export class PagesService {
       throw new SlugAlreadyExistsException();
     }
 
+    const pathMove = dto.updateLinks
+      ? await this.describePathMove(page, newParentId)
+      : null;
+
+    let moved: Page;
     try {
-      const moved = await this.pagesRepository.updateParent(page, newParentId);
-      void this.userActivityLogService.record({
-        userId,
-        action: 'page.moved',
-        targetType: 'page',
-        targetId: id,
-        metadata: { newParentId },
-      });
-      this.eventEmitter.emit(PAGE_TREE_CHANGED_EVENT);
-      return { page: moved, version: currentVersion };
+      moved = await this.pagesRepository.updateParent(page, newParentId);
     } catch (error) {
       if (PagesService.isDuplicateSlugError(error)) {
         throw new SlugAlreadyExistsException();
       }
       throw error;
     }
+    void this.userActivityLogService.record({
+      userId,
+      action: 'page.moved',
+      targetType: 'page',
+      targetId: id,
+      metadata: { newParentId },
+    });
+    this.eventEmitter.emit(PAGE_TREE_CHANGED_EVENT);
+
+    const links = pathMove
+      ? await this.pageLinksService.rewriteAfterMove(
+          pathMove,
+          page.title,
+          movingUser,
+        )
+      : { linksUpdated: 0, pagesUpdated: 0, pagesSkipped: 0 };
+    return { page: moved, version: currentVersion, links };
+  }
+
+  private async describePathMove(
+    page: Page,
+    newParentId: string | null,
+  ): Promise<{ from: string; to: string } | null> {
+    const index = new PagePathIndex(await this.pagesRepository.findAll());
+    const from = index.pathOf(page.id);
+    const parentPath = newParentId === null ? '' : index.pathOf(newParentId);
+    if (from === undefined || parentPath === undefined) {
+      return null;
+    }
+    return { from, to: `${parentPath}/${page.slug}` };
   }
 
   async deletePage(
@@ -1028,6 +1055,9 @@ export class PagesService {
       (typeof dto.newParentId !== 'string' || !UUID_REGEX.test(dto.newParentId))
     ) {
       throw new ValidationException('newParentId must be a UUID');
+    }
+    if (dto.updateLinks !== undefined && typeof dto.updateLinks !== 'boolean') {
+      throw new ValidationException('updateLinks must be a boolean value');
     }
   }
 
