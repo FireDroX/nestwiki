@@ -2,6 +2,14 @@
 
 All notable changes to NestWiki are documented here, newest first, one `## <version> — <date>` section per release. This file is the single source for the in-app "Notes de version" page, which groups releases by minor version (`1.0`, `0.31`…). Entries up to 0.31.10 were written in French, the project's original language.
 
+## 1.3.0 — 2026-10-20
+
+- Le wiki garde désormais la trace des liens entre pages : chaque lien interne (`/pages/...` ou adresse complète du wiki) est indexé à chaque enregistrement, création, fusion ou restauration de version. L'affichage des « pages qui pointent ici » et des liens cassés arrive dans la prochaine version.
+- Les pages existantes sont indexées automatiquement au premier démarrage, rien à faire. En cas de besoin, `pnpm run backfill:links` relance l'indexation (dans le conteneur : `docker compose exec backend node dist/database/run-page-links-backfill.js`).
+- API : nouvel endpoint `GET /pages/:id/backlinks` (pages lisibles qui pointent vers la page, `?subtree=true` pour inclure ses sous-pages) et `GET /admin/links/broken` (liens vers une page inexistante ou en corbeille, administrateurs). Création, modification et lecture d'une page renvoient en plus `brokenLinks`, qui compte aussi les liens vers une page que l'appelant ne peut pas lire (pour ne pas révéler l'existence d'une page privée).
+- Intégration MCP : nouvel outil `wiki_get_backlinks`.
+- ⚠️ `backlinks` devient un nom réservé pour une page placée directement sous une page racine, comme `stats` : une page existante à l'adresse `/pages/<racine>/backlinks` doit être renommée.
+
 ## 1.2.5 — 2026-10-17
 
 - Les images Docker du backend et du frontend tournent désormais sous Node.js 24 (LTS) au lieu de Node.js 22. Rien à faire de votre côté : il suffit de récupérer les nouvelles images.

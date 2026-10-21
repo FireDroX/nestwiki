@@ -1,4 +1,8 @@
 import { posix } from 'node:path';
+import {
+  PAGE_LINK_TARGET_MAX_LENGTH,
+  RESERVED_ROOT_PAGE_SLUGS,
+} from '../../common/variables.global.js';
 
 export interface LinkRewriteContext {
   currentFile: string;
@@ -34,19 +38,68 @@ export class MarkdownLinkRewriter {
 
   static findMediaIds(content: string, instanceUrl: string): string[] {
     const ids = new Set<string>();
+    for (const path of MarkdownLinkRewriter.findInstancePaths(
+      content,
+      instanceUrl,
+    )) {
+      const media = MEDIA_PATH.exec(path);
+      if (media) {
+        ids.add(media[1].toLowerCase());
+      }
+    }
+    return [...ids];
+  }
+
+  static findPagePaths(content: string, instanceUrl: string): string[] {
+    const paths = new Set<string>();
+    for (const path of MarkdownLinkRewriter.findInstancePaths(
+      content,
+      instanceUrl,
+    )) {
+      const page = PAGE_PATH.exec(path);
+      const pagePath = page ? MarkdownLinkRewriter.toPagePath(page[1]) : null;
+      if (pagePath) {
+        paths.add(pagePath);
+      }
+    }
+    return [...paths];
+  }
+
+  private static findInstancePaths(
+    content: string,
+    instanceUrl: string,
+  ): string[] {
+    const paths: string[] = [];
     MarkdownLinkRewriter.mapOutsideCode(content, (text) => {
       for (const pattern of LINK_TARGETS) {
         for (const [, , url] of text.matchAll(pattern)) {
           const path = MarkdownLinkRewriter.toInstancePath(url, instanceUrl);
-          const media = path === null ? null : MEDIA_PATH.exec(path);
-          if (media) {
-            ids.add(media[1].toLowerCase());
+          if (path !== null) {
+            paths.push(path);
           }
         }
       }
       return text;
     });
-    return [...ids];
+    return paths;
+  }
+
+  private static toPagePath(rawPath: string): string | null {
+    let path: string;
+    try {
+      path = decodeURIComponent(rawPath.replace(/\/+$/, '')).toLowerCase();
+    } catch {
+      return null;
+    }
+    const [rootSlug] = path.split('/').filter(Boolean);
+    if (
+      !rootSlug ||
+      RESERVED_ROOT_PAGE_SLUGS.includes(rootSlug) ||
+      path.length > PAGE_LINK_TARGET_MAX_LENGTH
+    ) {
+      return null;
+    }
+    return path;
   }
 
   private static mapOutsideCode(

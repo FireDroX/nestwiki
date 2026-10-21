@@ -110,6 +110,28 @@ export function buildPagesTools(
       },
     }),
     defineMcpTool({
+      name: 'wiki_get_backlinks',
+      description:
+        'Lister les pages qui contiennent un lien vers une page (rétroliens), identifiée par pageId ou par son chemin complet (ex. "docs/guide")',
+      inputSchema: {
+        pageId: z.string().optional(),
+        slug: z.string().optional(),
+      },
+      requiredScopes: [PAGES_READ_SCOPE],
+      handler: async (input, ctx) => {
+        const user = toAuthenticatedUser(
+          await resolveMcpUser(usersService, ctx),
+        );
+        const pages = input.pageId
+          ? await pagesService.getBacklinks(input.pageId, {}, user)
+          : await pagesService.getBacklinksByPath(
+              (input.slug ?? '').split('/').filter(Boolean),
+              user,
+            );
+        return { pages };
+      },
+    }),
+    defineMcpTool({
       name: 'wiki_list_pages',
       description:
         "Lister les pages : l'arbre complet si parentId est omis, sinon les enfants directs de parentId",

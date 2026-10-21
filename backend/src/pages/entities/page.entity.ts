@@ -70,6 +70,15 @@ export class Page {
   deletionRootId: string | null;
 
   @Column({
+    type: 'uuid',
+    name: 'links_version_id',
+    length: 36,
+    nullable: true,
+    select: false,
+  })
+  linksVersionId?: string | null;
+
+  @Column({
     type: 'varchar',
     name: 'active_slug',
     length: 255,

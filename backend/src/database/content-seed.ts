@@ -643,6 +643,7 @@ Ce même guide est envoyé dans les instructions du serveur à la connexion : la
 | \`wiki_create_page\` | Créer une page (slug, titre, contenu, page parente, visibilité) |
 | \`wiki_update_page\` | Modifier titre/contenu (crée une nouvelle version) |
 | \`wiki_get_page\` | Récupérer une page par son chemin complet (ex. \`docs/guide\`) |
+| \`wiki_get_backlinks\` | Lister les pages qui contiennent un lien vers une page (par id ou chemin complet) |
 | \`wiki_list_pages\` | Lister l'arbre entier, ou les enfants directs d'une page |
 | \`wiki_delete_page\` | Déplacer une page dans la corbeille (\`cascade\` obligatoire si elle a des enfants) |
 | \`wiki_list_trash\` | Lister les pages de la corbeille que la clé peut restaurer |
