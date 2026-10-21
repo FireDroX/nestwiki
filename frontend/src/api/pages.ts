@@ -31,6 +31,7 @@ export interface PageDetail {
   isFollowed: boolean
   currentVersionId: string
   permissions: PageAction[]
+  brokenLinks: string[]
 }
 
 export async function getPageByPath(pathSegments: string[]): Promise<PageDetail> {
@@ -65,6 +66,7 @@ export interface PageUpdateResult {
   currentVersionId: string
   updatedAt: string
   conflict: boolean
+  brokenLinks?: string[]
   mergedContent?: string
   segments?: MergeSegment[]
   currentVersionAuthorName?: string | null
@@ -91,10 +93,23 @@ export interface PageCreateResult {
   title: string
   parentId: string | null
   visibility: PageVisibility
+  brokenLinks: string[]
 }
 
 export async function createPage(payload: CreatePagePayload): Promise<PageCreateResult> {
   const { data } = await apiClient.post<ResponseDto<PageCreateResult>>('/pages', payload)
+  return data.data
+}
+
+export interface PageBacklink {
+  id: string
+  title: string
+  path: string
+  updatedAt: string
+}
+
+export async function getBacklinks(id: string): Promise<PageBacklink[]> {
+  const { data } = await apiClient.get<ResponseDto<PageBacklink[]>>(`/pages/${id}/backlinks`)
   return data.data
 }
 

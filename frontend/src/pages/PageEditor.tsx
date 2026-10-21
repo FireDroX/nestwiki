@@ -31,6 +31,7 @@ import { usePageRealtimeSync } from '#hooks/usePageRealtimeSync'
 import { usePageTree } from '#hooks/usePageTree'
 import { usePermissions } from '#hooks/usePermissions'
 import { extractErrorMessage } from '#lib/api-errors'
+import { warnAboutBrokenLinks } from '#lib/broken-links-warning'
 import { findPathToNode } from '#utils/page-tree'
 import { createPageMetadataSchema, type PageMetadataFormValues } from '#schemas/page-metadata.schema'
 import { PAGE_PADDING } from '#utils/page-layout'
@@ -231,6 +232,7 @@ export function PageEditor() {
       setBaseVersionId(result.currentVersionId)
       editor.markSaved()
       toast.success(t('pageEditor.pageSaved'))
+      warnAboutBrokenLinks(result.brokenLinks)
       navigate(returnPath)
     } catch (error) {
       setSaveError(extractErrorMessage(error))

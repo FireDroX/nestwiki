@@ -125,7 +125,8 @@
     "exportMarkdownPage": "Markdown brut (.md)",
     "exportMarkdownSubtree": "Markdown avec les sous-pages (.zip)",
     "exportFailed": "L'export a échoué.",
-    "deleted": "Page déplacée dans la corbeille."
+    "deleted": "Page déplacée dans la corbeille.",
+    "backlinksTitle": "Pages qui pointent ici"
   },
   "trash": {
     "title": "Corbeille",
@@ -164,6 +165,8 @@
     "pageMoved": "Page déplacée.",
     "moveFailed": "Échec du déplacement de la page.",
     "pageSaved": "Page sauvegardée.",
+    "brokenLinksWarning_one": "{{count}} lien pointe vers une page introuvable",
+    "brokenLinksWarning_other": "{{count}} liens pointent vers des pages introuvables",
     "visibilityChanged": "Visibilité mise à jour.",
     "visibilityChangeFailed": "Échec du changement de visibilité.",
     "commentsEnabled": "Commentaires activés.",
@@ -306,6 +309,7 @@
     "oauthClientsTab": "Clients OAuth",
     "auditLogTab": "Journal d'audit",
     "activityLogTab": "Activité",
+    "brokenLinksTab": "Liens cassés",
     "users": {
       "filterPlaceholder": "Filtrer les utilisateurs...",
       "loadError": "Échec du chargement des utilisateurs.",
@@ -606,6 +610,12 @@
         "user.avatar_uploaded": "Photo de profil changée",
         "user.avatar_removed": "Photo de profil retirée"
       }
+    },
+    "brokenLinks": {
+      "loadError": "Échec du chargement des liens cassés.",
+      "empty": "Aucun lien cassé.",
+      "columnSource": "Page source",
+      "columnTarget": "Chemin cible"
     }
   },
   "permissions": {
@@ -830,6 +840,7 @@
     },
     "toc": "Sur cette page",
     "headingLink": "Lien vers cette section",
-    "mermaidError": "Diagramme Mermaid invalide :"
+    "mermaidError": "Diagramme Mermaid invalide :",
+    "brokenLink": "Page introuvable"
   }
 }

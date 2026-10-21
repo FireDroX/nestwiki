@@ -125,7 +125,8 @@
     "exportMarkdownPage": "Raw Markdown (.md)",
     "exportMarkdownSubtree": "Markdown with sub-pages (.zip)",
     "exportFailed": "Export failed.",
-    "deleted": "Page moved to the trash."
+    "deleted": "Page moved to the trash.",
+    "backlinksTitle": "Pages linking here"
   },
   "trash": {
     "title": "Trash",
@@ -164,6 +165,8 @@
     "pageMoved": "Page moved.",
     "moveFailed": "Failed to move the page.",
     "pageSaved": "Page saved.",
+    "brokenLinksWarning_one": "{{count}} link points to a missing page",
+    "brokenLinksWarning_other": "{{count}} links point to missing pages",
     "visibilityChanged": "Visibility updated.",
     "visibilityChangeFailed": "Failed to change visibility.",
     "commentsEnabled": "Comments enabled.",
@@ -306,6 +309,7 @@
     "oauthClientsTab": "OAuth clients",
     "auditLogTab": "Audit log",
     "activityLogTab": "Activity",
+    "brokenLinksTab": "Broken links",
     "users": {
       "filterPlaceholder": "Filter users...",
       "loadError": "Failed to load users.",
@@ -606,6 +610,12 @@
         "user.avatar_uploaded": "Profile picture changed",
         "user.avatar_removed": "Profile picture removed"
       }
+    },
+    "brokenLinks": {
+      "loadError": "Failed to load broken links.",
+      "empty": "No broken links.",
+      "columnSource": "Source page",
+      "columnTarget": "Target path"
     }
   },
   "permissions": {
@@ -830,6 +840,7 @@
     },
     "toc": "On this page",
     "headingLink": "Link to this section",
-    "mermaidError": "Invalid Mermaid diagram:"
+    "mermaidError": "Invalid Mermaid diagram:",
+    "brokenLink": "Page not found"
   }
 }

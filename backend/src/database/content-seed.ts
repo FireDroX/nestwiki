@@ -115,6 +115,10 @@ const PAGE_TREE_SEED: PageSeed[] = [
     <strong>Marquages disponibles</strong>
     <span>Markdown, HTML/CSS et LaTeX dans le contenu d'une page</span>
   </a>
+  <a class="doc-link-card" href="/pages/documentation/retroliens-liens-casses">
+    <strong>Rétroliens et liens cassés</strong>
+    <span>Pages qui pointent ici et liens vers des pages introuvables</span>
+  </a>
   <a class="doc-link-card" href="/pages/documentation/notes-de-version">
     <strong>Notes de version</strong>
     <span>Historique de tous les changements</span>
@@ -863,6 +867,14 @@ La syntaxe [CommonMark](https://commonmark.org/) + [GFM](https://github.github.c
 </div>
 </div>
 
+## Liens entre pages
+
+<span class="mode-badge pages-only">Pages uniquement</span>
+
+Pour pointer vers une autre page du wiki, écrivez son chemin complet depuis la racine : \`[Installation](/pages/documentation/guide-demarrage/installation)\`, éventuellement suivi d'une ancre (\`/pages/documentation#endpoints\`). L'adresse complète de l'instance (\`https://<instance>/pages/...\`) fonctionne aussi. Ces liens alimentent la section « Pages qui pointent ici » de la page visée.
+
+Un lien vers une page introuvable (jamais créée, déplacée ou mise à la corbeille) est **souligné en pointillés rouges**, avec l'infobulle « Page introuvable » ; il reste cliquable. Voir [Rétroliens et liens cassés](/pages/documentation/retroliens-liens-casses) pour le détail.
+
 ## Ancres et sommaire
 
 <span class="mode-badge pages-only">Pages uniquement</span>
@@ -1051,10 +1063,45 @@ flowchart LR
 | Markdown / GFM | ✅ | ✅ |
 | Encadrés (\`> [!NOTE]\`…) | ✅ | ✅ |
 | Ancres sur les titres et sommaire | ✅ | ❌ |
+| Liens internes signalés quand la page est introuvable | ✅ | ❌ |
 | HTML arbitraire (sauf balises interdites) | ✅ | ❌ (HTML très restreint) |
 | CSS (\`<style>\`, scopé) | ✅ | ❌ |
 | LaTeX (\`$$...$$\`) | ✅ | ❌ |
 | Diagrammes Mermaid | ✅ | ❌ |`,
+      },
+      {
+        slug: 'retroliens-liens-casses',
+        title: 'Rétroliens et liens cassés',
+        tags: ['documentation', 'guide'],
+        content: `# Rétroliens et liens cassés
+
+NestWiki tient un index des liens entre pages. Il sert à afficher, sous chaque page, les pages qui pointent vers elle, et à repérer les liens vers des pages qui n'existent pas ou plus.
+
+## Ce qui compte comme un lien interne
+
+- Un lien Markdown (\`[texte](/pages/...)\`), une définition de référence (\`[ref]: /pages/...\`) ou un attribut HTML \`href\`/\`src\` dont l'adresse commence par \`/pages/\` ou par l'adresse complète de l'instance suivie de \`/pages/\`.
+- L'ancre (\`#section\`), les paramètres (\`?x=1\`), la barre finale et la casse sont ignorés : \`/pages/Documentation/#endpoints\` compte comme un lien vers \`/pages/documentation\`.
+- Ne comptent pas : les liens écrits dans un bloc de code ou du code en ligne, les liens externes, les médias et les liens vers une section de la même page (\`#ancre\`).
+
+Seule la version actuelle d'une page est indexée : un lien retiré dans une nouvelle version disparaît de l'index.
+
+## Pages qui pointent ici
+
+Sous le contenu d'une page, avant les commentaires, la section « Pages qui pointent ici » liste les pages qui contiennent un lien vers elle, avec leur fil d'Ariane. Vous n'y voyez que les pages que vous avez le droit de lire, et une page mise à la corbeille n'y figure plus. La section est masquée quand aucune page ne pointe vers celle-ci.
+
+La même liste est disponible par l'API (\`GET /api/pages/:id/backlinks\`, avec \`?subtree=true\` pour inclure les liens vers les sous-pages) et par l'outil MCP \`wiki_get_backlinks\`.
+
+## Quand un lien est cassé
+
+Un lien est cassé quand aucune page ne se trouve à son chemin : la page n'a jamais été créée, elle a été déplacée ailleurs dans l'arborescence ou elle est dans la corbeille. Il redevient valide de lui-même dès qu'une page reprend ce chemin, par exemple quand la page est restaurée depuis la corbeille.
+
+Un lien vers une page privée que vous n'avez pas le droit de lire est signalé de la même façon : NestWiki ne révèle pas qu'elle existe.
+
+## Où voir les liens cassés
+
+- **Dans la page** : le lien est souligné en pointillés rouges, avec l'infobulle « Page introuvable ». Il reste cliquable.
+- **À l'enregistrement** : un avertissement liste les chemins introuvables. Il n'empêche pas l'enregistrement.
+- **Administration → Liens cassés** (administrateurs) : tous les liens cassés du wiki, avec la page source (lien vers son éditeur) et le chemin visé. Aussi disponible par l'API : \`GET /api/admin/links/broken\`.`,
       },
       {
         slug: 'notes-de-version',

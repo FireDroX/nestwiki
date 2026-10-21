@@ -2,6 +2,15 @@
 
 All notable changes to NestWiki are documented here, newest first, one `## <version> — <date>` section per release. This file is the single source for the in-app "Notes de version" page, which groups releases by minor version (`1.0`, `0.31`…). Entries up to 0.31.10 were written in French, the project's original language.
 
+## 1.3.1 — 2026-10-21
+
+- Sous le contenu de chaque page, une section « Pages qui pointent ici » liste les pages qui contiennent un lien vers elle, avec leur fil d'Ariane. Elle n'apparaît que s'il y en a, et ne montre que les pages que vous pouvez lire.
+- Un lien vers une page introuvable (jamais créée, déplacée, en corbeille ou que vous ne pouvez pas lire) est souligné en pointillés rouges, avec l'infobulle « Page introuvable ». Il reste cliquable. Les commentaires ne sont pas concernés.
+- Après l'enregistrement ou la création d'une page, un avertissement liste les liens qui pointent vers des pages introuvables. L'enregistrement n'est pas bloqué.
+- Administration : nouvel onglet « Liens cassés » qui recense tous les liens cassés du wiki, avec un lien vers l'éditeur de la page concernée.
+- Nouvelle page de documentation « Rétroliens et liens cassés », et « Marquages disponibles » décrit les liens entre pages.
+- Le formulaire de création refuse désormais tout de suite les adresses réservées `trash` (page racine) et `backlinks` (sous une page racine), au lieu de laisser le serveur les rejeter.
+
 ## 1.3.0 — 2026-10-20
 
 - Le wiki garde désormais la trace des liens entre pages : chaque lien interne (`/pages/...` ou adresse complète du wiki) est indexé à chaque enregistrement, création, fusion ou restauration de version. L'affichage des « pages qui pointent ici » et des liens cassés arrive dans la prochaine version.
