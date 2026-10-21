@@ -2,6 +2,14 @@
 
 All notable changes to NestWiki are documented here, newest first, one `## <version> — <date>` section per release. This file is the single source for the in-app "Notes de version" page, which groups releases by minor version (`1.0`, `0.31`…). Entries up to 0.31.10 were written in French, the project's original language.
 
+## 1.3.2 — 2026-10-21
+
+- Déplacer une page ne casse plus ses liens : dans l'éditeur, sous « Page parente », NestWiki indique combien de pages pointent vers la page ou ses sous-pages, avec la case « Mettre à jour ces liens au déplacement », cochée par défaut. Chaque page concernée reçoit une nouvelle version avec les chemins corrigés, ancres et code conservés.
+- Seules les pages que vous pouvez modifier sont corrigées, y compris celles en corbeille. La notification du déplacement résume les liens mis à jour et compte les pages laissées de côté, qui apparaissent dans l'onglet « Liens cassés ».
+- API : `PATCH /pages/:id/move` accepte `updateLinks` et renvoie `linksUpdated`, `pagesUpdated` et `pagesSkipped`.
+- La page de documentation « Rétroliens et liens cassés » décrit ce comportement.
+- Sécurité : Hono, utilisé par l'intégration MCP, passe en 4.13.11 (alerte Dependabot GHSA-5r4p-p66f-jhc7).
+
 ## 1.3.1 — 2026-10-21
 
 - Sous le contenu de chaque page, une section « Pages qui pointent ici » liste les pages qui contiennent un lien vers elle, avec leur fil d'Ariane. Elle n'apparaît que s'il y en a, et ne montre que les pages que vous pouvez lire.

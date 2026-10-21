@@ -108,13 +108,25 @@ export interface PageBacklink {
   updatedAt: string
 }
 
-export async function getBacklinks(id: string): Promise<PageBacklink[]> {
-  const { data } = await apiClient.get<ResponseDto<PageBacklink[]>>(`/pages/${id}/backlinks`)
+export async function getBacklinks(id: string, { subtree = false } = {}): Promise<PageBacklink[]> {
+  const { data } = await apiClient.get<ResponseDto<PageBacklink[]>>(`/pages/${id}/backlinks`, {
+    params: subtree ? { subtree: 'true' } : undefined,
+  })
   return data.data
 }
 
-export async function movePage(id: string, newParentId: string | null): Promise<void> {
-  await apiClient.patch(`/pages/${id}/move`, { newParentId })
+export interface PageMoveResult {
+  linksUpdated: number
+  pagesUpdated: number
+  pagesSkipped: number
+}
+
+export async function movePage(id: string, newParentId: string | null, updateLinks: boolean): Promise<PageMoveResult> {
+  const { data } = await apiClient.patch<ResponseDto<PageMoveResult>>(`/pages/${id}/move`, {
+    newParentId,
+    updateLinks,
+  })
+  return data.data
 }
 
 export async function changePageVisibility(id: string, visibility: PageVisibility): Promise<void> {

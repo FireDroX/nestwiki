@@ -25,11 +25,12 @@ export class TypeormPageLinkRepository implements PageLinkRepository {
   async findSourcePageIds(
     targetPath: string,
     includeDescendants: boolean,
+    includeTrashed = false,
   ): Promise<string[]> {
     const descendantsPattern = `${targetPath.replace(/[\\%_]/g, '\\$&')}/%`;
     const rows: { source_page_id: string }[] = await this.dataSource.query(
       `SELECT DISTINCT l.\`source_page_id\` FROM \`page_links\` l
-        INNER JOIN \`pages\` p ON p.\`id\` = l.\`source_page_id\` AND p.\`deleted_at\` IS NULL
+        INNER JOIN \`pages\` p ON p.\`id\` = l.\`source_page_id\`${includeTrashed ? '' : ' AND p.`deleted_at` IS NULL'}
         WHERE (l.\`target_path\` = ?${includeDescendants ? ' OR l.`target_path` LIKE ?' : ''})`,
       includeDescendants ? [targetPath, descendantsPattern] : [targetPath],
     );

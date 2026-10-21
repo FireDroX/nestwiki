@@ -11,6 +11,11 @@ export interface LinkRewriteContext {
   instanceUrl: string;
 }
 
+export interface PagePathMove {
+  from: string;
+  to: string;
+}
+
 const LINK_TARGETS = [
   /(\]\(<?)([^)\s>]+)/g,
   /(\b(?:src|href)\s*=\s*["'])([^"']+)/g,
@@ -18,6 +23,7 @@ const LINK_TARGETS = [
 ];
 const MEDIA_PATH = /^\/api\/media\/([0-9a-f-]{36})\/raw(?:\?[^#]*)?$/i;
 const PAGE_PATH = /^\/pages(\/[^#?]*)(?:\?[^#]*)?(#.*)?$/;
+const PAGE_PATH_AND_SUFFIX = /^\/pages(\/[^#?]*)(.*)$/s;
 const CODE =
   /^[ \t]*(`{3,}|~{3,})[^\n]*\n[\s\S]*?(?:^[ \t]*\1[^\n]*$|(?![\s\S]))|(`+)(?!`)(?:(?!\n[ \t]*\n)[\s\S])*?[^`]\2(?!`)/gm;
 
@@ -34,6 +40,36 @@ export class MarkdownLinkRewriter {
         text,
       ),
     );
+  }
+
+  static movePagePaths(
+    content: string,
+    move: PagePathMove,
+    instanceUrl: string,
+  ): { content: string; linksUpdated: number } {
+    let linksUpdated = 0;
+    const rewritten = MarkdownLinkRewriter.mapOutsideCode(content, (text) =>
+      LINK_TARGETS.reduce(
+        (current, pattern) =>
+          current.replace(
+            pattern,
+            (match: string, prefix: string, url: string) => {
+              const moved = MarkdownLinkRewriter.moveUrl(
+                url,
+                move,
+                instanceUrl,
+              );
+              if (moved === null) {
+                return match;
+              }
+              linksUpdated += 1;
+              return `${prefix}${moved}`;
+            },
+          ),
+        text,
+      ),
+    );
+    return { content: rewritten, linksUpdated };
   }
 
   static findMediaIds(content: string, instanceUrl: string): string[] {
@@ -141,6 +177,28 @@ export class MarkdownLinkRewriter {
     }
 
     return url;
+  }
+
+  private static moveUrl(
+    url: string,
+    move: PagePathMove,
+    instanceUrl: string,
+  ): string | null {
+    const path = MarkdownLinkRewriter.toInstancePath(url, instanceUrl);
+    const page = path === null ? null : PAGE_PATH_AND_SUFFIX.exec(path);
+    const pagePath = page ? MarkdownLinkRewriter.toPagePath(page[1]) : null;
+    const from = move.from.toLowerCase();
+    if (
+      !page ||
+      pagePath === null ||
+      (pagePath !== from && !pagePath.startsWith(`${from}/`))
+    ) {
+      return null;
+    }
+    const origin = path === url ? '' : instanceUrl;
+    const movedSegmentCount = from.split('/').length;
+    const rest = page[1].split('/').slice(movedSegmentCount).join('/');
+    return `${origin}/pages${move.to}${rest ? `/${rest}` : ''}${page[2]}`;
   }
 
   private static toInstancePath(

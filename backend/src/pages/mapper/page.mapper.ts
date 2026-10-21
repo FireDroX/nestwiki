@@ -4,7 +4,9 @@ import { FindByPathResultDto } from '../dto/out/find-by-path-result.dto.js';
 import { PageBacklinkDto } from '../dto/out/page-backlink-response.dto.js';
 import { PageCreateResponseDto } from '../dto/out/page-create-response.dto.js';
 import { PageDetailResponseDto } from '../dto/out/page-detail-response.dto.js';
+import { MovedPageLinksDto } from '../dto/out/moved-page-links.dto.js';
 import { PageMergePreviewResponseDto } from '../dto/out/page-merge-preview-response.dto.js';
+import { PageMoveResponseDto } from '../dto/out/page-move-response.dto.js';
 import { PageResponseDto } from '../dto/out/page-response.dto.js';
 import { PageStatsResponseDto } from '../dto/out/page-stats-response.dto.js';
 import { PageUpdateResponseDto } from '../dto/out/page-update-response.dto.js';
@@ -50,6 +52,17 @@ export class PageMapper {
     return new ResponseDto({
       ...PageMapper.toPageResponseDto(result.page, result.version),
       brokenLinks: result.brokenLinks,
+    });
+  }
+
+  static toMoveResponse(result: {
+    page: Page;
+    version: PageVersion;
+    links: MovedPageLinksDto;
+  }): ResponseDto<PageMoveResponseDto> {
+    return new ResponseDto({
+      ...PageMapper.toPageResponseDto(result.page, result.version),
+      ...result.links,
     });
   }
 
