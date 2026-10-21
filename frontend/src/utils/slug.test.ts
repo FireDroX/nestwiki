@@ -2,12 +2,12 @@ import { describe, expect, it } from 'vitest'
 import { isReservedSlug } from './slug'
 
 describe('isReservedSlug', () => {
-  it('reserves "tree" only for root pages', () => {
-    expect(isReservedSlug('tree', 1)).toBe(true)
-    expect(isReservedSlug('tree', 2)).toBe(false)
+  it.each(['tree', 'trash'])('reserves "%s" only for root pages', (slug) => {
+    expect(isReservedSlug(slug, 1)).toBe(true)
+    expect(isReservedSlug(slug, 2)).toBe(false)
   })
 
-  it.each(['versions', 'comments', 'tags', 'access-rules', 'stats'])(
+  it.each(['versions', 'comments', 'tags', 'access-rules', 'stats', 'backlinks'])(
     'reserves "%s" only for direct children of a root page',
     (slug) => {
       expect(isReservedSlug(slug, 1)).toBe(false)

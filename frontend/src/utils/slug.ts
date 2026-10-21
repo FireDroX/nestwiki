@@ -8,8 +8,8 @@ export function slugify(input: string): string {
     .replace(/^-+|-+$/g, '')
 }
 
-const RESERVED_ROOT_PAGE_SLUGS: readonly string[] = ['tree']
-const RESERVED_CHILD_OF_ROOT_PAGE_SLUGS: readonly string[] = ['versions', 'comments', 'tags', 'access-rules', 'stats']
+export const RESERVED_ROOT_PAGE_SLUGS: readonly string[] = ['tree', 'trash']
+const RESERVED_CHILD_OF_ROOT_PAGE_SLUGS: readonly string[] = ['versions', 'comments', 'tags', 'access-rules', 'stats', 'backlinks']
 
 export function isReservedSlug(slug: string, depth: number): boolean {
   if (depth === 1) {

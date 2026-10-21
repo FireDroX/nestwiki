@@ -8,6 +8,7 @@ import { useAuth } from '#hooks/useAuth'
 import { useUpdateNotification } from '#hooks/useUpdateNotification'
 import { AdminActivityLog } from '#pages/AdminActivityLog'
 import { AdminAuditLog } from '#pages/AdminAuditLog'
+import { AdminBrokenLinks } from '#pages/AdminBrokenLinks'
 import { AdminGroupDetail } from '#pages/AdminGroupDetail'
 import { AdminGroups } from '#pages/AdminGroups'
 import { AdminMcpAudit } from '#pages/AdminMcpAudit'
@@ -64,6 +65,7 @@ export function App() {
             <Route path="/admin/mcp/audit-log" element={<AdminMcpAudit />} />
             <Route path="/admin/audit-log" element={<AdminAuditLog />} />
             <Route path="/admin/activity-log" element={<AdminActivityLog />} />
+            <Route path="/admin/links" element={<AdminBrokenLinks />} />
           </Route>
           <Route element={<ProtectedRoute permission="user.manage" />}>
             <Route path="/admin/users" element={<AdminUsers />} />
