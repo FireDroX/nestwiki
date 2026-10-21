@@ -1095,6 +1095,8 @@ La même liste est disponible par l'API (\`GET /api/pages/:id/backlinks\`, avec 
 
 Un lien est cassé quand aucune page ne se trouve à son chemin : la page n'a jamais été créée, elle a été déplacée ailleurs dans l'arborescence ou elle est dans la corbeille. Il redevient valide de lui-même dès qu'une page reprend ce chemin, par exemple quand la page est restaurée depuis la corbeille.
 
+Un lien vers une page privée que vous n'avez pas le droit de lire est signalé de la même façon : NestWiki ne révèle pas qu'elle existe.
+
 ## Où voir les liens cassés
 
 - **Dans la page** : le lien est souligné en pointillés rouges, avec l'infobulle « Page introuvable ». Il reste cliquable.

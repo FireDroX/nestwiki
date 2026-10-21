@@ -5,7 +5,7 @@ All notable changes to NestWiki are documented here, newest first, one `## <vers
 ## 1.3.1 — 2026-10-21
 
 - Sous le contenu de chaque page, une section « Pages qui pointent ici » liste les pages qui contiennent un lien vers elle, avec leur fil d'Ariane. Elle n'apparaît que s'il y en a, et ne montre que les pages que vous pouvez lire.
-- Un lien vers une page introuvable (jamais créée, déplacée ou en corbeille) est souligné en pointillés rouges, avec l'infobulle « Page introuvable ». Il reste cliquable. Les commentaires ne sont pas concernés.
+- Un lien vers une page introuvable (jamais créée, déplacée, en corbeille ou que vous ne pouvez pas lire) est souligné en pointillés rouges, avec l'infobulle « Page introuvable ». Il reste cliquable. Les commentaires ne sont pas concernés.
 - Après l'enregistrement ou la création d'une page, un avertissement liste les liens qui pointent vers des pages introuvables. L'enregistrement n'est pas bloqué.
 - Administration : nouvel onglet « Liens cassés » qui recense tous les liens cassés du wiki, avec un lien vers l'éditeur de la page concernée.
 - Nouvelle page de documentation « Rétroliens et liens cassés », et « Marquages disponibles » décrit les liens entre pages.
