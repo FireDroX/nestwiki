@@ -20,7 +20,22 @@ import { SetCommentsEnabledDto } from '../dto/in/set-comments-enabled.dto.js';
 import { UpdatePageDto } from '../dto/in/update-page.dto.js';
 import { Page } from '../entities/page.entity.js';
 import { PageVersion } from '../entities/page-version.entity.js';
-import { PAGE_PUBLISHED_EVENT } from '../events/page-published.event.js';
+import {
+  PAGE_CREATED_EVENT,
+  PageCreatedEvent,
+} from '../events/page-created.event.js';
+import {
+  PAGE_MOVED_EVENT,
+  PageMovedEvent,
+} from '../events/page-moved.event.js';
+import {
+  PAGE_PUBLISHED_EVENT,
+  PagePublishedEvent,
+} from '../events/page-published.event.js';
+import {
+  PAGE_TRASHED_EVENT,
+  PageTrashedEvent,
+} from '../events/page-trashed.event.js';
 import { PAGE_TREE_CHANGED_EVENT } from '../events/page-tree-changed.event.js';
 import { PAGE_VERSION_CREATED_EVENT } from '../events/page-version-created.event.js';
 import type { PageFollowRepository } from '../persistence/page-follow.repository.js';
@@ -133,7 +148,7 @@ describe('PagesService', () => {
     pagesRepository = {
       findById: vi.fn(),
       findBySlugAndParent: vi.fn(),
-      findAll: vi.fn(),
+      findAll: vi.fn().mockResolvedValue([]),
       findVersionById: vi.fn(),
       findCurrentVersions: vi.fn(),
       createWithFirstVersion: vi.fn(),
@@ -991,6 +1006,15 @@ describe('PagesService', () => {
         );
       });
 
+      it('announces the move with the old and the new path', async () => {
+        await service.movePage(pageId, { newParentId: childId }, 'user-1');
+
+        expect(eventEmitter.emit).toHaveBeenCalledWith(
+          PAGE_MOVED_EVENT,
+          new PageMovedEvent(pageId, 'user-1', '/docs/guide', '/archive/guide'),
+        );
+      });
+
       it('leaves the links alone by default', async () => {
         const result = await service.movePage(
           pageId,
@@ -1043,6 +1067,24 @@ describe('PagesService', () => {
       content: 'content',
       visibility: 'public',
     };
+
+    it('announces the new page', async () => {
+      pagesRepository.findBySlugAndParent.mockResolvedValue(null);
+      pagesRepository.createWithFirstVersion.mockResolvedValue({
+        page: buildPage({ id: 'new-1' }),
+        version: buildVersion({ id: 'v-new' }),
+      });
+
+      await service.createPage(
+        { slug: 'new', title: 'New', content: 'x', visibility: 'public' },
+        'user-1',
+      );
+
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        PAGE_CREATED_EVENT,
+        new PageCreatedEvent('new-1', 'user-1'),
+      );
+    });
 
     it('creates the page and its first version', async () => {
       pagesRepository.findBySlugAndParent.mockResolvedValue(null);
@@ -1615,6 +1657,11 @@ describe('PagesService', () => {
 
       await service.deletePage('parent', { cascade: 'true' }, 'user-1');
 
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        PAGE_TRASHED_EVENT,
+        new PageTrashedEvent('parent', 'user-1', 1),
+      );
+
       expect(
         permissionsService.getEffectivePageActionsBulk,
       ).toHaveBeenCalledWith(expect.anything(), ['child']);
@@ -1684,7 +1731,7 @@ describe('PagesService', () => {
 
       expect(eventEmitter.emit).toHaveBeenCalledWith(
         PAGE_PUBLISHED_EVENT,
-        expect.objectContaining({ pageId: page.id }),
+        new PagePublishedEvent(page.id, page.slug, page.title, 'user-1'),
       );
     });
 

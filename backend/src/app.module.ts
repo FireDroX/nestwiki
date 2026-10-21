@@ -25,6 +25,7 @@ import { StorageModule } from './storage/storage.module.js';
 import { TagsModule } from './tags/tags.module.js';
 import { UsersModule } from './users/users.module.js';
 import { VersionsModule } from './versions/versions.module.js';
+import { WebhooksModule } from './webhooks/webhooks.module.js';
 import { validateEnvironment } from './config/env.validation.js';
 import { typeOrmConfig } from './config/typeorm.config.js';
 
@@ -61,6 +62,7 @@ const GLOBAL_THROTTLE_LIMIT = 100;
     CommentsModule,
     StatsModule,
     MetaModule,
+    WebhooksModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerBehindProxyGuard }],
 })

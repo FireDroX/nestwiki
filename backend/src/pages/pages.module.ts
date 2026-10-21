@@ -21,6 +21,7 @@ import { PageExportService } from './services/page-export.service.js';
 import { PageLinksInitializer } from './services/page-links.initializer.js';
 import { PageLinksService } from './services/page-links.service.js';
 import { PageMergeService } from './services/page-merge.service.js';
+import { PageReferenceService } from './services/page-reference.service.js';
 import { PageStatsService } from './services/page-stats.service.js';
 import { PageTrashService } from './services/page-trash.service.js';
 import { PagesService } from './services/pages.service.js';
@@ -47,9 +48,15 @@ import { PagesService } from './services/pages.service.js';
     PageLinksInitializer,
     PageLinksService,
     PageMergeService,
+    PageReferenceService,
     PageStatsService,
     PageTrashService,
   ],
-  exports: [PagesService, PageStatsService, PageTrashService],
+  exports: [
+    PagesService,
+    PageReferenceService,
+    PageStatsService,
+    PageTrashService,
+  ],
 })
 export class PagesModule {}

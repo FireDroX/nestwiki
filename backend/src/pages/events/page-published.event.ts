@@ -5,5 +5,6 @@ export class PagePublishedEvent {
     public readonly pageId: string,
     public readonly slug: string,
     public readonly title: string,
+    public readonly actorId: string,
   ) {}
 }

@@ -69,7 +69,7 @@ La CI (`ci.yml`) : sur un push sur `dev`, pousse les images `ghcr.io/firedrox/ne
 
 ## Architecture backend (`backend/src`)
 
-NestJS, un module par domaine, directement sous `src/` — **pas** de dossier `modules/` intermédiaire : `auth`, `users`, `pages`, `versions`, `media`, `search`, `comments`, `tags`, `permissions`, `activity`, `admin`, `mcp`, `meta`, `realtime`, `security`, `stats`, `storage`, `health`, plus `common/` (transverse : filtres, DTOs, exceptions, guards, décorateurs, stratégies JWT, constantes globales) et `config/` (TypeORM, validation de l'environnement).
+NestJS, un module par domaine, directement sous `src/` — **pas** de dossier `modules/` intermédiaire : `auth`, `users`, `pages`, `versions`, `media`, `search`, `comments`, `tags`, `permissions`, `activity`, `admin`, `mcp`, `meta`, `realtime`, `security`, `stats`, `storage`, `health`, `webhooks`, plus `common/` (transverse : filtres, DTOs, exceptions, guards, décorateurs, stratégies JWT, constantes globales) et `config/` (TypeORM, validation de l'environnement).
 
 Chaque module suit le même découpage en couches — pour une nouvelle feature, suivre le découpage de fichiers du module `auth`/`users` plutôt qu'en inventer un nouveau :
 
