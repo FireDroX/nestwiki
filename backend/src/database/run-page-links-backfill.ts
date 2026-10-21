@@ -16,11 +16,21 @@ const dataSource = new DataSource({
 async function run(): Promise<void> {
   await dataSource.initialize();
   try {
-    const reindexed = await reindexStalePageLinks(
+    const { indexed, failedPageIds } = await reindexStalePageLinks(
       (query, parameters) => dataSource.query(query, parameters),
+      (work) =>
+        dataSource.transaction((manager) =>
+          work((query, parameters) => manager.query(query, parameters)),
+        ),
       (process.env.FRONTEND_URL ?? '').replace(/\/+$/, ''),
     );
-    console.log(`Page links backfill complete: ${reindexed} page(s) indexed.`);
+    console.log(`Page links backfill complete: ${indexed} page(s) indexed.`);
+    if (failedPageIds.length > 0) {
+      console.error(
+        `Links not indexed for page(s): ${failedPageIds.join(', ')}`,
+      );
+      process.exitCode = 1;
+    }
   } finally {
     await dataSource.destroy();
   }

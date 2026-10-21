@@ -16,12 +16,27 @@ export class PageLinksInitializer implements OnApplicationBootstrap {
     const instanceUrl = (
       this.configService.get<string>('FRONTEND_URL') ?? ''
     ).replace(/\/+$/, '');
-    const reindexed = await reindexStalePageLinks(
-      (query, parameters) => this.dataSource.query(query, parameters),
-      instanceUrl,
-    );
-    if (reindexed > 0) {
-      this.logger.log(`Links indexed for ${reindexed} page(s)`);
+    try {
+      const { indexed, failedPageIds } = await reindexStalePageLinks(
+        (query, parameters) => this.dataSource.query(query, parameters),
+        (work) =>
+          this.dataSource.transaction((manager) =>
+            work((query, parameters) => manager.query(query, parameters)),
+          ),
+        instanceUrl,
+      );
+      if (indexed > 0) {
+        this.logger.log(`Links indexed for ${indexed} page(s)`);
+      }
+      if (failedPageIds.length > 0) {
+        this.logger.warn(
+          `Links not indexed for page(s) ${failedPageIds.join(', ')}, retried at next startup`,
+        );
+      }
+    } catch (error) {
+      this.logger.error(
+        `Page links not indexed, retried at next startup: ${String(error)}`,
+      );
     }
   }
 }

@@ -11,6 +11,8 @@ export class PageLink {
     type: 'varchar',
     name: 'target_path',
     length: PAGE_LINK_TARGET_MAX_LENGTH,
+    charset: 'utf8mb4',
+    collation: 'utf8mb4_bin',
   })
   targetPath: string;
 }
