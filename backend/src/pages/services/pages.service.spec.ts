@@ -950,6 +950,33 @@ describe('PagesService', () => {
         });
       });
 
+      it("returns the moved page's new version when its own links were rewritten", async () => {
+        pageLinksService.rewriteAfterMove.mockImplementation(() => {
+          pagesRepository.findById.mockResolvedValue({
+            ...guide,
+            parentId: childId,
+            currentVersionId: 'version-2',
+          });
+          return Promise.resolve({
+            linksUpdated: 1,
+            pagesUpdated: 1,
+            pagesSkipped: 0,
+          });
+        });
+        pagesRepository.findVersionById.mockImplementation((id: string) =>
+          Promise.resolve(buildVersion({ id })),
+        );
+
+        const result = await service.movePage(
+          pageId,
+          { newParentId: childId, updateLinks: true },
+          'user-1',
+        );
+
+        expect(result.page.currentVersionId).toBe('version-2');
+        expect(result.version.id).toBe('version-2');
+      });
+
       it('computes the new path of a page moved to the root', async () => {
         await service.movePage(
           pageId,
@@ -2113,7 +2140,19 @@ describe('PagesService', () => {
       ]);
     });
 
-    it('never lists the page itself', async () => {
+    it('lists the page itself with subtree=true when it links to its own sub-pages', async () => {
+      pageLinksService.findLinkingPageIds.mockResolvedValue(['docs', 'faq']);
+
+      const backlinks = await service.getBacklinks(
+        'docs',
+        { subtree: 'true' },
+        member,
+      );
+
+      expect(backlinks.map((backlink) => backlink.id)).toEqual(['docs', 'faq']);
+    });
+
+    it('never lists the page itself otherwise', async () => {
       pageLinksService.findLinkingPageIds.mockResolvedValue(['docs', 'faq']);
 
       const backlinks = await service.getBacklinks('docs', {}, member);

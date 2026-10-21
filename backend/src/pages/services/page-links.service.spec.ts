@@ -11,6 +11,7 @@ import {
   PageVersionCreatedEvent,
 } from '../events/page-version-created.event.js';
 import type { PageLinkRepository } from '../persistence/page-link.repository.js';
+import type { PageTrashRepository } from '../persistence/page-trash.repository.js';
 import type { PagesRepository } from '../persistence/page.repository.js';
 import { PageLinksService } from './page-links.service.js';
 
@@ -37,7 +38,6 @@ describe('PageLinksService', () => {
   };
   let pagesRepository: {
     findAll: Mock<PagesRepository['findAll']>;
-    findById: Mock<PagesRepository['findById']>;
     findVersionById: Mock<PagesRepository['findVersionById']>;
     updateWithNewVersion: Mock<PagesRepository['updateWithNewVersion']>;
   };
@@ -48,6 +48,9 @@ describe('PageLinksService', () => {
     >;
   };
   let eventEmitter: { emit: Mock };
+  let pageTrashRepository: {
+    findByIdWithDeleted: Mock<PageTrashRepository['findByIdWithDeleted']>;
+  };
 
   beforeEach(async () => {
     pageLinksRepository = {
@@ -57,7 +60,6 @@ describe('PageLinksService', () => {
     };
     pagesRepository = {
       findAll: vi.fn().mockResolvedValue([docs, guide, faq]),
-      findById: vi.fn(),
       findVersionById: vi.fn(),
       updateWithNewVersion: vi.fn(),
     };
@@ -74,6 +76,7 @@ describe('PageLinksService', () => {
         ),
     };
     eventEmitter = { emit: vi.fn() };
+    pageTrashRepository = { findByIdWithDeleted: vi.fn() };
 
     const moduleRef = await Test.createTestingModule({
       providers: [
@@ -82,6 +85,7 @@ describe('PageLinksService', () => {
         { provide: 'PagesRepository', useValue: pagesRepository },
         { provide: PermissionsService, useValue: permissionsService },
         { provide: EventEmitter2, useValue: eventEmitter },
+        { provide: 'PageTrashRepository', useValue: pageTrashRepository },
         {
           provide: ConfigService,
           useValue: { get: vi.fn().mockReturnValue(`${INSTANCE_URL}/`) },
@@ -248,12 +252,14 @@ describe('PageLinksService', () => {
         'guide',
         'docs',
       ]);
-      pagesRepository.findById.mockImplementation((id: string) => {
-        const source = [docs, guide, faq].find((p) => p.id === id);
-        return Promise.resolve(
-          source ? { ...source, currentVersionId: `${id}-v1` } : null,
-        );
-      });
+      pageTrashRepository.findByIdWithDeleted.mockImplementation(
+        (id: string) => {
+          const source = [docs, guide, faq].find((p) => p.id === id);
+          return Promise.resolve(
+            source ? { ...source, currentVersionId: `${id}-v1` } : null,
+          );
+        },
+      );
       pagesRepository.findVersionById.mockImplementation((id: string) => {
         const pageId = id.replace(/-v1$/, '');
         return Promise.resolve({
@@ -277,10 +283,6 @@ describe('PageLinksService', () => {
     it('gives every linking page a single new version with the moved paths, including pages of the moved subtree', async () => {
       const result = await service.rewriteAfterMove(move, 'Guide', author);
 
-      expect(pageLinksRepository.findSourcePageIds).toHaveBeenCalledWith(
-        '/docs/guide',
-        true,
-      );
       const [faqInput, guideInput, ...others] =
         pagesRepository.updateWithNewVersion.mock.calls.map(([input]) => input);
       expect(others).toEqual([]);
@@ -301,6 +303,41 @@ describe('PageLinksService', () => {
         pagesUpdated: 2,
         pagesSkipped: 0,
       });
+    });
+
+    it('also rewrites the linking pages that are in the trash', async () => {
+      await service.rewriteAfterMove(move, 'Guide', author);
+
+      expect(pageLinksRepository.findSourcePageIds).toHaveBeenCalledWith(
+        '/docs/guide',
+        true,
+        true,
+      );
+      expect(
+        permissionsService.getEffectivePageActionsBulk,
+      ).toHaveBeenCalledWith(author, ['faq', 'guide', 'docs'], {
+        includeDeleted: true,
+      });
+    });
+
+    it('keeps going past a page that cannot be saved and counts it as left untouched', async () => {
+      pagesRepository.updateWithNewVersion.mockRejectedValueOnce(
+        new Error('lock timeout'),
+      );
+
+      await expect(
+        service.rewriteAfterMove(move, 'Guide', author),
+      ).resolves.toEqual({ linksUpdated: 1, pagesUpdated: 1, pagesSkipped: 1 });
+    });
+
+    it('reports no update rather than failing when the linking pages cannot be listed', async () => {
+      pageLinksRepository.findSourcePageIds.mockRejectedValue(
+        new Error('down'),
+      );
+
+      await expect(
+        service.rewriteAfterMove(move, 'Guide', author),
+      ).resolves.toEqual({ linksUpdated: 0, pagesUpdated: 0, pagesSkipped: 0 });
     });
 
     it('reindexes each rewritten page and announces its new version', async () => {
@@ -338,7 +375,9 @@ describe('PageLinksService', () => {
 
       expect(
         permissionsService.getEffectivePageActionsBulk,
-      ).toHaveBeenCalledWith(author, ['faq', 'guide', 'docs']);
+      ).toHaveBeenCalledWith(author, ['faq', 'guide', 'docs'], {
+        includeDeleted: true,
+      });
       expect(
         pagesRepository.updateWithNewVersion.mock.calls.map(
           ([input]) => input.page.id,

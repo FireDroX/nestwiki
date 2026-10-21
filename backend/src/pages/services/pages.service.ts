@@ -565,7 +565,7 @@ export class PagesService {
     );
     const sources = pages.filter(
       (source) =>
-        source.id !== page.id &&
+        (includeDescendants || source.id !== page.id) &&
         sourceIds.has(source.id) &&
         index.pathOf(source.id) !== undefined,
     );
@@ -748,14 +748,27 @@ export class PagesService {
     });
     this.eventEmitter.emit(PAGE_TREE_CHANGED_EVENT);
 
-    const links = pathMove
-      ? await this.pageLinksService.rewriteAfterMove(
-          pathMove,
-          page.title,
-          movingUser,
-        )
-      : { linksUpdated: 0, pagesUpdated: 0, pagesSkipped: 0 };
-    return { page: moved, version: currentVersion, links };
+    if (!pathMove) {
+      return {
+        page: moved,
+        version: currentVersion,
+        links: { linksUpdated: 0, pagesUpdated: 0, pagesSkipped: 0 },
+      };
+    }
+    const links = await this.pageLinksService.rewriteAfterMove(
+      pathMove,
+      page.title,
+      movingUser,
+    );
+    if (links.pagesUpdated === 0) {
+      return { page: moved, version: currentVersion, links };
+    }
+    const refreshed = (await this.pagesRepository.findById(id)) ?? moved;
+    return {
+      page: refreshed,
+      version: await this.loadCurrentVersion(refreshed),
+      links,
+    };
   }
 
   private async describePathMove(

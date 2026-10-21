@@ -7,6 +7,7 @@ import {
   DEFAULT_PAGE,
   MAX_LIMIT,
 } from '../../common/variables.global.js';
+import type { PageAction } from '../../common/permissions.js';
 import { PermissionsService } from '../../permissions/services/permissions.service.js';
 import type { User } from '../../users/entities/user.entity.js';
 import { ListBrokenPageLinksQueryDto } from '../dto/in/list-broken-page-links-query.dto.js';
@@ -20,6 +21,7 @@ import {
   PageVersionCreatedEvent,
 } from '../events/page-version-created.event.js';
 import type { PageLinkRepository } from '../persistence/page-link.repository.js';
+import type { PageTrashRepository } from '../persistence/page-trash.repository.js';
 import type { PagesRepository } from '../persistence/page.repository.js';
 import {
   MarkdownLinkRewriter,
@@ -39,6 +41,8 @@ export class PageLinksService {
     private readonly pagesRepository: PagesRepository,
     private readonly permissionsService: PermissionsService,
     private readonly eventEmitter: EventEmitter2,
+    @Inject('PageTrashRepository')
+    private readonly pageTrashRepository: PageTrashRepository,
     configService: ConfigService,
   ) {
     this.instanceUrl = (
@@ -118,15 +122,26 @@ export class PageLinksService {
       return result;
     }
 
-    const sourceIds = await this.pageLinksRepository.findSourcePageIds(
-      move.from,
-      true,
-    );
-    const actionsByPageId =
-      await this.permissionsService.getEffectivePageActionsBulk(
-        author,
-        sourceIds,
+    let sourceIds: string[];
+    let actionsByPageId: Map<string, PageAction[]>;
+    try {
+      sourceIds = await this.pageLinksRepository.findSourcePageIds(
+        move.from,
+        true,
+        true,
       );
+      actionsByPageId =
+        await this.permissionsService.getEffectivePageActionsBulk(
+          author,
+          sourceIds,
+          { includeDeleted: true },
+        );
+    } catch (error) {
+      this.logger.warn(
+        `Links to ${move.from} not updated after the move: ${String(error)}`,
+      );
+      return result;
+    }
     const changeSummary =
       `Liens mis à jour après le déplacement de « ${movedPageTitle} »`.slice(
         0,
@@ -134,54 +149,81 @@ export class PageLinksService {
       );
 
     for (const sourceId of sourceIds) {
-      const page = await this.pagesRepository.findById(sourceId);
-      const version = page?.currentVersionId
-        ? await this.pagesRepository.findVersionById(page.currentVersionId)
-        : null;
-      if (!page || !version) {
-        continue;
-      }
-      const rewritten = MarkdownLinkRewriter.movePagePaths(
-        version.content,
-        move,
-        this.instanceUrl,
-      );
-      if (rewritten.linksUpdated === 0) {
-        continue;
-      }
-      if (!(actionsByPageId.get(sourceId) ?? []).includes('page.edit')) {
-        result.pagesSkipped += 1;
-        continue;
-      }
-
-      const updated = await this.pagesRepository.updateWithNewVersion({
-        page,
-        title: page.title,
-        content: rewritten.content,
-        changeSummary,
-        authorId: author.id,
-      });
-      await this.syncPage(
-        updated.page.id,
-        updated.version.id,
-        updated.version.content,
-      );
-      this.eventEmitter.emit(
-        PAGE_VERSION_CREATED_EVENT,
-        new PageVersionCreatedEvent(
-          updated.page.id,
-          updated.version.id,
-          author.id,
-          updated.page.title,
-          updated.version.content,
+      try {
+        const linksUpdated = await this.rewriteSource(
+          sourceId,
+          move,
+          (actionsByPageId.get(sourceId) ?? []).includes('page.edit'),
           changeSummary,
-          updated.page.updatedAt,
-        ),
-      );
-      result.linksUpdated += rewritten.linksUpdated;
-      result.pagesUpdated += 1;
+          author,
+        );
+        if (linksUpdated === null) {
+          result.pagesSkipped += 1;
+        } else if (linksUpdated > 0) {
+          result.linksUpdated += linksUpdated;
+          result.pagesUpdated += 1;
+        }
+      } catch (error) {
+        this.logger.warn(
+          `Links of page ${sourceId} not updated after the move: ${String(error)}`,
+        );
+        result.pagesSkipped += 1;
+      }
     }
     return result;
+  }
+
+  private async rewriteSource(
+    sourceId: string,
+    move: PagePathMove,
+    canEdit: boolean,
+    changeSummary: string,
+    author: User,
+  ): Promise<number | null> {
+    const page = await this.pageTrashRepository.findByIdWithDeleted(sourceId);
+    const version = page?.currentVersionId
+      ? await this.pagesRepository.findVersionById(page.currentVersionId)
+      : null;
+    if (!page || !version) {
+      return 0;
+    }
+    const rewritten = MarkdownLinkRewriter.movePagePaths(
+      version.content,
+      move,
+      this.instanceUrl,
+    );
+    if (rewritten.linksUpdated === 0) {
+      return 0;
+    }
+    if (!canEdit) {
+      return null;
+    }
+
+    const updated = await this.pagesRepository.updateWithNewVersion({
+      page,
+      title: page.title,
+      content: rewritten.content,
+      changeSummary,
+      authorId: author.id,
+    });
+    await this.syncPage(
+      updated.page.id,
+      updated.version.id,
+      updated.version.content,
+    );
+    this.eventEmitter.emit(
+      PAGE_VERSION_CREATED_EVENT,
+      new PageVersionCreatedEvent(
+        updated.page.id,
+        updated.version.id,
+        author.id,
+        updated.page.title,
+        updated.version.content,
+        changeSummary,
+        updated.page.updatedAt,
+      ),
+    );
+    return rewritten.linksUpdated;
   }
 
   async listBroken(

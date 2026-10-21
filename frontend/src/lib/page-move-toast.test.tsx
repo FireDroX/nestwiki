@@ -13,13 +13,13 @@ describe('announcePageMove', () => {
     expect(screen.getByText('12 liens mis à jour dans 4 pages')).toBeInTheDocument()
   })
 
-  it('mentions the pages left untouched for lack of rights', async () => {
+  it('mentions the pages whose links could not be updated', async () => {
     render(<Toaster />)
 
     act(() => announcePageMove({ linksUpdated: 1, pagesUpdated: 1, pagesSkipped: 1 }))
 
     expect(await screen.findByText('1 lien mis à jour dans 1 page')).toBeInTheDocument()
-    expect(screen.getByText("1 page n'a pas pu être modifiée (droits insuffisants)")).toBeInTheDocument()
+    expect(screen.getByText("1 page n'a pas pu être modifiée, ses liens restent cassés")).toBeInTheDocument()
   })
 
   it('only confirms the move when no link was touched', () => {

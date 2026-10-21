@@ -1097,7 +1097,7 @@ Un lien est cassé quand aucune page ne se trouve à son chemin : la page n'a ja
 
 ## Déplacer une page sans casser ses liens
 
-Une page est adressée par son chemin complet : la déplacer change son adresse et celle de toutes ses sous-pages. Dans l'éditeur, sous « Page parente », NestWiki indique combien de pages contiennent des liens vers la page ou ses sous-pages, avec la case « Mettre à jour ces liens au déplacement », cochée par défaut.
+Une page est adressée par son chemin complet : la déplacer change son adresse et celle de toutes ses sous-pages. Dans l'éditeur, sous « Page parente », NestWiki indique combien de pages contiennent des liens vers la page ou ses sous-pages (la page elle-même comprise si elle pointe vers ses sous-pages), avec la case « Mettre à jour ces liens au déplacement », cochée par défaut.
 
 Case cochée, chaque page concernée reçoit, juste après le déplacement, une nouvelle version avec les chemins corrigés :
 
@@ -1106,7 +1106,7 @@ Case cochée, chaque page concernée reçoit, juste après le déplacement, une 
 - les liens entre pages du sous-arbre déplacé sont corrigés aussi ;
 - une page qui contient plusieurs liens concernés ne reçoit qu'une seule nouvelle version, à votre nom, avec le résumé « Liens mis à jour après le déplacement de « titre » ». L'historique garde l'ancienne version, comme pour toute modification.
 
-Seules les pages que vous avez le droit de modifier sont corrigées. Les autres gardent leurs liens, désormais cassés : la notification qui suit le déplacement les compte, et elles apparaissent dans l'onglet « Liens cassés ». Aucune redirection n'est créée depuis l'ancien chemin.
+Les pages en corbeille sont corrigées aussi, pour que leurs liens restent valides si elles sont restaurées. Seules les pages que vous avez le droit de modifier sont corrigées. Les autres gardent leurs liens, désormais cassés : la notification qui suit le déplacement les compte, et elles apparaissent dans l'onglet « Liens cassés ». Aucune redirection n'est créée depuis l'ancien chemin.
 
 Par l'API, \`PATCH /api/pages/:id/move\` accepte \`updateLinks: true\` (désactivé par défaut) et renvoie \`linksUpdated\`, \`pagesUpdated\` et \`pagesSkipped\`.
 

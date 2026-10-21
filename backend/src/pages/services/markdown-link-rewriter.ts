@@ -196,7 +196,9 @@ export class MarkdownLinkRewriter {
       return null;
     }
     const origin = path === url ? '' : instanceUrl;
-    return `${origin}/pages${move.to}${pagePath.slice(from.length)}${page[2]}`;
+    const movedSegmentCount = from.split('/').length;
+    const rest = page[1].split('/').slice(movedSegmentCount).join('/');
+    return `${origin}/pages${move.to}${rest ? `/${rest}` : ''}${page[2]}`;
   }
 
   private static toInstancePath(

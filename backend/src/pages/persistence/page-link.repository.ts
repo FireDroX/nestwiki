@@ -12,6 +12,7 @@ export interface PageLinkRepository {
   findSourcePageIds(
     targetPath: string,
     includeDescendants: boolean,
+    includeTrashed?: boolean,
   ): Promise<string[]>;
   findAllFromActiveSources(): Promise<PageLinkRow[]>;
 }

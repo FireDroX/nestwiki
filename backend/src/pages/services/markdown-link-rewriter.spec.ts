@@ -303,6 +303,12 @@ describe('MarkdownLinkRewriter', () => {
       ).toBe('[a](/pages/archive/old-guide) [b](/pages/archive/old-guide)');
     });
 
+    it('keeps the end of the path as the author wrote it', () => {
+      expect(
+        movePagePaths('[x](/pages/Docs/Guide/Install/My%20Notes#top)').content,
+      ).toBe('[x](/pages/archive/old-guide/Install/My%20Notes#top)');
+    });
+
     it('leaves code, other pages and other hosts untouched', () => {
       const content = [
         '`[a](/pages/docs/guide)`',
