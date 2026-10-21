@@ -99,7 +99,7 @@ docker compose up -d --build
 
 Migrations run automatically when the backend container starts.
 
-Admins are told when a newer release exists: the API asks GitHub's public API for the latest NestWiki release (at most every 6 hours, nothing about your instance is sent) and the web app shows a notice to administrators until they update or ignore that version. Set `UPDATE_CHECK=false` in `backend/.env` to disable this outbound request. Read the [changelog](CHANGELOG.md) before upgrading: entries flagged with ⚠️ need an action on your side. Pre-built images are also published as `ghcr.io/firedrox/nestwiki-backend` and `ghcr.io/firedrox/nestwiki-frontend`, tagged `latest`, `X.Y` and `X.Y.Z`.
+Admins are told when a newer release exists: the API asks GitHub's public API for the latest NestWiki release (at most every 6 hours, nothing about your instance is sent) and the web app shows a notice to administrators until they update or ignore that version. Set `UPDATE_CHECK=false` in `backend/.env` to disable this outbound request. Read the [changelog](CHANGELOG.md) before upgrading: entries flagged with ⚠️ need an action on your side. Pre-built images are also published as `ghcr.io/firedrox/nestwiki-backend` and `ghcr.io/firedrox/nestwiki-frontend`, tagged `latest`, `X.Y` and `X.Y.Z`. Work in progress lands first on the `dev` branch, published as GitHub pre-releases and as images tagged `dev` and `X.Y.Z-dev`: handy to try what's coming, not meant for production.
 
 ![Release notes, grouped by version](docs/screenshots/release-notes.jpg)
 
