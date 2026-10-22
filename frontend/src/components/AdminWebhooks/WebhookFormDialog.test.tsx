@@ -87,6 +87,12 @@ describe('WebhookFormDialog', () => {
 
     expect(screen.getByRole('combobox', { name: 'Format' })).toHaveTextContent('Discord')
     expect(screen.getByText('Adresse Discord reconnue : format proposé automatiquement.')).toBeInTheDocument()
+
+    await user.clear(screen.getByLabelText('URL'))
+    await user.click(screen.getByLabelText('URL'))
+    await user.paste('http://192.168.1.20:5678/webhook/wiki')
+
+    expect(screen.getByRole('combobox', { name: 'Format' })).toHaveTextContent('JSON')
   })
 
   it('warns that private pages will be sent to the external service', async () => {

@@ -72,7 +72,7 @@ export function WebhookDeliveryDialog({ delivery, onClose, onRedelivered }: Webh
             )}
             <div className="flex min-w-0 flex-col gap-1">
               <p className="text-sm font-medium">{t('admin.webhooks.log.payload')}</p>
-              <pre className="max-h-80 overflow-auto rounded-md border border-border bg-muted p-3 font-mono text-xs">
+              <pre className="max-h-80 overflow-auto rounded-md border border-border bg-muted p-3 font-mono text-xs break-all whitespace-pre-wrap">
                 {prettyPayload(delivery.payload)}
               </pre>
             </div>

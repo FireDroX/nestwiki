@@ -88,9 +88,8 @@ export function WebhookFormDialog({ webhook, trigger, onSaved }: WebhookFormDial
 
   function handleUrlChange(nextUrl: string, onChange: (value: string) => void) {
     onChange(nextUrl)
-    const detected = detectWebhookFormat(nextUrl)
-    if (detected && !formatChosenByUser.current) {
-      setValue('format', detected)
+    if (!formatChosenByUser.current) {
+      setValue('format', detectWebhookFormat(nextUrl) ?? initialValues(webhook).format)
     }
   }
 
