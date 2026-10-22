@@ -73,6 +73,7 @@ import {
   type PageMergeResult,
 } from './page-merge.service.js';
 import { PagePathIndex } from './page-path-index.js';
+import { PageReferenceService } from './page-reference.service.js';
 
 const MYSQL_DUPLICATE_ENTRY_CODE = 'ER_DUP_ENTRY';
 
@@ -89,6 +90,7 @@ export class PagesService {
     private readonly eventEmitter: EventEmitter2,
     private readonly userActivityLogService: UserActivityLogService,
     private readonly pageLinksService: PageLinksService,
+    private readonly pageReferenceService: PageReferenceService,
   ) {}
 
   private async resolveFullUser(
@@ -795,13 +797,16 @@ export class PagesService {
     page: Page,
     newParentId: string | null,
   ): Promise<{ from: string; to: string } | null> {
-    const index = new PagePathIndex(await this.pagesRepository.findAll());
-    const from = index.pathOf(page.id);
-    const parentPath = newParentId === null ? '' : index.pathOf(newParentId);
+    const paths = await this.pageReferenceService.pathsOf(
+      newParentId === null ? [page.id] : [page.id, newParentId],
+    );
+    const from = paths.get(page.id);
+    const parentPath = newParentId === null ? '' : paths.get(newParentId);
     if (from === undefined || parentPath === undefined) {
       return null;
     }
-    return { from, to: `${parentPath}/${page.slug}` };
+    const to = `${parentPath}/${page.slug}`;
+    return from === to ? null : { from, to };
   }
 
   async deletePage(

@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
+import type { PageHierarchyRepository } from '../../permissions/persistence/page-hierarchy.repository.js';
 import { PageReferenceDto } from '../dto/out/page-reference.dto.js';
-import { Page } from '../entities/page.entity.js';
 import type { PageTrashRepository } from '../persistence/page-trash.repository.js';
 
 @Injectable()
@@ -8,6 +8,8 @@ export class PageReferenceService {
   constructor(
     @Inject('PageTrashRepository')
     private readonly pageTrashRepository: PageTrashRepository,
+    @Inject('PageHierarchyRepository')
+    private readonly pageHierarchyRepository: PageHierarchyRepository,
   ) {}
 
   async describe(pageId: string): Promise<PageReferenceDto | null> {
@@ -15,31 +17,24 @@ export class PageReferenceService {
     if (!page) {
       return null;
     }
-    const ancestors = await this.findAncestors(page);
+    const [chains, paths] = await Promise.all([
+      this.pageHierarchyRepository.findChains([pageId], {
+        includeDeleted: true,
+      }),
+      this.pageTrashRepository.findPaths([pageId]),
+    ]);
+    const chainIds = chains.get(pageId)?.chainIds ?? [pageId];
     return {
       id: page.id,
       title: page.title,
-      path: `/${[...ancestors, page].map((node) => node.slug).join('/')}`,
+      path: paths.get(pageId) ?? `/${page.slug}`,
       visibility: page.visibility,
-      ancestorIds: ancestors.map((ancestor) => ancestor.id),
+      ancestorIds: chainIds.slice(1).reverse(),
       inTrash: page.deletedAt !== null,
     };
   }
 
-  private async findAncestors(page: Page): Promise<Page[]> {
-    const ancestors: Page[] = [];
-    const visited = new Set([page.id]);
-    let parentId = page.parentId;
-    while (parentId !== null && !visited.has(parentId)) {
-      const parent =
-        await this.pageTrashRepository.findByIdWithDeleted(parentId);
-      if (!parent) {
-        break;
-      }
-      visited.add(parent.id);
-      ancestors.unshift(parent);
-      parentId = parent.parentId;
-    }
-    return ancestors;
+  pathsOf(pageIds: string[]): Promise<Map<string, string>> {
+    return this.pageTrashRepository.findPaths(pageIds);
   }
 }

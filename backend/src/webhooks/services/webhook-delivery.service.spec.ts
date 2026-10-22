@@ -266,6 +266,19 @@ describe('WebhookDeliveryService', () => {
     });
   });
 
+  describe('hasSubscribers', () => {
+    it('tells whether an enabled webhook listens to the event', async () => {
+      webhooksRepository.findEnabled.mockResolvedValue([
+        webhook({ events: ['page.created'] }),
+      ]);
+
+      await expect(service.hasSubscribers('page.created')).resolves.toBe(true);
+      await expect(service.hasSubscribers('comment.created')).resolves.toBe(
+        false,
+      );
+    });
+  });
+
   describe('processDue', () => {
     it('posts the payload with signed headers and records the success', async () => {
       const due = delivery();
@@ -352,6 +365,22 @@ describe('WebhookDeliveryService', () => {
       expect(notFound.status).toBe('failed');
       expect(timeout.status).toBe('pending');
       expect(throttled.status).toBe('pending');
+    });
+
+    it('fails a redirect at once, since redirects are not followed', async () => {
+      const due = delivery();
+      deliveriesRepository.findDue.mockResolvedValue([due]);
+      httpClient.post.mockResolvedValue(301);
+
+      await service.processDue();
+
+      expect(due).toMatchObject({
+        status: 'failed',
+        attempts: 1,
+        lastStatusCode: 301,
+        lastError: 'HTTP 301: redirect not followed',
+        nextAttemptAt: null,
+      });
     });
 
     it('retries after a network error and keeps its message', async () => {

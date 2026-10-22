@@ -55,7 +55,7 @@ export class WebhookEventsListener {
 
   @OnEvent(PAGE_VERSION_CREATED_EVENT, { async: true })
   onPageVersionCreated(event: PageVersionCreatedEvent): Promise<void> {
-    return this.safely(async () => {
+    return this.whenSubscribed('page.updated', async () => {
       const page = await this.pageReferenceService.describe(event.pageId);
       if (page && !page.inTrash) {
         await this.deliveryService.publish('page.updated', {
@@ -119,7 +119,7 @@ export class WebhookEventsListener {
 
   @OnEvent(PAGES_IMPORTED_EVENT, { async: true })
   async onPagesImported(event: PagesImportedEvent): Promise<void> {
-    await this.safely(async () => {
+    await this.whenSubscribed('pages.imported', async () => {
       const page = event.rootPageId
         ? await this.pageReferenceService.describe(event.rootPageId)
         : null;
@@ -137,7 +137,7 @@ export class WebhookEventsListener {
     actorId: string,
     data: PublishedEvent['data'],
   ): Promise<void> {
-    return this.safely(async () => {
+    return this.whenSubscribed(event, async () => {
       const page = await this.pageReferenceService.describe(pageId);
       if (page) {
         await this.deliveryService.publish(event, { actorId, page, data });
@@ -145,9 +145,14 @@ export class WebhookEventsListener {
     });
   }
 
-  private async safely(work: () => Promise<void>): Promise<void> {
+  private async whenSubscribed(
+    event: WebhookEventName,
+    work: () => Promise<void>,
+  ): Promise<void> {
     try {
-      await work();
+      if (await this.deliveryService.hasSubscribers(event)) {
+        await work();
+      }
     } catch (error) {
       this.logger.error(`Webhook event not queued: ${String(error)}`);
     }

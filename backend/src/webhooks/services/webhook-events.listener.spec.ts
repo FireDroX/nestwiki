@@ -26,15 +26,20 @@ const guide: PageReferenceDto = {
 describe('WebhookEventsListener', () => {
   let listener: WebhookEventsListener;
   let publish: Mock<WebhookDeliveryService['publish']>;
+  let hasSubscribers: Mock<WebhookDeliveryService['hasSubscribers']>;
   let describePage: Mock<PageReferenceService['describe']>;
 
   beforeEach(async () => {
     publish = vi.fn().mockResolvedValue(undefined);
+    hasSubscribers = vi.fn().mockResolvedValue(true);
     describePage = vi.fn().mockResolvedValue(guide);
     const moduleRef = await Test.createTestingModule({
       providers: [
         WebhookEventsListener,
-        { provide: WebhookDeliveryService, useValue: { publish } },
+        {
+          provide: WebhookDeliveryService,
+          useValue: { publish, hasSubscribers },
+        },
         { provide: PageReferenceService, useValue: { describe: describePage } },
       ],
     }).compile();
@@ -149,6 +154,28 @@ describe('WebhookEventsListener', () => {
       ),
     );
 
+    expect(publish).not.toHaveBeenCalled();
+  });
+
+  it('does not even look the page up when no webhook listens to the event', async () => {
+    hasSubscribers.mockResolvedValue(false);
+
+    await listener.onPageCreated(new PageCreatedEvent('guide', 'user-1'));
+    await listener.onPageVersionCreated(
+      new PageVersionCreatedEvent(
+        'guide',
+        'v2',
+        'user-1',
+        'Guide',
+        '',
+        null,
+        new Date(),
+      ),
+    );
+
+    expect(hasSubscribers).toHaveBeenCalledWith('page.created');
+    expect(hasSubscribers).toHaveBeenCalledWith('page.updated');
+    expect(describePage).not.toHaveBeenCalled();
     expect(publish).not.toHaveBeenCalled();
   });
 

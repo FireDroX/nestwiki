@@ -44,6 +44,7 @@ import { PermissionsService } from '../../permissions/services/permissions.servi
 import { User } from '../../users/entities/user.entity.js';
 import { UsersService } from '../../users/services/users.service.js';
 import { PageLinksService } from './page-links.service.js';
+import { PageReferenceService } from './page-reference.service.js';
 import { PageMergeService } from './page-merge.service.js';
 import { PagesService } from './pages.service.js';
 
@@ -143,6 +144,9 @@ describe('PagesService', () => {
     findLinkingPageIds: Mock<PageLinksService['findLinkingPageIds']>;
     rewriteAfterMove: Mock<PageLinksService['rewriteAfterMove']>;
   };
+  let pageReferenceService: {
+    pathsOf: Mock<PageReferenceService['pathsOf']>;
+  };
 
   beforeEach(async () => {
     pagesRepository = {
@@ -212,6 +216,7 @@ describe('PagesService', () => {
         pagesSkipped: 0,
       }),
     };
+    pageReferenceService = { pathsOf: vi.fn().mockResolvedValue(new Map()) };
 
     const module = await Test.createTestingModule({
       providers: [
@@ -224,6 +229,7 @@ describe('PagesService', () => {
         { provide: EventEmitter2, useValue: eventEmitter },
         { provide: UserActivityLogService, useValue: userActivityLogService },
         { provide: PageLinksService, useValue: pageLinksService },
+        { provide: PageReferenceService, useValue: pageReferenceService },
       ],
     }).compile();
 
@@ -927,7 +933,20 @@ describe('PagesService', () => {
         pagesRepository.findById.mockImplementation((id: string) =>
           Promise.resolve(pages.find((p) => p.id === id) ?? null),
         );
-        pagesRepository.findAll.mockResolvedValue(pages);
+        const paths = new Map([
+          [otherId, '/docs'],
+          [pageId, '/docs/guide'],
+          [childId, '/archive'],
+        ]);
+        pageReferenceService.pathsOf.mockImplementation((ids: string[]) =>
+          Promise.resolve(
+            new Map(
+              ids.flatMap((id) =>
+                paths.has(id) ? [[id, paths.get(id)!] as const] : [],
+              ),
+            ),
+          ),
+        );
         pagesRepository.findVersionById.mockResolvedValue(buildVersion());
         pagesRepository.findBySlugAndParent.mockResolvedValue(null);
         pagesRepository.updateParent.mockImplementation((page, parentId) =>
@@ -1013,6 +1032,30 @@ describe('PagesService', () => {
           PAGE_MOVED_EVENT,
           new PageMovedEvent(pageId, 'user-1', '/docs/guide', '/archive/guide'),
         );
+      });
+
+      it('neither announces a move nor rewrites links when the path does not change', async () => {
+        await service.movePage(
+          pageId,
+          { newParentId: otherId, updateLinks: true },
+          'user-1',
+        );
+
+        expect(eventEmitter.emit).not.toHaveBeenCalledWith(
+          PAGE_MOVED_EVENT,
+          expect.anything(),
+        );
+        expect(pageLinksService.rewriteAfterMove).not.toHaveBeenCalled();
+      });
+
+      it('only resolves the paths of the page and its new parent', async () => {
+        await service.movePage(pageId, { newParentId: childId }, 'user-1');
+
+        expect(pageReferenceService.pathsOf).toHaveBeenCalledWith([
+          pageId,
+          childId,
+        ]);
+        expect(pagesRepository.findAll).not.toHaveBeenCalled();
       });
 
       it('leaves the links alone by default', async () => {

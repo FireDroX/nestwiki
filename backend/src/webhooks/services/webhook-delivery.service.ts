@@ -91,6 +91,11 @@ export class WebhookDeliveryService
     }
   }
 
+  async hasSubscribers(event: WebhookEventName): Promise<boolean> {
+    const webhooks = await this.webhooksRepository.findEnabled();
+    return webhooks.some((webhook) => webhook.events.includes(event));
+  }
+
   async publish(
     event: WebhookEventName,
     published: PublishedEvent,
@@ -229,10 +234,9 @@ export class WebhookDeliveryService
       return this.deliveriesRepository.save(delivery);
     }
 
-    delivery.lastError = (error ?? `HTTP ${statusCode}`).slice(
-      0,
-      WEBHOOK_ERROR_MAX_LENGTH,
-    );
+    delivery.lastError = (
+      error ?? WebhookDeliveryService.describeFailure(statusCode)
+    ).slice(0, WEBHOOK_ERROR_MAX_LENGTH);
     if (
       mode === 'scheduled' &&
       WebhookDeliveryService.isRetryable(statusCode) &&
@@ -348,6 +352,12 @@ export class WebhookDeliveryService
     if (statusCode === null || statusCode === 408 || statusCode === 429) {
       return true;
     }
-    return statusCode < 400 || statusCode >= 500;
+    return statusCode < 300 || statusCode >= 500;
+  }
+
+  private static describeFailure(statusCode: number | null): string {
+    return statusCode !== null && statusCode >= 300 && statusCode < 400
+      ? `HTTP ${statusCode}: redirect not followed`
+      : `HTTP ${statusCode}`;
   }
 }
