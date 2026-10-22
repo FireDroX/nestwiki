@@ -81,6 +81,8 @@ describe('WebhookDeliveryService', () => {
     findEnabled: Mock<WebhookRepository['findEnabled']>;
     findById: Mock<WebhookRepository['findById']>;
     save: Mock<WebhookRepository['save']>;
+    resetFailures: Mock<WebhookRepository['resetFailures']>;
+    recordFailure: Mock<WebhookRepository['recordFailure']>;
   };
   let deliveriesRepository: {
     [K in keyof WebhookDeliveryRepository]: Mock<WebhookDeliveryRepository[K]>;
@@ -94,6 +96,8 @@ describe('WebhookDeliveryService', () => {
       findEnabled: vi.fn().mockResolvedValue([]),
       findById: vi.fn().mockResolvedValue(webhook()),
       save: vi.fn((saved: Webhook) => Promise.resolve(saved)),
+      resetFailures: vi.fn().mockResolvedValue(undefined),
+      recordFailure: vi.fn().mockResolvedValue(false),
     };
     deliveriesRepository = {
       create: vi.fn((input: CreateWebhookDeliveryInput) =>
@@ -296,9 +300,8 @@ describe('WebhookDeliveryService', () => {
           nextAttemptAt: null,
         }),
       );
-      expect(webhooksRepository.save).toHaveBeenCalledWith(
-        expect.objectContaining({ consecutiveFailures: 0 }),
-      );
+      expect(webhooksRepository.resetFailures).toHaveBeenCalledWith('hook-1');
+      expect(webhooksRepository.save).not.toHaveBeenCalled();
     });
 
     it('retries after 1 min, 5 min, 30 min, 2 h and 6 h, then gives up after 6 attempts', async () => {
@@ -365,9 +368,7 @@ describe('WebhookDeliveryService', () => {
       });
     });
 
-    it('disables the webhook after 20 failed deliveries in a row', async () => {
-      const hook = webhook({ consecutiveFailures: 19 });
-      webhooksRepository.findById.mockResolvedValue(hook);
+    it('counts a failed delivery with a targeted update that disables the webhook after 20 in a row', async () => {
       deliveriesRepository.findDue.mockResolvedValue([
         delivery({ attempts: 5 }),
       ]);
@@ -375,12 +376,12 @@ describe('WebhookDeliveryService', () => {
 
       await service.processDue();
 
-      expect(hook).toMatchObject({
-        enabled: false,
-        consecutiveFailures: 20,
-        disabledReason: 'Disabled after 20 consecutive failed deliveries',
-      });
-      expect(webhooksRepository.save).toHaveBeenCalledWith(hook);
+      expect(webhooksRepository.recordFailure).toHaveBeenCalledWith(
+        'hook-1',
+        20,
+        'Disabled after 20 consecutive failed deliveries',
+      );
+      expect(webhooksRepository.save).not.toHaveBeenCalled();
     });
 
     it('fails the pending deliveries of a disabled webhook without sending them', async () => {
@@ -454,6 +455,38 @@ describe('WebhookDeliveryService', () => {
       expect(httpClient.post.mock.calls[0][1]['X-NestWiki-Delivery']).toBe(
         copy.id,
       );
+    });
+
+    it('creates the copy without a due date, so the background loop cannot send it too', async () => {
+      await service.redeliver(delivery({ id: 'old' }), webhook());
+
+      expect(deliveriesRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ nextAttemptAt: null }),
+      );
+    });
+
+    it('retries a failed copy and counts its final failure', async () => {
+      httpClient.post.mockResolvedValue(503);
+
+      const copy = await service.redeliver(delivery(), webhook());
+
+      expect(copy).toMatchObject({ status: 'pending', attempts: 1 });
+    });
+
+    it('sends a copy of a test once, without retry or failure count', async () => {
+      httpClient.post.mockResolvedValue(503);
+
+      const copy = await service.redeliver(
+        delivery({ event: 'webhook.test' }),
+        webhook(),
+      );
+
+      expect(copy).toMatchObject({
+        status: 'failed',
+        attempts: 1,
+        nextAttemptAt: null,
+      });
+      expect(webhooksRepository.recordFailure).not.toHaveBeenCalled();
     });
   });
 });

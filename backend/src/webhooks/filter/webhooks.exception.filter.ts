@@ -29,6 +29,8 @@ export class WebhooksExceptionFilter implements ExceptionFilter {
       case 'WebhookNotFoundException':
       case 'WebhookDeliveryNotFoundException':
         return { statusCode: HttpStatus.NOT_FOUND, error: exception.message };
+      case 'WebhookDisabledException':
+        return { statusCode: HttpStatus.CONFLICT, error: exception.message };
       case 'ValidationException':
         return { statusCode: HttpStatus.BAD_REQUEST, error: exception.message };
       default:

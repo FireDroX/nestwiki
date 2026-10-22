@@ -3,6 +3,7 @@ import type { Response } from 'express';
 import { describe, expect, it, vi } from 'vitest';
 import { ValidationException } from '../../common/exceptions/validation.exception.js';
 import { WebhookDeliveryNotFoundException } from '../../common/exceptions/webhooks/webhook-delivery-not-found.exception.js';
+import { WebhookDisabledException } from '../../common/exceptions/webhooks/webhook-disabled.exception.js';
 import { WebhookNotFoundException } from '../../common/exceptions/webhooks/webhook-not-found.exception.js';
 import { WebhooksExceptionFilter } from './webhooks.exception.filter.js';
 
@@ -30,6 +31,15 @@ describe('WebhooksExceptionFilter', () => {
     expect(
       catchWith(new WebhookDeliveryNotFoundException()).status,
     ).toHaveBeenCalledWith(404);
+  });
+
+  it('answers 409 when redelivering for a disabled webhook', () => {
+    const response = catchWith(new WebhookDisabledException());
+
+    expect(response.status).toHaveBeenCalledWith(409);
+    expect(response.json).toHaveBeenCalledWith({
+      error: 'Webhook is disabled',
+    });
   });
 
   it('answers 400 for a validation error', () => {

@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 import { AdminAuditLogService } from '../../admin/services/admin-audit-log.service.js';
 import { ValidationException } from '../../common/exceptions/validation.exception.js';
 import { WebhookDeliveryNotFoundException } from '../../common/exceptions/webhooks/webhook-delivery-not-found.exception.js';
+import { WebhookDisabledException } from '../../common/exceptions/webhooks/webhook-disabled.exception.js';
 import { WebhookNotFoundException } from '../../common/exceptions/webhooks/webhook-not-found.exception.js';
 import { PageReferenceService } from '../../pages/services/page-reference.service.js';
 import { CreateWebhookDto } from '../dto/in/create-webhook.dto.js';
@@ -72,6 +73,8 @@ describe('WebhooksService', () => {
       ),
       save: vi.fn((saved: Webhook) => Promise.resolve(saved)),
       delete: vi.fn().mockResolvedValue(undefined),
+      resetFailures: vi.fn(),
+      recordFailure: vi.fn(),
     };
     deliveriesRepository = {
       findById: vi.fn().mockResolvedValue(null),
@@ -311,6 +314,21 @@ describe('WebhooksService', () => {
         original,
         expect.objectContaining({ id: 'hook-1' }),
       );
+    });
+
+    it('refuses to redeliver for a disabled webhook', async () => {
+      deliveriesRepository.findById.mockResolvedValue({
+        id: 'd1',
+        webhookId: 'hook-1',
+      } as WebhookDelivery);
+      webhooksRepository.findById.mockResolvedValue(
+        webhook({ enabled: false }),
+      );
+
+      await expect(service.redeliver('d1')).rejects.toBeInstanceOf(
+        WebhookDisabledException,
+      );
+      expect(deliveryService.redeliver).not.toHaveBeenCalled();
     });
 
     it('throws WebhookDeliveryNotFoundException for an unknown delivery', async () => {

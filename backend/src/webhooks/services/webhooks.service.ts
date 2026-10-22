@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { AdminAuditLogService } from '../../admin/services/admin-audit-log.service.js';
 import { ValidationException } from '../../common/exceptions/validation.exception.js';
 import { WebhookDeliveryNotFoundException } from '../../common/exceptions/webhooks/webhook-delivery-not-found.exception.js';
+import { WebhookDisabledException } from '../../common/exceptions/webhooks/webhook-disabled.exception.js';
 import { WebhookNotFoundException } from '../../common/exceptions/webhooks/webhook-not-found.exception.js';
 import {
   DEFAULT_LIMIT,
@@ -165,10 +166,11 @@ export class WebhooksService {
     if (!delivery) {
       throw new WebhookDeliveryNotFoundException();
     }
-    return this.deliveryService.redeliver(
-      delivery,
-      await this.get(delivery.webhookId),
-    );
+    const webhook = await this.get(delivery.webhookId);
+    if (!webhook.enabled) {
+      throw new WebhookDisabledException();
+    }
+    return this.deliveryService.redeliver(delivery, webhook);
   }
 
   private async validateScope(

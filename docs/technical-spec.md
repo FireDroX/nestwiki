@@ -435,7 +435,7 @@ Voir aussi `/pages/*path` et `/pages/tree`, qui exposent respectivement `permiss
 | POST    | /admin/webhooks/:id/test                      | admin | Envoyer `webhook.test` immédiatement, une seule fois, et renvoyer l'envoi |
 | POST    | /admin/webhooks/:id/rotate-secret             | admin | Régénérer le secret ; audit `webhook.rotate_secret` |
 | GET     | /admin/webhooks/:id/deliveries                | admin | Envois paginés, du plus récent (`?status=pending\|success\|failed&page&limit`) |
-| POST    | /admin/webhooks/deliveries/:deliveryId/redeliver | admin | Renvoyer un envoi : nouvel envoi au même contenu, tenté immédiatement |
+| POST    | /admin/webhooks/deliveries/:deliveryId/redeliver | admin | Renvoyer un envoi : nouvel envoi au même contenu, tenté immédiatement puis repris en cas d'échec (une seule tentative pour une copie de `webhook.test`) ; 409 si le webhook est désactivé |
 
 ### Sécurité
 

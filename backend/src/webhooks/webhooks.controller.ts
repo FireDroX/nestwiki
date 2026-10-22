@@ -16,6 +16,7 @@ import {
   ApiBadRequestResponse,
   ApiBearerAuth,
   ApiBody,
+  ApiConflictResponse,
   ApiCreatedResponse,
   ApiForbiddenResponse,
   ApiNoContentResponse,
@@ -95,12 +96,16 @@ export class WebhooksController {
   @ApiOperation({
     summary: 'Renvoyer un envoi',
     description:
-      'Crée un nouvel envoi avec le même contenu et le tente immédiatement.',
+      'Crée un nouvel envoi avec le même contenu et le tente immédiatement, puis le reprend en cas d’échec. Une copie de webhook.test n’est tentée qu’une fois.',
   })
   @ApiParam({ name: 'deliveryId', description: "Identifiant de l'envoi" })
   @ApiCreatedResponse({ description: 'Nouvel envoi, après la tentative.' })
   @ApiNotFoundResponse({
     description: "L'envoi n'existe pas.",
+    type: ErrorResponseDto,
+  })
+  @ApiConflictResponse({
+    description: 'Le webhook est désactivé.',
     type: ErrorResponseDto,
   })
   async redeliver(

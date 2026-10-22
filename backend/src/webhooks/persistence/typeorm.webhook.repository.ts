@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { MoreThanOrEqual, Repository } from 'typeorm';
 import { Webhook } from '../entities/webhook.entity.js';
 import { CreateWebhookInput, WebhookRepository } from './webhook.repository.js';
 
@@ -29,6 +29,23 @@ export class TypeormWebhookRepository implements WebhookRepository {
 
   save(webhook: Webhook): Promise<Webhook> {
     return this.repository.save(webhook);
+  }
+
+  async resetFailures(id: string): Promise<void> {
+    await this.repository.update({ id }, { consecutiveFailures: 0 });
+  }
+
+  async recordFailure(
+    id: string,
+    threshold: number,
+    reason: string,
+  ): Promise<boolean> {
+    await this.repository.increment({ id }, 'consecutiveFailures', 1);
+    const result = await this.repository.update(
+      { id, enabled: true, consecutiveFailures: MoreThanOrEqual(threshold) },
+      { enabled: false, disabledReason: reason },
+    );
+    return (result.affected ?? 0) > 0;
   }
 
   async delete(id: string): Promise<void> {

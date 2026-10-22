@@ -143,9 +143,13 @@ export class WebhookDeliveryService
       webhookId: webhook.id,
       event: original.event,
       payload: original.payload,
-      nextAttemptAt: new Date(),
+      nextAttemptAt: null,
     });
-    return this.attempt(copy, webhook, 'scheduled');
+    return this.attempt(
+      copy,
+      webhook,
+      original.event === WEBHOOK_TEST_EVENT ? 'once' : 'scheduled',
+    );
   }
 
   async processDue(): Promise<void> {
@@ -220,8 +224,7 @@ export class WebhookDeliveryService
       delivery.nextAttemptAt = null;
       delivery.lastError = null;
       if (mode === 'scheduled' && webhook.consecutiveFailures > 0) {
-        webhook.consecutiveFailures = 0;
-        await this.webhooksRepository.save(webhook);
+        await this.webhooksRepository.resetFailures(webhook.id);
       }
       return this.deliveriesRepository.save(delivery);
     }
@@ -258,15 +261,16 @@ export class WebhookDeliveryService
   }
 
   private async registerFailure(webhook: Webhook): Promise<void> {
-    webhook.consecutiveFailures += 1;
-    if (webhook.consecutiveFailures >= WEBHOOK_AUTO_DISABLE_THRESHOLD) {
-      webhook.enabled = false;
-      webhook.disabledReason = AUTO_DISABLED_REASON;
+    const disabled = await this.webhooksRepository.recordFailure(
+      webhook.id,
+      WEBHOOK_AUTO_DISABLE_THRESHOLD,
+      AUTO_DISABLED_REASON,
+    );
+    if (disabled) {
       this.logger.warn(
         `Webhook ${webhook.id} disabled: ${AUTO_DISABLED_REASON}`,
       );
     }
-    await this.webhooksRepository.save(webhook);
   }
 
   private async purgeExpiredDeliveries(): Promise<void> {
