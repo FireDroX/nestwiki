@@ -1256,7 +1256,7 @@ Refuser un timestamp trop ancien empêche de rejouer une requête interceptée. 
 
 ## Journal des envois
 
-La fiche d'un webhook liste ses envois, du plus récent au plus ancien, filtrables par statut (en attente, réussi, échec) : date, événement, code HTTP, durée, nombre de tentatives et prochaine tentative. Cliquez sur un envoi pour voir le contenu exact envoyé et la dernière erreur. « Renvoyer » crée un nouvel envoi au même contenu, tenté immédiatement puis repris en cas d'échec. Les envois sont gardés 30 jours.
+La fiche d'un webhook liste ses envois, du plus récent au plus ancien, filtrables par statut (en attente, réussi, échec) : date, événement, code HTTP, durée, nombre de tentatives et prochaine tentative. Cliquez sur un envoi pour voir le contenu exact envoyé et la dernière erreur. « Renvoyer » crée un nouvel envoi au même contenu, tenté immédiatement puis repris en cas d'échec ; le renvoi d'un test ne fait, comme le test, qu'une tentative. Un webhook désactivé ne peut pas renvoyer d'envoi : réactivez-le d'abord. Les envois sont gardés 30 jours.
 
 Les créations, modifications, suppressions et régénérations de secret sont inscrites au journal d'audit.
 

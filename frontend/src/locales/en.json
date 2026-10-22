@@ -703,6 +703,7 @@
         "urlLabel": "URL",
         "formatLabel": "Format",
         "formatDetected": "{{format}} address recognised: format suggested automatically.",
+        "formatSuggested": "{{format}} address recognised: the {{format}} format is recommended.",
         "eventsLabel": "Events",
         "selectAllEvents": "Select all",
         "scopeLabel": "Limit to a subtree",
@@ -756,7 +757,8 @@
         "payload": "Payload",
         "redeliver": "Redeliver",
         "redelivered": "Delivery restarted.",
-        "redeliverFailed": "Failed to redeliver."
+        "redeliverFailed": "Failed to redeliver.",
+        "redeliverDisabled": "This webhook is disabled: enable it again to redeliver."
       }
     }
   },

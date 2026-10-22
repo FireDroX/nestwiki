@@ -97,11 +97,14 @@ describe('AdminWebhookDetail', () => {
     expect(await screen.findByText('whsec_new')).toBeInTheDocument()
   })
 
-  it('sends a test and shows its result on the spot, then refreshes the log', async () => {
+  it('sends a test and shows its result on the spot, then refreshes the log and the webhook state', async () => {
     const user = userEvent.setup()
     testWebhookMock.mockResolvedValue(
       delivery({ event: 'webhook.test', status: 'failed', lastStatusCode: 404, durationMs: 87, lastError: 'HTTP 404' }),
     )
+    getWebhookMock
+      .mockResolvedValueOnce(webhook)
+      .mockResolvedValueOnce({ ...webhook, enabled: false, consecutiveFailures: 20, disabledReason: 'Disabled' })
     renderPage()
 
     await user.click(await screen.findByRole('button', { name: 'Envoyer un test' }))
@@ -113,6 +116,20 @@ describe('AdminWebhookDetail', () => {
     expect(panel).toHaveTextContent('HTTP 404')
     expect(testWebhookMock).toHaveBeenCalledWith('hook-1')
     expect(listWebhookDeliveriesMock).toHaveBeenCalledTimes(2)
+    expect(await screen.findByText('Désactivé automatiquement')).toBeInTheDocument()
+  })
+
+  it('does not offer to redeliver for a disabled webhook', async () => {
+    const user = userEvent.setup()
+    getWebhookMock.mockResolvedValue({ ...webhook, enabled: false })
+    listWebhookDeliveriesMock.mockResolvedValue({ items: [delivery()], total: 1 })
+    renderPage()
+
+    await user.click(await screen.findByRole('button', { name: /21 oct\. 2026/ }))
+
+    const details = screen.getByRole('dialog')
+    expect(within(details).queryByRole('button', { name: 'Renvoyer' })).not.toBeInTheDocument()
+    expect(details).toHaveTextContent('réactivez-le pour renvoyer cet envoi')
   })
 
   it('lists the deliveries, filters them by status and shows the payload of one to redeliver it', async () => {

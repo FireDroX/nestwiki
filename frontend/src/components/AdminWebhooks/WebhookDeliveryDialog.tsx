@@ -18,6 +18,7 @@ import { formatDateTime } from '#utils/relative-time'
 
 interface WebhookDeliveryDialogProps {
   delivery: WebhookDelivery | null
+  webhookEnabled: boolean
   onClose: () => void
   onRedelivered: (delivery: WebhookDelivery) => void
 }
@@ -30,7 +31,7 @@ function prettyPayload(payload: string): string {
   }
 }
 
-export function WebhookDeliveryDialog({ delivery, onClose, onRedelivered }: WebhookDeliveryDialogProps) {
+export function WebhookDeliveryDialog({ delivery, webhookEnabled, onClose, onRedelivered }: WebhookDeliveryDialogProps) {
   const { t } = useTranslation()
   const [pending, setPending] = useState(false)
 
@@ -76,14 +77,19 @@ export function WebhookDeliveryDialog({ delivery, onClose, onRedelivered }: Webh
                 {prettyPayload(delivery.payload)}
               </pre>
             </div>
+            {!webhookEnabled && (
+              <p className="text-sm text-muted-foreground">{t('admin.webhooks.log.redeliverDisabled')}</p>
+            )}
             <DialogFooter>
               <Button type="button" variant="outline" onClick={onClose}>
                 {t('common.close')}
               </Button>
-              <Button type="button" disabled={pending} onClick={handleRedeliver}>
-                <RotateCw />
-                {t('admin.webhooks.log.redeliver')}
-              </Button>
+              {webhookEnabled && (
+                <Button type="button" disabled={pending} onClick={handleRedeliver}>
+                  <RotateCw />
+                  {t('admin.webhooks.log.redeliver')}
+                </Button>
+              )}
             </DialogFooter>
           </>
         )}

@@ -149,6 +149,19 @@ describe('WebhookFormDialog', () => {
     expect(onSaved).toHaveBeenCalledWith(created)
   })
 
+  it('keeps the saved format of an existing webhook and only advises the recognised one', async () => {
+    const user = userEvent.setup()
+    renderDialog({ webhook: existing })
+
+    await user.click(screen.getByRole('button', { name: 'Ouvrir' }))
+    await user.clear(screen.getByLabelText('URL'))
+    await user.click(screen.getByLabelText('URL'))
+    await user.paste('https://hooks.slack.com/services/T0/B0/xyz')
+
+    expect(screen.getByRole('combobox', { name: 'Format' })).toHaveTextContent('Discord')
+    expect(screen.getByText('Adresse Slack reconnue : le format Slack est conseillé.')).toBeInTheDocument()
+  })
+
   it('only sends the changed fields when editing, so an automatic deactivation is kept', async () => {
     const user = userEvent.setup()
     updateWebhookMock.mockResolvedValue({ ...existing, name: 'Discord #wiki' })

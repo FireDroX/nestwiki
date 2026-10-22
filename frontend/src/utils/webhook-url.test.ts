@@ -5,17 +5,22 @@ describe('detectWebhookFormat', () => {
   it.each([
     ['https://discord.com/api/webhooks/123/abc', 'discord'],
     ['https://discordapp.com/api/webhooks/123/abc', 'discord'],
+    ['https://discord.com/api/v10/webhooks/123/abc', 'discord'],
     ['https://hooks.slack.com/services/T0/B0/xyz', 'slack'],
   ])('recognises %s', (url, format) => {
     expect(detectWebhookFormat(url)).toBe(format)
   })
 
-  it.each(['https://discord.com/channels/1/2', 'http://192.168.1.20:5678/webhook/wiki', 'not a url', ''])(
-    'proposes nothing for %s',
-    (url) => {
-      expect(detectWebhookFormat(url)).toBeNull()
-    },
-  )
+  it.each([
+    'https://discord.com/channels/1/2',
+    'https://hooks.slack.com/triggers/T0/1/abc',
+    'https://hooks.slack.com/workflows/T0/A0/1/abc',
+    'http://192.168.1.20:5678/webhook/wiki',
+    'not a url',
+    '',
+  ])('proposes nothing for %s', (url) => {
+    expect(detectWebhookFormat(url)).toBeNull()
+  })
 })
 
 describe('webhookHost', () => {

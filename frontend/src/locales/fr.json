@@ -703,6 +703,7 @@
         "urlLabel": "URL",
         "formatLabel": "Format",
         "formatDetected": "Adresse {{format}} reconnue : format proposé automatiquement.",
+        "formatSuggested": "Adresse {{format}} reconnue : le format {{format}} est conseillé.",
         "eventsLabel": "Événements",
         "selectAllEvents": "Tout cocher",
         "scopeLabel": "Limiter à un sous-arbre",
@@ -756,7 +757,8 @@
         "payload": "Contenu envoyé",
         "redeliver": "Renvoyer",
         "redelivered": "Envoi relancé.",
-        "redeliverFailed": "Échec du renvoi."
+        "redeliverFailed": "Échec du renvoi.",
+        "redeliverDisabled": "Le webhook est désactivé : réactivez-le pour renvoyer cet envoi."
       }
     }
   },

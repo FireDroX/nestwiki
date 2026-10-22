@@ -74,13 +74,14 @@ export function WebhookFormDialog({ webhook, trigger, onSaved }: WebhookFormDial
     defaultValues: initialValues(webhook),
   })
   const url = useWatch({ control, name: 'url' })
+  const format = useWatch({ control, name: 'format' })
   const includePrivatePages = useWatch({ control, name: 'includePrivatePages' })
   const detectedFormat = detectWebhookFormat(url)
 
   function handleOpenChange(next: boolean) {
     setOpen(next)
     if (next) {
-      formatChosenByUser.current = false
+      formatChosenByUser.current = isEdit
       setSubmitError(null)
       reset(initialValues(webhook))
     }
@@ -89,7 +90,7 @@ export function WebhookFormDialog({ webhook, trigger, onSaved }: WebhookFormDial
   function handleUrlChange(nextUrl: string, onChange: (value: string) => void) {
     onChange(nextUrl)
     if (!formatChosenByUser.current) {
-      setValue('format', detectWebhookFormat(nextUrl) ?? initialValues(webhook).format)
+      setValue('format', detectWebhookFormat(nextUrl) ?? 'json')
     }
   }
 
@@ -176,7 +177,12 @@ export function WebhookFormDialog({ webhook, trigger, onSaved }: WebhookFormDial
                 </Select>
                 {detectedFormat && (
                   <p className="text-xs text-muted-foreground">
-                    {t('admin.webhooks.form.formatDetected', { format: t(`admin.webhooks.formats.${detectedFormat}`) })}
+                    {t(
+                      detectedFormat === format
+                        ? 'admin.webhooks.form.formatDetected'
+                        : 'admin.webhooks.form.formatSuggested',
+                      { format: t(`admin.webhooks.formats.${detectedFormat}`) },
+                    )}
                   </p>
                 )}
               </Field>

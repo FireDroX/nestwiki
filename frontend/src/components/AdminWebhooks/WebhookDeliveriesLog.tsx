@@ -20,10 +20,12 @@ type Status = 'loading' | 'ready' | 'error'
 
 interface WebhookDeliveriesLogProps {
   webhookId: string
+  webhookEnabled: boolean
   refreshKey: number
+  onRedelivered: () => void
 }
 
-export function WebhookDeliveriesLog({ webhookId, refreshKey }: WebhookDeliveriesLogProps) {
+export function WebhookDeliveriesLog({ webhookId, webhookEnabled, refreshKey, onRedelivered }: WebhookDeliveriesLogProps) {
   const { t } = useTranslation()
   const [page, setPage] = useState(1)
   const [statusFilter, setStatusFilter] = useState<WebhookDeliveryStatus | undefined>(undefined)
@@ -64,6 +66,7 @@ export function WebhookDeliveriesLog({ webhookId, refreshKey }: WebhookDeliverie
     setSelected(null)
     setPage(1)
     setReloadKey((current) => current + 1)
+    onRedelivered()
   }
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_LIMIT))
@@ -171,7 +174,12 @@ export function WebhookDeliveriesLog({ webhookId, refreshKey }: WebhookDeliverie
         </>
       )}
 
-      <WebhookDeliveryDialog delivery={selected} onClose={() => setSelected(null)} onRedelivered={handleRedelivered} />
+      <WebhookDeliveryDialog
+        delivery={selected}
+        webhookEnabled={webhookEnabled}
+        onClose={() => setSelected(null)}
+        onRedelivered={handleRedelivered}
+      />
     </div>
   )
 }

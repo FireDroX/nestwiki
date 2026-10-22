@@ -89,6 +89,13 @@ export function AdminWebhookDetail() {
     }
   }, [id])
 
+  function refreshAfterDelivery() {
+    setDeliveriesKey((current) => current + 1)
+    if (id) {
+      void getWebhook(id).then(setWebhook, () => undefined)
+    }
+  }
+
   async function handleDelete() {
     if (!webhook) return
     try {
@@ -159,11 +166,16 @@ export function AdminWebhookDetail() {
 
           <Section title={t('admin.webhooks.test.title')}>
             <p className="text-sm text-muted-foreground">{t('admin.webhooks.test.description')}</p>
-            <WebhookTestPanel webhookId={webhook.id} onSent={() => setDeliveriesKey((current) => current + 1)} />
+            <WebhookTestPanel webhookId={webhook.id} onSent={refreshAfterDelivery} />
           </Section>
 
           <Section title={t('admin.webhooks.log.title')}>
-            <WebhookDeliveriesLog webhookId={webhook.id} refreshKey={deliveriesKey} />
+            <WebhookDeliveriesLog
+              webhookId={webhook.id}
+              webhookEnabled={webhook.enabled}
+              refreshKey={deliveriesKey}
+              onRedelivered={refreshAfterDelivery}
+            />
           </Section>
         </div>
       )}
