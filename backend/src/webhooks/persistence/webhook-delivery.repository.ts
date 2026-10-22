@@ -18,6 +18,7 @@ export interface WebhookDeliveryRepository {
     page: number,
     limit: number,
   ): Promise<{ items: WebhookDelivery[]; total: number }>;
+  findLatestByWebhook(webhookId: string): Promise<WebhookDelivery | null>;
   save(delivery: WebhookDelivery): Promise<WebhookDelivery>;
   deleteCreatedBefore(date: Date): Promise<void>;
 }

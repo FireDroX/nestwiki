@@ -427,7 +427,7 @@ Voir aussi `/pages/*path` et `/pages/tree`, qui exposent respectivement `permiss
 
 | Méthode | Route                                         | Auth  | Description |
 | ------- | --------------------------------------------- | ----- | ----------- |
-| GET     | /admin/webhooks                               | admin | Lister les webhooks, avec leur secret |
+| GET     | /admin/webhooks                               | admin | Lister les webhooks, avec leur secret et leur dernier envoi (`lastDelivery` : `createdAt`, `status`, `lastStatusCode`, ou `null`) |
 | POST    | /admin/webhooks                               | admin | Créer un webhook (`name`, `url`, `events`, `format?`, `includePrivatePages?`, `scopePageId?`, `enabled?`) ; secret généré ; audit `webhook.create` |
 | GET     | /admin/webhooks/:id                           | admin | Lire un webhook |
 | PATCH   | /admin/webhooks/:id                           | admin | Modifier un webhook ; le réactiver remet à zéro `consecutiveFailures` ; audit `webhook.update` |

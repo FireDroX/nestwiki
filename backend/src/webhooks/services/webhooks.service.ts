@@ -35,6 +35,11 @@ import { WebhookSignature } from './webhook-signature.js';
 
 const HTTP_PROTOCOLS = ['http:', 'https:'];
 
+export interface WebhookWithLastDelivery {
+  webhook: Webhook;
+  lastDelivery: WebhookDelivery | null;
+}
+
 @Injectable()
 export class WebhooksService {
   constructor(
@@ -47,8 +52,16 @@ export class WebhooksService {
     private readonly adminAuditLogService: AdminAuditLogService,
   ) {}
 
-  list(): Promise<Webhook[]> {
-    return this.webhooksRepository.findAll();
+  async list(): Promise<WebhookWithLastDelivery[]> {
+    const webhooks = await this.webhooksRepository.findAll();
+    return Promise.all(
+      webhooks.map(async (webhook) => ({
+        webhook,
+        lastDelivery: await this.deliveriesRepository.findLatestByWebhook(
+          webhook.id,
+        ),
+      })),
+    );
   }
 
   async get(id: string): Promise<Webhook> {

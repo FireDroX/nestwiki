@@ -50,6 +50,13 @@ export class TypeormWebhookDeliveryRepository implements WebhookDeliveryReposito
     return { items, total };
   }
 
+  findLatestByWebhook(webhookId: string): Promise<WebhookDelivery | null> {
+    return this.repository.findOne({
+      where: { webhookId },
+      order: { createdAt: 'DESC' },
+    });
+  }
+
   save(delivery: WebhookDelivery): Promise<WebhookDelivery> {
     return this.repository.save(delivery);
   }

@@ -119,6 +119,10 @@ const PAGE_TREE_SEED: PageSeed[] = [
     <strong>Rétroliens et liens cassés</strong>
     <span>Pages qui pointent ici et liens vers des pages introuvables</span>
   </a>
+  <a class="doc-link-card" href="/pages/documentation/webhooks">
+    <strong>Webhooks</strong>
+    <span>Prévenir Discord, Slack ou n8n des changements du wiki</span>
+  </a>
   <a class="doc-link-card" href="/pages/documentation/notes-de-version">
     <strong>Notes de version</strong>
     <span>Historique de tous les changements</span>
@@ -1117,6 +1121,161 @@ Un lien vers une page privée que vous n'avez pas le droit de lire est signalé 
 - **Dans la page** : le lien est souligné en pointillés rouges, avec l'infobulle « Page introuvable ». Il reste cliquable.
 - **À l'enregistrement** : un avertissement liste les chemins introuvables. Il n'empêche pas l'enregistrement.
 - **Administration → Liens cassés** (administrateurs) : tous les liens cassés du wiki, avec la page source (lien vers son éditeur) et le chemin visé. Aussi disponible par l'API : \`GET /api/admin/links/broken\`.`,
+      },
+      {
+        slug: 'webhooks',
+        title: 'Webhooks',
+        tags: ['documentation', 'guide', 'api'],
+        content: `# Webhooks
+
+Un webhook prévient un autre service (Discord, Slack, n8n, un script maison…) quand quelque chose change dans le wiki : NestWiki envoie une requête \`POST\` signée à l'adresse de votre choix pour chaque événement coché.
+
+Les webhooks se gèrent dans **Administration → Webhooks** (administrateurs uniquement), ou par l'API \`/api/admin/webhooks\`. Les adresses du réseau local (\`http://192.168.1.20:5678/…\`) sont acceptées.
+
+## Créer un webhook
+
+1. **Administration → Webhooks → Nouveau webhook**.
+2. Donnez un nom et collez l'adresse. Une adresse \`discord.com/api/webhooks/…\` ou \`hooks.slack.com/…\` sélectionne d'elle-même le format Discord ou Slack ; sinon le format JSON est utilisé.
+3. Cochez les événements à envoyer, ou « Tout cocher ».
+4. Optionnel : limitez le webhook au sous-arbre d'une page. Seuls les événements de cette page et de ses sous-pages seront envoyés.
+5. Optionnel : cochez « Inclure les pages privées ». Sans cette case, les événements des pages privées ne sont jamais envoyés.
+6. Sur la fiche du webhook, cliquez sur « Envoyer un test » pour vérifier que le service répond.
+
+> [!WARNING] Pages privées
+> Avec « Inclure les pages privées », les titres et chemins des pages privées partent vers le service externe. Le contenu des pages et des commentaires, lui, n'est jamais envoyé, quel que soit le réglage.
+
+## Événements
+
+| Événement | Quand | Données (\`data\`) |
+| --- | --- | --- |
+| \`page.created\` | Une page est créée | \`page\` |
+| \`page.updated\` | Une nouvelle version est enregistrée, y compris par une restauration de version ou une mise à jour des liens après un déplacement |\`page\`, \`versionId\`, \`changeSummary\` (ou \`null\`) |
+| \`page.moved\` | Une page est déplacée sous une autre page parente | \`page\`, \`fromPath\`, \`toPath\` |
+| \`page.deleted\` | Une page est mise à la corbeille | \`page\`, \`descendantCount\` (sous-pages emportées avec elle) |
+| \`page.restored\` | Une page sort de la corbeille | \`page\` |
+| \`page.published\` | Une page privée devient publique | \`page\` |
+| \`comment.created\` | Un commentaire est ajouté | \`page\`, \`commentId\` |
+| \`pages.imported\` | Un import de pages se termine | \`pageCount\`, \`page\` (page racine de l'import, si elle existe) |
+| \`webhook.test\` | Bouton « Envoyer un test » | \`message\` |
+
+\`page\` décrit la page concernée : \`id\`, \`title\`, \`path\` (chemin complet, ex. \`/documentation/webhooks\`) et \`url\` (adresse absolue de la page). Un événement sans page, comme un import à la racine, n'est envoyé qu'aux webhooks qui ne sont pas limités à un sous-arbre.
+
+## Format JSON
+
+Le corps est une enveloppe JSON :
+
+\`\`\`json
+{
+  "id": "0b6c0f4e-2c1a-4b8e-9f3d-5a7e1c2d3b4a",
+  "event": "page.updated",
+  "occurredAt": "2026-10-22T08:30:00.000Z",
+  "instance": { "url": "https://wiki.example.com", "version": "1.3.4" },
+  "actor": { "id": "5f1e…", "displayName": "Alice" },
+  "data": {
+    "page": {
+      "id": "9a2b…",
+      "title": "Installation",
+      "path": "/documentation/guide-demarrage/installation",
+      "url": "https://wiki.example.com/pages/documentation/guide-demarrage/installation"
+    },
+    "versionId": "c3d4…",
+    "changeSummary": "Ajout de la section Docker"
+  }
+}
+\`\`\`
+
+\`actor\` est l'utilisateur à l'origine de l'événement, ou \`null\` s'il est inconnu. \`instance.url\` vient de la variable \`FRONTEND_URL\` du serveur.
+
+Chaque requête porte ces en-têtes :
+
+| En-tête | Valeur |
+| --- | --- |
+| \`Content-Type\` | \`application/json\` |
+| \`User-Agent\` | \`NestWiki/<version>\` |
+| \`X-NestWiki-Event\` | le nom de l'événement |
+| \`X-NestWiki-Delivery\` | l'identifiant de l'envoi (le même à chaque reprise) |
+| \`X-NestWiki-Timestamp\` | l'heure de la tentative, en secondes Unix |
+| \`X-NestWiki-Signature\` | \`sha256=<signature>\` |
+
+## Formats Discord et Slack
+
+- **Discord** : le corps est un message de webhook Discord, envoyé sous le nom « NestWiki », avec un embed : titre « Page modifiée : Installation » qui pointe vers la page, description (résumé de modification, ancien et nouveau chemin, nombre de sous-pages), couleur selon l'événement, auteur, adresse du wiki et heure.
+- **Slack** : le corps est un message Slack (\`text\` et \`blocks\` en mrkdwn) avec le même titre cliquable, la même description et, en dessous, l'auteur et l'adresse du wiki.
+
+Dans ces deux formats, l'enveloppe JSON n'est pas envoyée, mais les en-têtes et la signature restent les mêmes.
+
+## Vérifier la signature
+
+Chaque webhook a son secret (\`whsec_…\`), visible sur sa fiche. La signature est un HMAC-SHA256, en hexadécimal, de la chaîne \`<timestamp>.<corps>\` : la valeur de \`X-NestWiki-Timestamp\`, un point, puis le corps de la requête **tel qu'il a été reçu**, octet pour octet. Calculez-la sur le corps brut, avant tout décodage JSON.
+
+Exemple avec Node.js et Express :
+
+\`\`\`js
+import express from 'express';
+import { createHmac, timingSafeEqual } from 'node:crypto';
+
+const SECRET = process.env.NESTWIKI_WEBHOOK_SECRET;
+const MAX_AGE_SECONDS = 300;
+const app = express();
+
+app.post('/nestwiki', express.raw({ type: 'application/json' }), (req, res) => {
+  const timestamp = req.get('X-NestWiki-Timestamp') ?? '';
+  const signature = req.get('X-NestWiki-Signature') ?? '';
+  const expected =
+    'sha256=' +
+    createHmac('sha256', SECRET)
+      .update(timestamp + '.' + req.body.toString('utf8'))
+      .digest('hex');
+
+  const valid =
+    signature.length === expected.length &&
+    timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
+  const fresh = Math.abs(Date.now() / 1000 - Number(timestamp)) < MAX_AGE_SECONDS;
+  if (!valid || !fresh) {
+    return res.sendStatus(401);
+  }
+
+  const event = JSON.parse(req.body.toString('utf8'));
+  console.log(event.event, event.data.page?.title);
+  res.sendStatus(204);
+});
+
+app.listen(3001);
+\`\`\`
+
+Refuser un timestamp trop ancien empêche de rejouer une requête interceptée. Si le secret a fuité, régénérez-le depuis la fiche du webhook : l'ancien cesse immédiatement de fonctionner, pensez à reporter le nouveau dans le service qui reçoit les envois.
+
+## Envois, reprises et désactivation automatique
+
+- Les envois partent toujours en arrière-plan : ils ne ralentissent jamais l'enregistrement d'une page.
+- Un envoi réussit quand le service répond par un code 2xx en moins de 10 secondes. Les redirections ne sont pas suivies.
+- En cas d'échec, NestWiki réessaie **après 1 min, 5 min, 30 min, 2 h puis 6 h**, soit 6 tentatives au plus. Les reprises survivent à un redémarrage du serveur.
+- Pas de reprise sur une réponse 4xx (l'adresse ou la requête est refusée), sauf 408 et 429.
+- Après **20 envois consécutifs en échec** (toutes reprises épuisées), le webhook est **désactivé automatiquement** : la liste l'affiche « Désactivé automatiquement » et les envois en attente sont abandonnés. Corrigez le problème puis réactivez-le en le modifiant : le compteur d'échecs repart de zéro. Un envoi réussi remet aussi le compteur à zéro.
+- Le bouton « Envoyer un test » ne fait qu'une tentative, sans reprise, et ne compte pas dans les échecs.
+
+## Journal des envois
+
+La fiche d'un webhook liste ses envois, du plus récent au plus ancien, filtrables par statut (en attente, réussi, échec) : date, événement, code HTTP, durée, nombre de tentatives et prochaine tentative. Cliquez sur un envoi pour voir le contenu exact envoyé et la dernière erreur. « Renvoyer » crée un nouvel envoi au même contenu, tenté immédiatement puis repris en cas d'échec. Les envois sont gardés 30 jours.
+
+Les créations, modifications, suppressions et régénérations de secret sont inscrites au journal d'audit.
+
+## Recette : Discord
+
+1. Dans Discord, ouvrez **Paramètres du salon → Intégrations → Webhooks → Nouveau webhook**, puis **Copier l'URL du webhook**.
+2. Dans NestWiki, **Administration → Webhooks → Nouveau webhook** : collez l'adresse, le format Discord est sélectionné tout seul.
+3. Cochez par exemple \`page.created\`, \`page.updated\` et \`comment.created\`, puis cliquez sur « Envoyer un test » sur la fiche : un message « Test du webhook NestWiki » arrive dans le salon.
+
+Slack fonctionne de la même façon avec l'adresse d'une application « Incoming Webhooks » (\`https://hooks.slack.com/services/…\`).
+
+## Recette : n8n
+
+1. Dans n8n, créez un workflow qui commence par un nœud **Webhook** : méthode \`POST\`, un chemin de votre choix (ex. \`nestwiki\`).
+2. Copiez son adresse (« Test URL » pendant la mise au point, « Production URL » une fois le workflow activé) et créez dans NestWiki un webhook au format **JSON** avec cette adresse.
+3. Cliquez sur « Envoyer un test » : n8n reçoit l'événement \`webhook.test\`.
+4. Dans les nœuds suivants, l'enveloppe est disponible dans \`{{ $json.body }}\` : par exemple \`{{ $json.body.event }}\` pour le nom de l'événement et \`{{ $json.body.data.page.url }}\` pour l'adresse de la page. Un nœud **Switch** sur \`{{ $json.body.event }}\` permet de traiter chaque événement différemment.
+
+Les en-têtes, dont la signature, sont dans \`{{ $json.headers }}\`. Pour vérifier la signature dans n8n, activez l'option « Raw Body » du nœud Webhook et appliquez la méthode décrite plus haut dans un nœud Code ou Crypto.`,
       },
       {
         slug: 'notes-de-version',

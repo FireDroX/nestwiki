@@ -53,6 +53,7 @@ describe('WebhooksService', () => {
   let deliveriesRepository: {
     findById: Mock<WebhookDeliveryRepository['findById']>;
     findByWebhook: Mock<WebhookDeliveryRepository['findByWebhook']>;
+    findLatestByWebhook: Mock<WebhookDeliveryRepository['findLatestByWebhook']>;
   };
   let deliveryService: {
     sendTest: Mock<WebhookDeliveryService['sendTest']>;
@@ -79,6 +80,7 @@ describe('WebhooksService', () => {
     deliveriesRepository = {
       findById: vi.fn().mockResolvedValue(null),
       findByWebhook: vi.fn().mockResolvedValue({ items: [], total: 0 }),
+      findLatestByWebhook: vi.fn().mockResolvedValue(null),
     };
     deliveryService = {
       sendTest: vi.fn(),
@@ -111,6 +113,22 @@ describe('WebhooksService', () => {
     }).compile();
 
     service = moduleRef.get(WebhooksService);
+  });
+
+  it('lists the webhooks with their latest delivery', async () => {
+    const latest = { id: 'd1', status: 'failed' } as WebhookDelivery;
+    webhooksRepository.findAll.mockResolvedValue([
+      webhook(),
+      webhook({ id: 'hook-2' }),
+    ]);
+    deliveriesRepository.findLatestByWebhook.mockImplementation((id) =>
+      Promise.resolve(id === 'hook-1' ? latest : null),
+    );
+
+    const result = await service.list();
+
+    expect(result.map((item) => item.lastDelivery)).toEqual([latest, null]);
+    expect(result.map((item) => item.webhook.id)).toEqual(['hook-1', 'hook-2']);
   });
 
   describe('create', () => {

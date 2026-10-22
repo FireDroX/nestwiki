@@ -16,7 +16,7 @@ const GROUP_TAB_BY_ACTION: Record<string, string> = {
   'group.permissions.update': 'permissions',
 }
 
-const UNLINKED_ACTIONS = new Set(['user.delete', 'group.delete', 'page.purged', 'media.deleted'])
+const UNLINKED_ACTIONS = new Set(['user.delete', 'group.delete', 'page.purged', 'media.deleted', 'webhook.delete'])
 
 function metadataPageId(metadata: unknown): string | null {
   if (typeof metadata !== 'object' || metadata === null) return null
@@ -65,6 +65,8 @@ export function resolveLogTargetLink(entry: LogTarget, resolvePagePath: PagePath
       return pageLink(metadataPageId(entry.metadata), resolvePagePath)
     case 'oauth_client':
       return '/admin/mcp/oauth-clients'
+    case 'webhook':
+      return targetId ? `/admin/webhooks/${targetId}` : null
     default:
       return null
   }

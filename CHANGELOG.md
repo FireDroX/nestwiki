@@ -2,6 +2,14 @@
 
 All notable changes to NestWiki are documented here, newest first, one `## <version> — <date>` section per release. This file is the single source for the in-app "Notes de version" page, which groups releases by minor version (`1.0`, `0.31`…). Entries up to 0.31.10 were written in French, the project's original language.
 
+## 1.3.4 — 2026-10-22
+
+- Administration : nouvel onglet « Webhooks ». La liste montre pour chaque webhook l'hôte appelé, le format, le nombre d'événements, son état (actif, désactivé, ou désactivé automatiquement après une série d'échecs) et son dernier envoi.
+- Création et modification dans une fenêtre : nom, adresse, format (Discord ou Slack proposé automatiquement d'après l'adresse), événements groupés avec « Tout cocher », limitation à un sous-arbre choisi dans l'arborescence, inclusion des pages privées (avec un avertissement : leurs titres et chemins partent vers le service externe) et activation.
+- Fiche d'un webhook : secret de signature masqué, à afficher, copier ou régénérer ; bouton « Envoyer un test » avec le résultat sur place (code HTTP, durée, erreur) ; journal des envois paginé et filtrable par statut, avec le contenu envoyé, la dernière erreur et un bouton « Renvoyer ».
+- Le journal d'audit traduit les actions sur les webhooks et renvoie vers la fiche concernée.
+- Nouvelle page de documentation « Webhooks » : événements et données envoyées, formats, vérification de la signature, reprises, désactivation automatique, recettes Discord et n8n.
+
 ## 1.3.3 — 2026-10-21
 
 - Webhooks sortants (côté serveur) : NestWiki peut prévenir un autre service (n8n, Discord, Slack, script maison) quand une page est créée, modifiée, déplacée, mise à la corbeille, restaurée ou publiée, quand un commentaire est ajouté, et à la fin d'un import. L'écran d'administration arrive dans la prochaine version ; en attendant, tout passe par l'API `/admin/webhooks` (administrateurs).
