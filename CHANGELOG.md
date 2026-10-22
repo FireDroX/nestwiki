@@ -2,6 +2,13 @@
 
 All notable changes to NestWiki are documented here, newest first, one `## <version> — <date>` section per release. This file is the single source for the in-app "Notes de version" page, which groups releases by minor version (`1.0`, `0.31`…). Entries up to 0.31.10 were written in French, the project's original language.
 
+## 1.3.3 — 2026-10-21
+
+- Webhooks sortants (côté serveur) : NestWiki peut prévenir un autre service (n8n, Discord, Slack, script maison) quand une page est créée, modifiée, déplacée, mise à la corbeille, restaurée ou publiée, quand un commentaire est ajouté, et à la fin d'un import. L'écran d'administration arrive dans la prochaine version ; en attendant, tout passe par l'API `/admin/webhooks` (administrateurs).
+- Trois formats : JSON générique, embed Discord et message Slack. Les pages privées sont ignorées sauf option contraire, et un webhook peut se limiter au sous-arbre d'une page. Le contenu des pages et des commentaires n'est jamais envoyé : seulement le titre, le chemin, le lien, l'auteur et le résumé de modification.
+- Chaque envoi est signé (`X-NestWiki-Signature`, HMAC-SHA256 avec le secret du webhook) et part toujours en arrière-plan, sans ralentir l'enregistrement. En cas d'échec, NestWiki réessaie après 1 min, 5 min, 30 min, 2 h puis 6 h, même après un redémarrage ; un webhook en échec 20 fois de suite est désactivé automatiquement. L'historique des envois est gardé 30 jours.
+- Les créations, modifications, suppressions et régénérations de secret de webhooks sont inscrites au journal d'audit.
+
 ## 1.3.2 — 2026-10-21
 
 - Déplacer une page ne casse plus ses liens : dans l'éditeur, sous « Page parente », NestWiki indique combien de pages pointent vers la page ou ses sous-pages, avec la case « Mettre à jour ces liens au déplacement », cochée par défaut. Chaque page concernée reçoit une nouvelle version avec les chemins corrigés, ancres et code conservés.

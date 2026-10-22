@@ -43,7 +43,19 @@ import {
   PAGE_PUBLISHED_EVENT,
   PagePublishedEvent,
 } from '../events/page-published.event.js';
+import {
+  PAGE_CREATED_EVENT,
+  PageCreatedEvent,
+} from '../events/page-created.event.js';
+import {
+  PAGE_MOVED_EVENT,
+  PageMovedEvent,
+} from '../events/page-moved.event.js';
 import { PAGE_TREE_CHANGED_EVENT } from '../events/page-tree-changed.event.js';
+import {
+  PAGE_TRASHED_EVENT,
+  PageTrashedEvent,
+} from '../events/page-trashed.event.js';
 import {
   PAGE_VERSION_CREATED_EVENT,
   PageVersionCreatedEvent,
@@ -61,6 +73,7 @@ import {
   type PageMergeResult,
 } from './page-merge.service.js';
 import { PagePathIndex } from './page-path-index.js';
+import { PageReferenceService } from './page-reference.service.js';
 
 const MYSQL_DUPLICATE_ENTRY_CODE = 'ER_DUP_ENTRY';
 
@@ -77,6 +90,7 @@ export class PagesService {
     private readonly eventEmitter: EventEmitter2,
     private readonly userActivityLogService: UserActivityLogService,
     private readonly pageLinksService: PageLinksService,
+    private readonly pageReferenceService: PageReferenceService,
   ) {}
 
   private async resolveFullUser(
@@ -155,6 +169,10 @@ export class PagesService {
       metadata: { title: dto.title, slug: dto.slug },
     });
     this.eventEmitter.emit(PAGE_TREE_CHANGED_EVENT);
+    this.eventEmitter.emit(
+      PAGE_CREATED_EVENT,
+      new PageCreatedEvent(result.page.id, createdById),
+    );
     return { ...result, brokenLinks: await this.indexLinks(result, user) };
   }
 
@@ -726,9 +744,7 @@ export class PagesService {
       throw new SlugAlreadyExistsException();
     }
 
-    const pathMove = dto.updateLinks
-      ? await this.describePathMove(page, newParentId)
-      : null;
+    const pathMove = await this.describePathMove(page, newParentId);
 
     let moved: Page;
     try {
@@ -747,8 +763,14 @@ export class PagesService {
       metadata: { newParentId },
     });
     this.eventEmitter.emit(PAGE_TREE_CHANGED_EVENT);
+    if (pathMove) {
+      this.eventEmitter.emit(
+        PAGE_MOVED_EVENT,
+        new PageMovedEvent(id, userId, pathMove.from, pathMove.to),
+      );
+    }
 
-    if (!pathMove) {
+    if (!pathMove || !dto.updateLinks) {
       return {
         page: moved,
         version: currentVersion,
@@ -775,13 +797,16 @@ export class PagesService {
     page: Page,
     newParentId: string | null,
   ): Promise<{ from: string; to: string } | null> {
-    const index = new PagePathIndex(await this.pagesRepository.findAll());
-    const from = index.pathOf(page.id);
-    const parentPath = newParentId === null ? '' : index.pathOf(newParentId);
+    const paths = await this.pageReferenceService.pathsOf(
+      newParentId === null ? [page.id] : [page.id, newParentId],
+    );
+    const from = paths.get(page.id);
+    const parentPath = newParentId === null ? '' : paths.get(newParentId);
     if (from === undefined || parentPath === undefined) {
       return null;
     }
-    return { from, to: `${parentPath}/${page.slug}` };
+    const to = `${parentPath}/${page.slug}`;
+    return from === to ? null : { from, to };
   }
 
   async deletePage(
@@ -832,6 +857,10 @@ export class PagesService {
       metadata: { cascade, pageCount: descendantIds.length + 1 },
     });
     this.eventEmitter.emit(PAGE_TREE_CHANGED_EVENT);
+    this.eventEmitter.emit(
+      PAGE_TRASHED_EVENT,
+      new PageTrashedEvent(id, userId, descendantIds.length),
+    );
   }
 
   async setVisibility(
@@ -865,7 +894,7 @@ export class PagesService {
     if (!wasPublic && updated.visibility === 'public') {
       this.eventEmitter.emit(
         PAGE_PUBLISHED_EVENT,
-        new PagePublishedEvent(updated.id, updated.slug, updated.title),
+        new PagePublishedEvent(updated.id, updated.slug, updated.title, userId),
       );
     }
 

@@ -255,6 +255,43 @@ Table clé/valeur générique pour les réglages globaux (pas par utilisateur). 
 | errorMessage | varchar nullable |                        |
 | createdAt    | datetime         |                        |
 
+### Webhook
+
+| Champ               | Type                          | Notes                                                                 |
+| ------------------- | ----------------------------- | --------------------------------------------------------------------- |
+| id                  | uuid                          | PK                                                                    |
+| name                | varchar(100)                  |                                                                       |
+| url                 | varchar(2048)                 | `http(s)`, réseau local autorisé                                      |
+| format              | enum `json\|discord\|slack`   | forme du corps envoyé                                                 |
+| events              | json                          | événements écoutés, ex. `["page.created", "comment.created"]`         |
+| secret              | varchar                       | `whsec_…`, stocké en clair pour signer, visible des admins, régénérable |
+| enabled             | boolean                       |                                                                       |
+| includePrivatePages | boolean                       | défaut `false` : les événements des pages privées sont ignorés        |
+| scopePageId         | uuid nullable                 | limite aux événements de cette page et de ses descendantes            |
+| consecutiveFailures | int                           | envois `failed` d'affilée ; désactivation automatique à 20            |
+| disabledReason      | varchar nullable              | renseigné par la désactivation automatique                            |
+| createdById         | uuid                          | FK → User (admin)                                                     |
+| createdAt/updatedAt | datetime                      |                                                                       |
+
+### WebhookDelivery
+
+| Champ          | Type                               | Notes                                                       |
+| -------------- | ---------------------------------- | ----------------------------------------------------------- |
+| id             | uuid                               | PK, envoyé dans `X-NestWiki-Delivery`                       |
+| webhookId      | uuid                               | FK → Webhook, suppression en cascade                        |
+| event          | varchar                            | ex. `page.updated`, `webhook.test`                          |
+| payload        | mediumtext                         | corps exact envoyé, figé au moment de l'événement           |
+| status         | enum `pending\|success\|failed`    |                                                             |
+| attempts       | int                                | 6 au maximum                                                |
+| nextAttemptAt  | datetime(6) nullable               | prochaine tentative ; reprises à 1 min, 5 min, 30 min, 2 h, 6 h |
+| lastStatusCode | int nullable                       |                                                             |
+| lastError      | varchar nullable                   |                                                             |
+| durationMs     | int nullable                       |                                                             |
+| createdAt      | datetime                           | purgé après 30 jours                                        |
+| deliveredAt    | datetime(6) nullable               |                                                             |
+
+Les événements (`page.created`, `page.updated`, `page.moved`, `page.deleted`, `page.restored`, `page.published`, `comment.created`, `pages.imported`) partent des événements de domaine émis par `PagesService`, `PageTrashService` et `CommentsService` ; `WebhookEventsListener` les reçoit de façon asynchrone et crée les envois, que `WebhookDeliveryService` traite hors de la requête (au fil de l'eau, puis toutes les 30 s pour les reprises, qui survivent à un redémarrage). Les payloads ne contiennent jamais le contenu d'une page ou d'un commentaire : titre, chemin, URL absolue, auteur, résumé de modification. Chaque envoi est un `POST` JSON avec `User-Agent: NestWiki/<version>`, `X-NestWiki-Event`, `X-NestWiki-Delivery`, `X-NestWiki-Timestamp` et `X-NestWiki-Signature: sha256=<HMAC-SHA256(secret, timestamp + "." + corps)>` ; délai de 10 s, redirections non suivies, succès sur un code 2xx, pas de reprise sur une redirection (3xx) ni sur un 4xx autre que 408 et 429. Un événement qu'aucun webhook actif n'écoute ne déclenche aucune requête sur les pages.
+
 ---
 
 ## 5. Récapitulatif complet des endpoints API
@@ -385,6 +422,20 @@ Voir aussi `/pages/*path` et `/pages/tree`, qui exposent respectivement `permiss
 | GET       | /admin/mcp/api-keys     | admin                | Lister les clés API MCP                             |
 | DELETE    | /admin/mcp/api-keys/:id | admin                | Révoquer une clé                                    |
 | GET       | /admin/mcp/audit-log    | admin                | Journal des actions effectuées par les IA           |
+
+### Webhooks sortants
+
+| Méthode | Route                                         | Auth  | Description |
+| ------- | --------------------------------------------- | ----- | ----------- |
+| GET     | /admin/webhooks                               | admin | Lister les webhooks, avec leur secret |
+| POST    | /admin/webhooks                               | admin | Créer un webhook (`name`, `url`, `events`, `format?`, `includePrivatePages?`, `scopePageId?`, `enabled?`) ; secret généré ; audit `webhook.create` |
+| GET     | /admin/webhooks/:id                           | admin | Lire un webhook |
+| PATCH   | /admin/webhooks/:id                           | admin | Modifier un webhook ; le réactiver remet à zéro `consecutiveFailures` ; audit `webhook.update` |
+| DELETE  | /admin/webhooks/:id                           | admin | Supprimer un webhook et ses envois ; audit `webhook.delete` |
+| POST    | /admin/webhooks/:id/test                      | admin | Envoyer `webhook.test` immédiatement, une seule fois, et renvoyer l'envoi |
+| POST    | /admin/webhooks/:id/rotate-secret             | admin | Régénérer le secret ; audit `webhook.rotate_secret` |
+| GET     | /admin/webhooks/:id/deliveries                | admin | Envois paginés, du plus récent (`?status=pending\|success\|failed&page&limit`) |
+| POST    | /admin/webhooks/deliveries/:deliveryId/redeliver | admin | Renvoyer un envoi : nouvel envoi au même contenu, tenté immédiatement puis repris en cas d'échec (une seule tentative pour une copie de `webhook.test`) ; 409 si le webhook est désactivé |
 
 ### Sécurité
 
