@@ -17,6 +17,8 @@ import { AdminOAuthClients } from '#pages/AdminOAuthClients'
 import { AdminSettings } from '#pages/AdminSettings'
 import { AdminUserDetail } from '#pages/AdminUserDetail'
 import { AdminUsers } from '#pages/AdminUsers'
+import { AdminWebhookDetail } from '#pages/AdminWebhookDetail'
+import { AdminWebhooks } from '#pages/AdminWebhooks'
 import { Home } from '#pages/Home'
 import { Login } from '#pages/Login'
 import { OAuthConsent } from '#pages/OAuthConsent'
@@ -66,6 +68,8 @@ export function App() {
             <Route path="/admin/audit-log" element={<AdminAuditLog />} />
             <Route path="/admin/activity-log" element={<AdminActivityLog />} />
             <Route path="/admin/links" element={<AdminBrokenLinks />} />
+            <Route path="/admin/webhooks" element={<AdminWebhooks />} />
+            <Route path="/admin/webhooks/:id" element={<AdminWebhookDetail />} />
           </Route>
           <Route element={<ProtectedRoute permission="user.manage" />}>
             <Route path="/admin/users" element={<AdminUsers />} />

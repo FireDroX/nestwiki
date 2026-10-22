@@ -42,7 +42,10 @@ import {
   WebhookDeliveryListResponseDto,
   WebhookDeliveryResponseDto,
 } from './dto/out/webhook-delivery-response.dto.js';
-import { WebhookResponseDto } from './dto/out/webhook-response.dto.js';
+import {
+  WebhookResponseDto,
+  WebhookSummaryResponseDto,
+} from './dto/out/webhook-response.dto.js';
 import { WebhooksExceptionFilter } from './filter/webhooks.exception.filter.js';
 import { WebhookMapper } from './mapper/webhook.mapper.js';
 import { WebhooksService } from './services/webhooks.service.js';
@@ -66,8 +69,11 @@ export class WebhooksController {
 
   @Get()
   @ApiOperation({ summary: 'Lister les webhooks sortants' })
-  @ApiOkResponse({ description: 'Webhooks, avec leur secret de signature.' })
-  async list(): Promise<ResponseDto<WebhookResponseDto[]>> {
+  @ApiOkResponse({
+    description:
+      'Webhooks, avec leur secret de signature et leur dernier envoi.',
+  })
+  async list(): Promise<ResponseDto<WebhookSummaryResponseDto[]>> {
     return WebhookMapper.toListResponse(await this.webhooksService.list());
   }
 

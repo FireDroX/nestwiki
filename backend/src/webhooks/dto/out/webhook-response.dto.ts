@@ -1,3 +1,4 @@
+import type { WebhookDeliveryStatus } from '../../entities/webhook-delivery.entity.js';
 import type {
   WebhookEventName,
   WebhookFormat,
@@ -18,4 +19,14 @@ export interface WebhookResponseDto {
   createdById: string;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface WebhookLastDeliveryDto {
+  createdAt: Date;
+  status: WebhookDeliveryStatus;
+  lastStatusCode: number | null;
+}
+
+export interface WebhookSummaryResponseDto extends WebhookResponseDto {
+  lastDelivery: WebhookLastDeliveryDto | null;
 }

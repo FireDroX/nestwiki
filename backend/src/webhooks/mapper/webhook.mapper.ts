@@ -3,9 +3,13 @@ import {
   WebhookDeliveryListResponseDto,
   WebhookDeliveryResponseDto,
 } from '../dto/out/webhook-delivery-response.dto.js';
-import { WebhookResponseDto } from '../dto/out/webhook-response.dto.js';
+import {
+  WebhookResponseDto,
+  WebhookSummaryResponseDto,
+} from '../dto/out/webhook-response.dto.js';
 import { WebhookDelivery } from '../entities/webhook-delivery.entity.js';
 import { Webhook } from '../entities/webhook.entity.js';
+import type { WebhookWithLastDelivery } from '../services/webhooks.service.js';
 
 export class WebhookMapper {
   static toResponseDto(webhook: Webhook): WebhookResponseDto {
@@ -32,10 +36,19 @@ export class WebhookMapper {
   }
 
   static toListResponse(
-    webhooks: Webhook[],
-  ): ResponseDto<WebhookResponseDto[]> {
+    items: WebhookWithLastDelivery[],
+  ): ResponseDto<WebhookSummaryResponseDto[]> {
     return new ResponseDto(
-      webhooks.map((webhook) => WebhookMapper.toResponseDto(webhook)),
+      items.map(({ webhook, lastDelivery }) => ({
+        ...WebhookMapper.toResponseDto(webhook),
+        lastDelivery: lastDelivery
+          ? {
+              createdAt: lastDelivery.createdAt,
+              status: lastDelivery.status,
+              lastStatusCode: lastDelivery.lastStatusCode,
+            }
+          : null,
+      })),
     );
   }
 

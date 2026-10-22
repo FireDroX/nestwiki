@@ -82,6 +82,12 @@ describe('resolveLogTargetLink', () => {
     )
   })
 
+  it('links webhook events to the webhook page, except a deleted webhook', () => {
+    expect(link({ action: 'webhook.update', targetType: 'webhook', targetId: 'w1' })).toBe('/admin/webhooks/w1')
+    expect(link({ action: 'webhook.rotate_secret', targetType: 'webhook', targetId: 'w1' })).toBe('/admin/webhooks/w1')
+    expect(link({ action: 'webhook.delete', targetType: 'webhook', targetId: 'w1' })).toBeNull()
+  })
+
   it('leaves unknown targets unlinked', () => {
     expect(link({ action: 'something.else', targetType: 'mystery', targetId: 'x' })).toBeNull()
   })
