@@ -106,7 +106,7 @@ describe('WebhookDeliveryService', () => {
       findById: vi.fn(),
       findDue: vi.fn().mockResolvedValue([]),
       findByWebhook: vi.fn(),
-      findLatestByWebhook: vi.fn(),
+      findLatestByWebhooks: vi.fn(),
       save: vi.fn((saved: WebhookDelivery) => Promise.resolve(saved)),
       deleteCreatedBefore: vi.fn().mockResolvedValue(undefined),
     };

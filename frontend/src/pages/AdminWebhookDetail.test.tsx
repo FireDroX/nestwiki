@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import type { Webhook, WebhookDelivery } from '#api/webhooks'
@@ -117,6 +117,22 @@ describe('AdminWebhookDetail', () => {
     expect(testWebhookMock).toHaveBeenCalledWith('hook-1')
     expect(listWebhookDeliveriesMock).toHaveBeenCalledTimes(2)
     expect(await screen.findByText('Désactivé automatiquement')).toBeInTheDocument()
+  })
+
+  it('goes back to the first page of the log after a test, to show the new delivery', async () => {
+    const user = userEvent.setup()
+    listWebhookDeliveriesMock.mockResolvedValue({ items: [delivery()], total: 45 })
+    testWebhookMock.mockResolvedValue(delivery({ event: 'webhook.test', status: 'success', lastStatusCode: 204 }))
+    renderPage()
+
+    await user.click(await screen.findByRole('button', { name: 'Suivant' }))
+    expect(listWebhookDeliveriesMock).toHaveBeenLastCalledWith('hook-1', { status: undefined, page: 2, limit: 20 })
+
+    await user.click(screen.getByRole('button', { name: 'Envoyer un test' }))
+
+    await waitFor(() =>
+      expect(listWebhookDeliveriesMock).toHaveBeenLastCalledWith('hook-1', { status: undefined, page: 1, limit: 20 }),
+    )
   })
 
   it('does not offer to redeliver for a disabled webhook', async () => {

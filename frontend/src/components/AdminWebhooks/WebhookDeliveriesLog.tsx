@@ -21,11 +21,10 @@ type Status = 'loading' | 'ready' | 'error'
 interface WebhookDeliveriesLogProps {
   webhookId: string
   webhookEnabled: boolean
-  refreshKey: number
   onRedelivered: () => void
 }
 
-export function WebhookDeliveriesLog({ webhookId, webhookEnabled, refreshKey, onRedelivered }: WebhookDeliveriesLogProps) {
+export function WebhookDeliveriesLog({ webhookId, webhookEnabled, onRedelivered }: WebhookDeliveriesLogProps) {
   const { t } = useTranslation()
   const [page, setPage] = useState(1)
   const [statusFilter, setStatusFilter] = useState<WebhookDeliveryStatus | undefined>(undefined)
@@ -33,7 +32,6 @@ export function WebhookDeliveriesLog({ webhookId, webhookEnabled, refreshKey, on
   const [total, setTotal] = useState(0)
   const [status, setStatus] = useState<Status>('loading')
   const [selected, setSelected] = useState<WebhookDelivery | null>(null)
-  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     let cancelled = false
@@ -55,18 +53,11 @@ export function WebhookDeliveriesLog({ webhookId, webhookEnabled, refreshKey, on
     return () => {
       cancelled = true
     }
-  }, [webhookId, statusFilter, page, refreshKey, reloadKey])
+  }, [webhookId, statusFilter, page])
 
   function handleFilterChange(value: string) {
     setStatusFilter(value === ALL_STATUSES ? undefined : (value as WebhookDeliveryStatus))
     setPage(1)
-  }
-
-  function handleRedelivered() {
-    setSelected(null)
-    setPage(1)
-    setReloadKey((current) => current + 1)
-    onRedelivered()
   }
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_LIMIT))
@@ -178,7 +169,7 @@ export function WebhookDeliveriesLog({ webhookId, webhookEnabled, refreshKey, on
         delivery={selected}
         webhookEnabled={webhookEnabled}
         onClose={() => setSelected(null)}
-        onRedelivered={handleRedelivered}
+        onRedelivered={onRedelivered}
       />
     </div>
   )

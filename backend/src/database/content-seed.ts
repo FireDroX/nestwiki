@@ -1248,7 +1248,7 @@ Refuser un timestamp trop ancien empêche de rejouer une requête interceptée. 
 ## Envois, reprises et désactivation automatique
 
 - Les envois partent toujours en arrière-plan : ils ne ralentissent jamais l'enregistrement d'une page.
-- Un envoi réussit quand le service répond par un code 2xx en moins de 10 secondes. Les redirections ne sont pas suivies.
+- Un envoi réussit quand le service répond par un code 2xx en moins de 10 secondes. Les redirections ne sont pas suivies : une réponse 3xx est un échec immédiat, sans reprise. Utilisez l'adresse finale (souvent en \`https://\`).
 - En cas d'échec, NestWiki réessaie **après 1 min, 5 min, 30 min, 2 h puis 6 h**, soit 6 tentatives au plus. Les reprises survivent à un redémarrage du serveur.
 - Pas de reprise sur une réponse 4xx (l'adresse ou la requête est refusée), sauf 408 et 429.
 - Après **20 envois consécutifs en échec** (toutes reprises épuisées), le webhook est **désactivé automatiquement** : la liste l'affiche « Désactivé automatiquement » et les envois en attente sont abandonnés. Corrigez le problème puis réactivez-le en le modifiant : le compteur d'échecs repart de zéro. Un envoi réussi remet aussi le compteur à zéro.

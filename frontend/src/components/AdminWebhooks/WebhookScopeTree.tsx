@@ -6,7 +6,7 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from '#components/ui/inp
 import { PageAccessTreeNode } from '#components/PageAccessTreeSelector/PageAccessTreeNode'
 import type { PageTreeNode } from '#api/pages'
 import { usePageTree } from '#hooks/usePageTree'
-import { buildChainIndex, coverageForNode } from '#utils/access-rule-coverage'
+import { buildChainIndex, type NodeCoverage } from '#utils/access-rule-coverage'
 import { filterTree, flattenTree } from '#utils/page-tree'
 
 interface WebhookScopeTreeProps {
@@ -22,19 +22,31 @@ export function WebhookScopeTree({ value, onChange, disabled = false }: WebhookS
   const { tree, status } = usePageTree()
   const [search, setSearch] = useState('')
   const chainIndex = useMemo(() => buildChainIndex(tree), [tree])
-  const [expanded, setExpanded] = useState<Set<string>>(() => new Set((value && chainIndex.get(value)?.slice(1)) || []))
+  const [initialScope] = useState(value)
+  const [toggled, setToggled] = useState<Set<string>>(new Set())
+  const initiallyExpanded = useMemo(
+    () => new Set((initialScope && chainIndex.get(initialScope)?.slice(1)) || []),
+    [chainIndex, initialScope],
+  )
   const visibleTree = useMemo(() => filterTree(tree, search), [tree, search])
   const scopePath = useMemo(
     () => (value ? (flattenTree(tree).find((page) => page.id === value)?.path ?? null) : null),
     [tree, value],
   )
-  const scopeRule = value
-    ? [{ pageId: value, appliesTo: 'subtree' as const, actions: ['page.read' as const], excludedPageIds: [] }]
-    : []
+  const scopeChain = useMemo(() => new Set((value && chainIndex.get(value)) || []), [chainIndex, value])
   const isFiltering = search.trim().length > 0
 
+  function coverage(node: PageTreeNode): NodeCoverage {
+    if (node.id === value) return 'full'
+    return scopeChain.has(node.id) ? 'partial' : 'none'
+  }
+
+  function isExpanded(id: string): boolean {
+    return isFiltering || initiallyExpanded.has(id) !== toggled.has(id)
+  }
+
   function toggleExpanded(id: string) {
-    setExpanded((current) => {
+    setToggled((current) => {
       const next = new Set(current)
       if (next.has(id)) next.delete(id)
       else next.add(id)
@@ -84,9 +96,9 @@ export function WebhookScopeTree({ value, onChange, disabled = false }: WebhookS
               key={node.id}
               node={node}
               depth={0}
-              coverage={(candidate) => coverageForNode(candidate, chainIndex, scopeRule)}
+              coverage={coverage}
               rules={[]}
-              isExpanded={(id) => isFiltering || expanded.has(id)}
+              isExpanded={isExpanded}
               onToggleExpand={toggleExpanded}
               onToggleNode={toggleNode}
               onActionsChange={noop}

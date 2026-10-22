@@ -708,7 +708,7 @@
         "selectAllEvents": "Tout cocher",
         "scopeLabel": "Limiter à un sous-arbre",
         "scopeHint": "Seuls les événements de la page choisie et de ses sous-pages seront envoyés.",
-        "scopeSelected": "Limité à : {{path}}",
+        "scopeSelected": "Limité à : {{path}} et ses sous-pages",
         "scopeMissing": "Page introuvable",
         "includePrivatePagesLabel": "Inclure les pages privées",
         "includePrivatePagesWarning": "Les titres et chemins des pages privées seront envoyés à ce service externe.",

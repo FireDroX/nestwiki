@@ -8,6 +8,7 @@ import {
 import {
   CreateWebhookDeliveryInput,
   WebhookDeliveryRepository,
+  WebhookDeliverySummary,
 } from './webhook-delivery.repository.js';
 
 @Injectable()
@@ -50,11 +51,40 @@ export class TypeormWebhookDeliveryRepository implements WebhookDeliveryReposito
     return { items, total };
   }
 
-  findLatestByWebhook(webhookId: string): Promise<WebhookDelivery | null> {
-    return this.repository.findOne({
-      where: { webhookId },
-      order: { createdAt: 'DESC' },
-    });
+  async findLatestByWebhooks(
+    webhookIds: string[],
+  ): Promise<Map<string, WebhookDeliverySummary>> {
+    const latest = new Map<string, WebhookDeliverySummary>();
+    if (webhookIds.length === 0) {
+      return latest;
+    }
+    const rows = await this.repository
+      .createQueryBuilder('delivery')
+      .select([
+        'delivery.id',
+        'delivery.webhookId',
+        'delivery.createdAt',
+        'delivery.status',
+        'delivery.lastStatusCode',
+      ])
+      .innerJoin(
+        (query) =>
+          query
+            .select('last.webhook_id', 'webhook_id')
+            .addSelect('MAX(last.created_at)', 'created_at')
+            .from(WebhookDelivery, 'last')
+            .where('last.webhook_id IN (:...webhookIds)', { webhookIds })
+            .groupBy('last.webhook_id'),
+        'latest',
+        'latest.webhook_id = delivery.webhook_id AND latest.created_at = delivery.created_at',
+      )
+      .getMany();
+    for (const row of rows) {
+      if (!latest.has(row.webhookId)) {
+        latest.set(row.webhookId, row);
+      }
+    }
+    return latest;
   }
 
   save(delivery: WebhookDelivery): Promise<WebhookDelivery> {

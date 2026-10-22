@@ -53,7 +53,9 @@ describe('WebhooksService', () => {
   let deliveriesRepository: {
     findById: Mock<WebhookDeliveryRepository['findById']>;
     findByWebhook: Mock<WebhookDeliveryRepository['findByWebhook']>;
-    findLatestByWebhook: Mock<WebhookDeliveryRepository['findLatestByWebhook']>;
+    findLatestByWebhooks: Mock<
+      WebhookDeliveryRepository['findLatestByWebhooks']
+    >;
   };
   let deliveryService: {
     sendTest: Mock<WebhookDeliveryService['sendTest']>;
@@ -80,7 +82,7 @@ describe('WebhooksService', () => {
     deliveriesRepository = {
       findById: vi.fn().mockResolvedValue(null),
       findByWebhook: vi.fn().mockResolvedValue({ items: [], total: 0 }),
-      findLatestByWebhook: vi.fn().mockResolvedValue(null),
+      findLatestByWebhooks: vi.fn().mockResolvedValue(new Map()),
     };
     deliveryService = {
       sendTest: vi.fn(),
@@ -115,18 +117,28 @@ describe('WebhooksService', () => {
     service = moduleRef.get(WebhooksService);
   });
 
-  it('lists the webhooks with their latest delivery', async () => {
-    const latest = { id: 'd1', status: 'failed' } as WebhookDelivery;
+  it('lists the webhooks with their latest delivery, read in a single query', async () => {
+    const latest = {
+      webhookId: 'hook-1',
+      createdAt: new Date(),
+      status: 'failed' as const,
+      lastStatusCode: 500,
+    };
     webhooksRepository.findAll.mockResolvedValue([
       webhook(),
       webhook({ id: 'hook-2' }),
     ]);
-    deliveriesRepository.findLatestByWebhook.mockImplementation((id) =>
-      Promise.resolve(id === 'hook-1' ? latest : null),
+    deliveriesRepository.findLatestByWebhooks.mockResolvedValue(
+      new Map([['hook-1', latest]]),
     );
 
     const result = await service.list();
 
+    expect(deliveriesRepository.findLatestByWebhooks).toHaveBeenCalledTimes(1);
+    expect(deliveriesRepository.findLatestByWebhooks).toHaveBeenCalledWith([
+      'hook-1',
+      'hook-2',
+    ]);
     expect(result.map((item) => item.lastDelivery)).toEqual([latest, null]);
     expect(result.map((item) => item.webhook.id)).toEqual(['hook-1', 'hook-2']);
   });

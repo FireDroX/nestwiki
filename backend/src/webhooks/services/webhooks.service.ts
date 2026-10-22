@@ -28,7 +28,10 @@ import {
   type WebhookEventName,
   type WebhookFormat,
 } from '../entities/webhook.entity.js';
-import type { WebhookDeliveryRepository } from '../persistence/webhook-delivery.repository.js';
+import type {
+  WebhookDeliveryRepository,
+  WebhookDeliverySummary,
+} from '../persistence/webhook-delivery.repository.js';
 import type { WebhookRepository } from '../persistence/webhook.repository.js';
 import { WebhookDeliveryService } from './webhook-delivery.service.js';
 import { WebhookSignature } from './webhook-signature.js';
@@ -37,7 +40,7 @@ const HTTP_PROTOCOLS = ['http:', 'https:'];
 
 export interface WebhookWithLastDelivery {
   webhook: Webhook;
-  lastDelivery: WebhookDelivery | null;
+  lastDelivery: WebhookDeliverySummary | null;
 }
 
 @Injectable()
@@ -54,14 +57,13 @@ export class WebhooksService {
 
   async list(): Promise<WebhookWithLastDelivery[]> {
     const webhooks = await this.webhooksRepository.findAll();
-    return Promise.all(
-      webhooks.map(async (webhook) => ({
-        webhook,
-        lastDelivery: await this.deliveriesRepository.findLatestByWebhook(
-          webhook.id,
-        ),
-      })),
+    const latest = await this.deliveriesRepository.findLatestByWebhooks(
+      webhooks.map((webhook) => webhook.id),
     );
+    return webhooks.map((webhook) => ({
+      webhook,
+      lastDelivery: latest.get(webhook.id) ?? null,
+    }));
   }
 
   async get(id: string): Promise<Webhook> {

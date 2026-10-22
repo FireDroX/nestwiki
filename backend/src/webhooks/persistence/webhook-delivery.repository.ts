@@ -8,6 +8,11 @@ export type CreateWebhookDeliveryInput = Pick<
   'id' | 'webhookId' | 'event' | 'payload' | 'nextAttemptAt'
 >;
 
+export type WebhookDeliverySummary = Pick<
+  WebhookDelivery,
+  'webhookId' | 'createdAt' | 'status' | 'lastStatusCode'
+>;
+
 export interface WebhookDeliveryRepository {
   create(input: CreateWebhookDeliveryInput): Promise<WebhookDelivery>;
   findById(id: string): Promise<WebhookDelivery | null>;
@@ -18,7 +23,9 @@ export interface WebhookDeliveryRepository {
     page: number,
     limit: number,
   ): Promise<{ items: WebhookDelivery[]; total: number }>;
-  findLatestByWebhook(webhookId: string): Promise<WebhookDelivery | null>;
+  findLatestByWebhooks(
+    webhookIds: string[],
+  ): Promise<Map<string, WebhookDeliverySummary>>;
   save(delivery: WebhookDelivery): Promise<WebhookDelivery>;
   deleteCreatedBefore(date: Date): Promise<void>;
 }

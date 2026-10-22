@@ -30,7 +30,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 
 function WebhookSettings({ webhook }: { webhook: Webhook }) {
   const { t } = useTranslation()
-  const { tree } = usePageTree()
+  const { tree, status: treeStatus } = usePageTree()
   const scopePath = useMemo(
     () => (webhook.scopePageId ? flattenTree(tree).find((page) => page.id === webhook.scopePageId)?.path : null),
     [tree, webhook.scopePageId],
@@ -50,7 +50,9 @@ function WebhookSettings({ webhook }: { webhook: Webhook }) {
       </dd>
       <dt className="text-muted-foreground">{t('admin.webhooks.form.scopeLabel')}</dt>
       <dd className="break-words">
-        {webhook.scopePageId ? (scopePath ?? t('admin.webhooks.form.scopeMissing')) : t('pageAccessTree.wholeWiki')}
+        {webhook.scopePageId
+          ? (scopePath ?? t(treeStatus === 'success' ? 'admin.webhooks.form.scopeMissing' : 'common.loading'))
+          : t('pageAccessTree.wholeWiki')}
       </dd>
       <dt className="text-muted-foreground">{t('admin.webhooks.form.includePrivatePagesLabel')}</dt>
       <dd>{t(webhook.includePrivatePages ? 'admin.webhooks.yes' : 'admin.webhooks.no')}</dd>
@@ -171,9 +173,9 @@ export function AdminWebhookDetail() {
 
           <Section title={t('admin.webhooks.log.title')}>
             <WebhookDeliveriesLog
+              key={deliveriesKey}
               webhookId={webhook.id}
               webhookEnabled={webhook.enabled}
-              refreshKey={deliveriesKey}
               onRedelivered={refreshAfterDelivery}
             />
           </Section>

@@ -125,7 +125,7 @@ describe('WebhookFormDialog', () => {
     await user.paste('http://192.168.1.20:5678/webhook/wiki')
     await user.click(screen.getByRole('checkbox', { name: 'Tout cocher' }))
     await user.click(screen.getByRole('checkbox', { name: 'Docs' }))
-    expect(screen.getByText('Limité à : Docs')).toBeInTheDocument()
+    expect(screen.getByText('Limité à : Docs et ses sous-pages')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Créer le webhook' }))
 
     expect(createWebhookMock).toHaveBeenCalledWith({
@@ -147,6 +147,22 @@ describe('WebhookFormDialog', () => {
       enabled: true,
     })
     expect(onSaved).toHaveBeenCalledWith(created)
+  })
+
+  it('unfolds the tree down to the saved scope and only checks that page', async () => {
+    const user = userEvent.setup()
+    renderDialog({ webhook: { ...existing, scopePageId: 'guide' } })
+
+    await user.click(screen.getByRole('button', { name: 'Ouvrir' }))
+
+    expect(screen.getByRole('checkbox', { name: 'Guide' })).toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'Docs' })).toHaveAttribute('aria-checked', 'mixed')
+    expect(screen.getByText('Limité à : Docs / Guide et ses sous-pages')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('checkbox', { name: 'Docs' }))
+
+    expect(screen.getByRole('checkbox', { name: 'Docs' })).toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'Guide' })).not.toBeChecked()
   })
 
   it('keeps the saved format of an existing webhook and only advises the recognised one', async () => {

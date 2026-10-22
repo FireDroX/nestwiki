@@ -708,7 +708,7 @@
         "selectAllEvents": "Select all",
         "scopeLabel": "Limit to a subtree",
         "scopeHint": "Only events about the selected page and its subpages will be sent.",
-        "scopeSelected": "Limited to: {{path}}",
+        "scopeSelected": "Limited to: {{path}} and its subpages",
         "scopeMissing": "Page not found",
         "includePrivatePagesLabel": "Include private pages",
         "includePrivatePagesWarning": "Titles and paths of private pages will be sent to this external service.",
