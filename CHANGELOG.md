@@ -2,6 +2,14 @@
 
 All notable changes to NestWiki are documented here, newest first, one `## <version> — <date>` section per release. This file is the single source for the in-app "Notes de version" page, which groups releases by minor version (`1.0`, `0.31`…). Entries up to 0.31.10 were written in French, the project's original language.
 
+## 1.3.7 — 2026-10-23
+
+- Nouvel assistant d'import : **Importer** dans le menu de votre avatar, ou **Importer ici** sur une page (à côté d'« Exporter ») pour créer les pages dessous. Il apparaît si vous pouvez créer des pages à la racine ou des sous-pages quelque part.
+- Quatre étapes : déposez une archive `.zip` (coffre Obsidian, dossier Markdown, export NestWiki) ou un fichier `.md` et choisissez la destination ; vérifiez l'aperçu (arbre des pages avec leur chemin final, pages déjà présentes mises en évidence, avertissements repliables) ; choisissez quoi faire des pages existantes (garder, importer sous un autre nom, ajouter une nouvelle version), la visibilité et la création des tags manquants ; suivez l'envoi puis lisez le rapport, avec un bouton pour ouvrir la page importée.
+- Les erreurs du serveur (fichier trop gros, archive invalide, droits) s'affichent sur l'étape concernée, et l'arborescence se met à jour toute seule après l'import.
+- Le journal d'activité affiche les imports (« Pages importées »).
+- Nouvelle page de documentation « Importer depuis Obsidian ou Markdown » : formats acceptés, tableau de conversion Obsidian → NestWiki, conflits, limites et aller-retour export → import.
+
 ## 1.3.6 — 2026-10-23
 
 - Import (côté serveur) : `POST /imports` crée réellement les pages calculées par l'aperçu, avec trois façons de gérer une page déjà présente au même endroit : la garder (par défaut), importer sous un nom suffixé `-2`, ou ajouter une nouvelle version à la page existante (seulement si vous pouvez la modifier). L'assistant d'import arrive dans la prochaine version.

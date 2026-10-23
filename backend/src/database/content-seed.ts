@@ -123,6 +123,10 @@ const PAGE_TREE_SEED: PageSeed[] = [
     <strong>Webhooks</strong>
     <span>Prévenir Discord, Slack ou n8n des changements du wiki</span>
   </a>
+  <a class="doc-link-card" href="/pages/documentation/importer-obsidian-markdown">
+    <strong>Importer depuis Obsidian ou Markdown</strong>
+    <span>Créer des pages depuis un coffre, un dossier ou un export</span>
+  </a>
   <a class="doc-link-card" href="/pages/documentation/notes-de-version">
     <strong>Notes de version</strong>
     <span>Historique de tous les changements</span>
@@ -1276,6 +1280,81 @@ Slack fonctionne de la même façon avec l'adresse d'une application « Incoming
 4. Dans les nœuds suivants, l'enveloppe est disponible dans \`{{ $json.body }}\` : par exemple \`{{ $json.body.event }}\` pour le nom de l'événement et \`{{ $json.body.data.page.url }}\` pour l'adresse de la page. Un nœud **Switch** sur \`{{ $json.body.event }}\` permet de traiter chaque événement différemment.
 
 Les en-têtes, dont la signature, sont dans \`{{ $json.headers }}\`. Pour vérifier la signature dans n8n, activez l'option « Raw Body » du nœud Webhook et appliquez la méthode décrite plus haut dans un nœud Code ou Crypto.`,
+      },
+      {
+        slug: 'importer-obsidian-markdown',
+        title: 'Importer depuis Obsidian ou Markdown',
+        tags: ['documentation', 'guide'],
+        content: `# Importer depuis Obsidian ou Markdown
+
+L'assistant d'import crée d'un coup toute une arborescence de pages à partir d'un coffre Obsidian, d'un dossier de fichiers Markdown ou d'un export NestWiki. Il s'ouvre depuis le menu de votre avatar (**Importer**) ou depuis une page (**Importer ici**, à côté d'« Exporter ») : les pages importées sont alors créées sous cette page.
+
+Il faut le droit de créer des sous-pages sur la page de destination, ou de créer des pages racines pour importer à la racine du wiki.
+
+## Les étapes
+
+1. **Fichier** : glissez une archive \`.zip\` ou un fichier \`.md\`, puis choisissez la destination.
+2. **Aperçu** : NestWiki lit l'archive sans rien créer et affiche l'arbre des pages avec leur chemin final. Les pages qui existent déjà au même endroit sont signalées, et les avertissements sont regroupés : liens non résolus, fichiers ignorés, tags qui ne seront pas créés, médias, adresses renommées.
+3. **Import** : choisissez les options puis lancez l'import. La barre indique l'envoi du fichier, puis la création des pages.
+4. **Rapport** : nombre de pages créées, mises à jour et ignorées, médias et tags, avec un bouton pour ouvrir la page importée.
+
+## Formats acceptés
+
+- **Coffre Obsidian** : zippez le dossier du coffre. Le dossier \`.obsidian/\` et les fichiers cachés sont ignorés.
+- **Dossier Markdown** : des fichiers \`.md\` organisés en dossiers, avec des liens relatifs entre eux (\`../autre.md\`, \`./image.png\`, avec ou sans extension).
+- **Export NestWiki** : l'archive produite par « Exporter → Markdown avec les sous-pages (.zip) », ou un seul fichier \`.md\`.
+
+## Arborescence, titres et adresses
+
+- Chaque dossier devient une page parente. Son contenu vient de sa note de dossier si elle existe : \`Projet/Projet.md\`, \`Projet.md\` à côté du dossier \`Projet/\`, ou \`index.md\` / \`README.md\` dans le dossier. Sinon la page contient seulement son titre.
+- Le titre vient du \`title\` du frontmatter, sinon du premier titre \`# \`, sinon du nom du fichier. Le frontmatter est retiré du contenu, et une note qui ne commence pas par \`# Titre\` le reçoit.
+- L'adresse de chaque page est tirée du nom du fichier ou du dossier (\`Été à Paris.md\` → \`ete-a-paris\`). Un nom réservé (\`trash\`, \`tags\`…) ou un doublon au même niveau reçoit un suffixe \`-2\`, \`-3\`, listé dans les avertissements.
+
+## Conversion Obsidian → NestWiki
+
+| Obsidian | Dans NestWiki |
+| --- | --- |
+| \`[[Note]]\`, \`[[Note\\|texte]]\` | Lien vers le chemin complet de la page importée |
+| \`[[Note#Titre]]\`, \`[[#Titre]]\` | Lien vers la section, ancre au format NestWiki |
+| \`![[image.png]]\` | Image téléversée dans la médiathèque |
+| \`![[image.png\\|300]]\` | \`<img width="300">\` (largeur conservée) |
+| \`![[Note]]\` (inclusion) | Lien vers la page |
+| \`![[document.pdf]]\` | Lien vers le fichier, affiché en lecteur PDF |
+| Note de dossier | Contenu de la page parente |
+| \`aliases\` du frontmatter | Noms de plus pour retrouver la note dans les liens |
+| \`tags\` du frontmatter et \`#tag\` dans le texte | Tags de la page (hors code et titres) |
+| \`==surligné==\` | \`<mark>surligné</mark>\` |
+| \`%%commentaire%%\` | Retiré |
+| \`> [!note]\` | Encadré, déjà compatible |
+
+Un lien \`[[Note]]\` est résolu comme dans Obsidian : par le nom de fichier s'il est unique dans le coffre, sinon par la note la plus proche dans l'arborescence. Un lien vers un fichier absent de l'archive est laissé tel quel et listé dans « Liens non résolus ».
+
+## Médias
+
+Les images et fichiers utilisés par au moins une note (PNG, JPEG, GIF, WebP, PDF, texte, Word, Excel, ZIP, 20 Mo maximum chacun) sont téléversés dans la médiathèque, et leurs liens sont réécrits vers \`/api/media/<id>/raw\`. Les autres fichiers sont ignorés et listés. Sans le droit de téléverser des médias, aucun média n'est importé et le lien d'origine reste dans la page.
+
+## Pages qui existent déjà
+
+Quand une page existe déjà au même chemin, trois choix :
+
+- **Garder la page existante** (par défaut) : elle n'est pas modifiée, et les sous-pages de l'archive sont importées sous elle.
+- **Importer sous un autre nom** : la page importée reçoit un suffixe \`-2\`, et les liens de l'archive pointent vers ce nouveau chemin.
+- **Ajouter une nouvelle version** : la page existante reçoit une version « Import » avec le contenu de l'archive. L'historique garde l'ancienne version. Une page que vous ne pouvez pas modifier est ignorée et signalée dans le rapport.
+
+Les nouvelles pages sont privées par défaut ; l'option « Publiques » les rend lisibles par tout le monde. Les tags absents du wiki sont créés si vous cochez « Créer les tags manquants » (droit de créer des tags requis), sinon ils sont ignorés et signalés.
+
+## Tout ou rien
+
+L'import se fait en une seule fois : si une étape échoue, aucune page n'est créée et les fichiers déjà envoyés sont supprimés. Un import déclenche un seul webhook \`pages.imported\` et apparaît dans le journal d'activité.
+
+## Limites
+
+- Archive de 100 Mo maximum, 500 Mo une fois décompressée, 1 000 pages maximum.
+- Une archive qui contient des chemins dangereux (\`..\`, chemin absolu) est refusée, et les liens symboliques sont ignorés.
+
+## Aller-retour export → import
+
+Exporter une page avec ses sous-pages puis importer l'archive redonne la même arborescence, les mêmes titres, tags et liens entre pages, avec les images. Réimporter la même archive au même endroit retrouve les pages déjà importées : gardez-les, ou ajoutez-leur une nouvelle version pour les mettre à jour.`,
       },
       {
         slug: 'notes-de-version',

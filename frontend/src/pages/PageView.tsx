@@ -1,6 +1,6 @@
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { History, Pencil } from 'lucide-react'
+import { FileUp, History, Pencil } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { deletePage } from '#api/pages'
@@ -98,6 +98,7 @@ export function PageView() {
   const canEdit = canOnPage(page, 'page.edit')
   const canManageAccess = canOnPage(page, 'page.manage_permissions')
   const canDelete = canOnPage(page, 'page.delete')
+  const canImportHere = !!user && canOnPage(page, 'page.create_child')
   const { status: treeStatus, tree, refresh: refreshTree } = usePageTree()
   const navigate = useNavigate()
   const [isDeleting, setIsDeleting] = useState(false)
@@ -214,6 +215,13 @@ export function PageView() {
                 />
               )}
               <ExportMenu pageId={page.id} pathSegments={pathSegments} hasChildren={descendantCount > 0} />
+              {canImportHere && (
+                <Button variant="outline" size="sm" asChild>
+                  <Link to={`/import?parent=${page.id}`}>
+                    <FileUp /> {t('pageView.importHere')}
+                  </Link>
+                </Button>
+              )}
               {canManageAccess && (
                 <PageAccessPanel
                   key={`access-${page.id}`}
