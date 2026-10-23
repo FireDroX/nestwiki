@@ -23,7 +23,7 @@ export interface ImportPlanPage {
   linkCount: number
   mediaCount: number
   action: ImportPageAction
-  conflict: { id: string; path: string } | null
+  conflict: { path: string } | null
   children: ImportPlanPage[]
 }
 
@@ -58,7 +58,7 @@ export interface ImportReport {
   rootPath: string | null
   created: ImportedPage[]
   updated: ImportedPage[]
-  skipped: { id: string | null; path: string; title: string; reason: ImportSkipReason }[]
+  skipped: { path: string; title: string; reason: ImportSkipReason }[]
   media: { uploaded: number }
   tags: { created: string[]; skipped: string[] }
   warnings: ImportWarnings

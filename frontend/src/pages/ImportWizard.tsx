@@ -27,6 +27,7 @@ export function ImportWizard() {
   const [file, setFile] = useState<File | null>(null)
   const [parentId, setParentId] = useState<string | null>(searchParams.get('parent'))
   const [plan, setPlan] = useState<ImportPlan | null>(null)
+  const [plansByMode, setPlansByMode] = useState<Partial<Record<ImportConflictMode, ImportPlan>>>({})
   const [visibility, setVisibility] = useState<PageVisibility>('private')
   const [createMissingTags, setCreateMissingTags] = useState(false)
   const [report, setReport] = useState<ImportReport | null>(null)
@@ -34,12 +35,19 @@ export function ImportWizard() {
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  async function loadPlan(conflict: ImportConflictMode) {
+  async function loadPlan(conflict: ImportConflictMode, cached: Partial<Record<ImportConflictMode, ImportPlan>>) {
     if (!file) return
+    const known = cached[conflict]
+    if (known) {
+      setPlan(known)
+      return
+    }
     setPending(true)
     setError(null)
     try {
-      setPlan(await previewImport(file, parentId, conflict))
+      const nextPlan = await previewImport(file, parentId, conflict)
+      setPlan(nextPlan)
+      setPlansByMode({ ...cached, [conflict]: nextPlan })
       setStep('preview')
     } catch (previewError) {
       setError(extractErrorMessage(previewError))
@@ -71,6 +79,7 @@ export function ImportWizard() {
   function restart() {
     setFile(null)
     setPlan(null)
+    setPlansByMode({})
     setReport(null)
     setVisibility('private')
     setCreateMissingTags(false)
@@ -97,7 +106,7 @@ export function ImportWizard() {
             setError(null)
           }}
           onParentChange={setParentId}
-          onAnalyze={() => void loadPlan(plan?.conflictMode ?? 'skip')}
+          onAnalyze={() => void loadPlan(plan?.conflictMode ?? 'skip', {})}
         />
       )}
       {step === 'preview' && plan && (
@@ -107,7 +116,7 @@ export function ImportWizard() {
           createMissingTags={createMissingTags}
           pending={pending}
           error={error}
-          onConflictChange={(conflict) => void loadPlan(conflict)}
+          onConflictChange={(conflict) => void loadPlan(conflict, plansByMode)}
           onVisibilityChange={setVisibility}
           onCreateMissingTagsChange={setCreateMissingTags}
           onBack={() => {

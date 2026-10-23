@@ -58,7 +58,7 @@ function buildPlan(overrides: Partial<ImportPlan> = {}): ImportPlan {
         linkCount: 2,
         mediaCount: 1,
         action: 'skip',
-        conflict: { id: 'guide-id', path: '/docs/guide' },
+        conflict: { path: '/docs/guide' },
         children: [
           {
             path: '/docs/guide/install',
@@ -92,7 +92,7 @@ const report: ImportReport = {
   rootPath: '/docs/guide',
   created: [{ id: 'install-id', path: '/docs/guide/install', title: 'Installation' }],
   updated: [],
-  skipped: [{ id: 'guide-id', path: '/docs/guide', title: 'Guide', reason: 'exists' }],
+  skipped: [{ path: '/docs/guide', title: 'Guide', reason: 'exists' }],
   media: { uploaded: 1 },
   tags: { created: ['nouveau'], skipped: [] },
   warnings: { ...emptyWarnings, unresolvedLinks: [{ page: '/docs/guide', target: 'Absente' }] },
@@ -228,6 +228,12 @@ describe('ImportWizard', () => {
     expect(await screen.findByRole('combobox', { name: 'Pages déjà présentes' })).toHaveTextContent(
       'Importer sous un autre nom (-2)',
     )
+
+    await user.click(screen.getByRole('combobox', { name: 'Pages déjà présentes' }))
+    await user.click(await screen.findByRole('option', { name: 'Garder la page existante' }))
+
+    expect(await screen.findByText('1 page existe déjà au même endroit.')).toBeInTheDocument()
+    expect(previewImportMock).toHaveBeenCalledTimes(2)
   })
 
   it('hides the missing tags option without tag.create', async () => {
