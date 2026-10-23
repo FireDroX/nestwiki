@@ -126,7 +126,11 @@ export class WebhookEventsListener {
       await this.deliveryService.publish('pages.imported', {
         actorId: event.actorId,
         page,
-        data: { pageCount: event.pageCount },
+        data: {
+          pageCount: event.createdCount + event.updatedCount,
+          createdCount: event.createdCount,
+          updatedCount: event.updatedCount,
+        },
       });
     });
   }

@@ -337,6 +337,18 @@ export class PagesService {
     return this.pagesRepository.findAll();
   }
 
+  async indexImportedPages(
+    pages: { pageId: string; versionId: string; content: string }[],
+  ): Promise<void> {
+    for (const page of pages) {
+      await this.pageLinksService.syncPage(
+        page.pageId,
+        page.versionId,
+        page.content,
+      );
+    }
+  }
+
   async listPopularPages(limit: number): Promise<Page[]> {
     return this.pagesRepository.findTopPublicByViewCount(limit);
   }

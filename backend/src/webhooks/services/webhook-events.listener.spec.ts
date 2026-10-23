@@ -118,24 +118,26 @@ describe('WebhookEventsListener', () => {
 
   it('publishes an import with its root page', async () => {
     await listener.onPagesImported(
-      new PagesImportedEvent('user-1', 12, 'guide'),
+      new PagesImportedEvent('user-1', 10, 2, 'guide'),
     );
 
     expect(publish).toHaveBeenCalledWith('pages.imported', {
       actorId: 'user-1',
       page: guide,
-      data: { pageCount: 12 },
+      data: { pageCount: 12, createdCount: 10, updatedCount: 2 },
     });
   });
 
   it('publishes an import at the root without a page', async () => {
-    await listener.onPagesImported(new PagesImportedEvent('user-1', 3, null));
+    await listener.onPagesImported(
+      new PagesImportedEvent('user-1', 3, 0, null),
+    );
 
     expect(describePage).not.toHaveBeenCalled();
     expect(publish).toHaveBeenCalledWith('pages.imported', {
       actorId: 'user-1',
       page: null,
-      data: { pageCount: 3 },
+      data: { pageCount: 3, createdCount: 3, updatedCount: 0 },
     });
   });
 
