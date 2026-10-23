@@ -2,6 +2,13 @@
 
 All notable changes to NestWiki are documented here, newest first, one `## <version> — <date>` section per release. This file is the single source for the in-app "Notes de version" page, which groups releases by minor version (`1.0`, `0.31`…). Entries up to 0.31.10 were written in French, the project's original language.
 
+## 1.3.5 — 2026-10-23
+
+- Import (côté serveur, première étape) : NestWiki sait lire une archive `.zip` ou un fichier `.md` et calculer ce qu'un import créerait, sans rien écrire. L'import lui-même et l'assistant arrivent dans les prochaines versions ; en attendant, l'aperçu est disponible via l'API `POST /imports/preview`.
+- Trois formats reconnus : un export NestWiki (un export puis un import redonnent la même arborescence), un coffre Obsidian (liens `[[Note]]` sous toutes leurs formes, images `![[image.png|300]]`, notes de dossier, alias, tags du frontmatter et `#tags` du texte, `%%commentaires%%` retirés, `==surligné==`) et un dossier Markdown simple avec liens relatifs.
+- L'aperçu donne l'arbre des pages avec leur chemin final, les pages déjà présentes au même endroit, les médias à téléverser, les tags à créer, et regroupe les avertissements : liens non résolus, fichiers ignorés, slugs renommés.
+- Limites : archive de 100 Mo, 500 Mo une fois décompressée (vérifié pendant la décompression) et 1 000 pages ; une archive contenant des chemins dangereux est refusée.
+
 ## 1.3.4 — 2026-10-22
 
 - Administration : nouvel onglet « Webhooks ». La liste montre pour chaque webhook l'hôte appelé, le format, le nombre d'événements, son état (actif, désactivé, ou désactivé automatiquement après une série d'échecs) et son dernier envoi.

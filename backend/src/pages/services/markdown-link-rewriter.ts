@@ -138,7 +138,7 @@ export class MarkdownLinkRewriter {
     return path;
   }
 
-  private static mapOutsideCode(
+  static mapOutsideCode(
     content: string,
     transform: (text: string) => string,
   ): string {

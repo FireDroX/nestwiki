@@ -333,6 +333,10 @@ export class PagesService {
     return `/${segments.join('/')}`;
   }
 
+  listAllPages(): Promise<Page[]> {
+    return this.pagesRepository.findAll();
+  }
+
   async listPopularPages(limit: number): Promise<Page[]> {
     return this.pagesRepository.findTopPublicByViewCount(limit);
   }
