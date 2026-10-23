@@ -1155,7 +1155,7 @@ Les webhooks se gèrent dans **Administration → Webhooks** (administrateurs un
 | \`page.restored\` | Une page sort de la corbeille | \`page\` |
 | \`page.published\` | Une page privée devient publique | \`page\` |
 | \`comment.created\` | Un commentaire est ajouté | \`page\`, \`commentId\` |
-| \`pages.imported\` | Un import de pages se termine | \`pageCount\`, \`page\` (page racine de l'import, si elle existe) |
+| \`pages.imported\` | Un import de pages se termine | \`pageCount\` (pages créées et mises à jour), \`createdCount\`, \`updatedCount\`, \`page\` (page racine de l'import, si elle existe) |
 | \`webhook.test\` | Bouton « Envoyer un test » | \`message\` |
 
 \`page\` décrit la page concernée : \`id\`, \`title\`, \`path\` (chemin complet, ex. \`/documentation/webhooks\`) et \`url\` (adresse absolue de la page). Un événement sans page, comme un import à la racine, n'est envoyé qu'aux webhooks qui ne sont pas limités à un sous-arbre.

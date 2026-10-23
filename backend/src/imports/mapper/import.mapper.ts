@@ -4,8 +4,9 @@ import type {
   ImportPlanPageDto,
   ImportPlanResponseDto,
 } from '../dto/out/import-plan-response.dto.js';
+import type { ImportReportResponseDto } from '../dto/out/import-report-response.dto.js';
 import type { PlannedImportPage } from '../services/import-planner.js';
-import type { ImportPlan } from '../services/imports.service.js';
+import type { ImportPlan, ImportResult } from '../services/imports.service.js';
 
 export class ImportMapper {
   static toPlanResponse(plan: ImportPlan): ResponseDto<ImportPlanResponseDto> {
@@ -18,7 +19,7 @@ export class ImportMapper {
       placement.pages.map((page) => [page.node.key, page.path]),
     );
     const existingTags = new Set(
-      plan.existingTagNames.map((name) => toComparableName(name)),
+      plan.existingTags.map((tag) => toComparableName(tag.name)),
     );
     const usedTags = new Map<string, string>();
     for (const page of placement.pages) {
@@ -74,6 +75,36 @@ export class ImportMapper {
         })),
       },
     };
+  }
+
+  static toReportResponse(
+    result: ImportResult,
+  ): ResponseDto<ImportReportResponseDto> {
+    const written = (action: 'create' | 'update') =>
+      result.outcomes
+        .filter((outcome) => outcome.action === action)
+        .map((outcome) => ({
+          id: outcome.pageId!,
+          path: outcome.planned.path,
+          title: outcome.planned.node.title,
+        }));
+    const warnings = ImportMapper.toPlanDto(result.plan).warnings;
+
+    return new ResponseDto({
+      rootPath: result.rootPath,
+      created: written('create'),
+      updated: written('update'),
+      skipped: result.outcomes
+        .filter((outcome) => outcome.action === 'skip')
+        .map((outcome) => ({
+          path: outcome.planned.path,
+          title: outcome.planned.node.title,
+          reason: outcome.skipReason!,
+        })),
+      media: { uploaded: result.uploadedMediaCount },
+      tags: { created: result.createdTags, skipped: result.skippedTags },
+      warnings: { ...warnings, missingTags: result.skippedTags },
+    });
   }
 
   private static toPageTree(pages: PlannedImportPage[]): ImportPlanPageDto[] {

@@ -2,6 +2,13 @@
 
 All notable changes to NestWiki are documented here, newest first, one `## <version> — <date>` section per release. This file is the single source for the in-app "Notes de version" page, which groups releases by minor version (`1.0`, `0.31`…). Entries up to 0.31.10 were written in French, the project's original language.
 
+## 1.3.6 — 2026-10-23
+
+- Import (côté serveur) : `POST /imports` crée réellement les pages calculées par l'aperçu, avec trois façons de gérer une page déjà présente au même endroit : la garder (par défaut), importer sous un nom suffixé `-2`, ou ajouter une nouvelle version à la page existante (seulement si vous pouvez la modifier). L'assistant d'import arrive dans la prochaine version.
+- Les pages importées sont privées par défaut (option publique), avec une version « Import » à votre nom. Les images et fichiers de l'archive sont téléversés (droit de téléverser des médias requis) et les liens entre pages pointent vers les chemins réellement créés, renommages compris. Les tags existants sont appliqués ; les tags absents sont créés sur demande si vous avez le droit d'en créer.
+- Tout ou rien : si une étape échoue, aucune page n'est créée et les fichiers déjà envoyés sont supprimés. Le rapport liste les pages créées, mises à jour et ignorées (avec la raison), les médias, les tags et les avertissements.
+- Un import ne déclenche qu'une seule notification : un seul webhook `pages.imported`, qui précise désormais le nombre de pages créées (`createdCount`) et mises à jour (`updatedCount`), et une seule entrée « page.imported » dans le journal d'activité.
+
 ## 1.3.5 — 2026-10-23
 
 - Import (côté serveur, première étape) : NestWiki sait lire une archive `.zip` ou un fichier `.md` et calculer ce qu'un import créerait, sans rien écrire. L'import lui-même et l'assistant arrivent dans les prochaines versions ; en attendant, l'aperçu est disponible via l'API `POST /imports/preview`.

@@ -102,6 +102,34 @@ export class MediaService {
     return { attachment, url };
   }
 
+  async storeImportedFile(file: {
+    pageId: string;
+    filename: string;
+    mimeType: string;
+    data: Buffer;
+  }): Promise<string> {
+    const minioKey = `pages/${file.pageId}/${randomUUID()}-${file.filename}`;
+    await this.storageService.upload(
+      this.bucket,
+      minioKey,
+      file.data,
+      file.mimeType,
+    );
+    return minioKey;
+  }
+
+  async discardImportedFiles(minioKeys: string[]): Promise<void> {
+    for (const minioKey of minioKeys) {
+      await this.storageService
+        .delete(this.bucket, minioKey)
+        .catch((error: unknown) => {
+          this.logger.warn(
+            `Import rollback could not delete ${minioKey}: ${error instanceof Error ? error.message : String(error)}`,
+          );
+        });
+    }
+  }
+
   async findAllByPage(
     pageId: string | undefined,
     currentUser?: AuthenticatedUser,

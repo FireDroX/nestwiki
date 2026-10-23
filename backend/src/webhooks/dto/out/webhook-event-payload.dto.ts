@@ -16,6 +16,8 @@ export interface WebhookEventDataDto {
   descendantCount?: number;
   commentId?: string;
   pageCount?: number;
+  createdCount?: number;
+  updatedCount?: number;
   message?: string;
 }
 
