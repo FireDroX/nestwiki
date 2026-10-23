@@ -78,8 +78,8 @@ export class ImportPlanner {
       const base = ImportPlanner.baseSlug(node.name);
       const isTaken = (slug: string) =>
         claimed.has(slug) ||
-        existingSiblings.has(slug) ||
-        ImportPlanner.isReserved(slug, depth);
+        ImportPlanner.isReserved(slug, depth) ||
+        (conflictMode === 'rename' && existingSiblings.has(slug));
       let slug = base;
       let reason: ImportRenameReason | null = null;
       if (ImportPlanner.isReserved(base, depth)) {

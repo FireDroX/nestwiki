@@ -415,6 +415,39 @@ describe('ImportPlanner', () => {
     ]);
   });
 
+  it('finds the pages of a previous import again when slugs were suffixed', () => {
+    const tree = ImportTreeBuilder.build(
+      archive({
+        'trash.md': '# Corbeille',
+        'Note.md': '# A',
+        'note!.md': '# B',
+      }),
+    );
+    const existing = {
+      root: {
+        'trash-2': { id: 'trash-id', path: '/trash-2' },
+        note: { id: 'note-id', path: '/note' },
+        'note-2': { id: 'note-2-id', path: '/note-2' },
+      },
+    };
+
+    const skipped = place(tree, { existing, mode: 'skip' });
+    const renamed = place(tree, { existing, mode: 'rename' });
+
+    expect(
+      skipped.pages.map((page) => [page.path, page.action, page.conflict?.id]),
+    ).toEqual([
+      ['/note', 'skip', 'note-id'],
+      ['/note-2', 'skip', 'note-2-id'],
+      ['/trash-2', 'skip', 'trash-id'],
+    ]);
+    expect(renamed.pages.map((page) => [page.path, page.action])).toEqual([
+      ['/note-3', 'create'],
+      ['/note-4', 'create'],
+      ['/trash-3', 'create'],
+    ]);
+  });
+
   it('places pages under the destination and reports conflicts with existing pages', () => {
     const tree = ImportTreeBuilder.build(
       archive({ 'Guide.md': '# Guide', 'Guide/Install.md': '# Install' }),
