@@ -3,18 +3,23 @@ import { parse as parseYaml } from 'yaml';
 import { ImportTooLargeException } from '../../common/exceptions/imports/import-too-large.exception.js';
 import { InvalidImportArchiveException } from '../../common/exceptions/imports/invalid-import-archive.exception.js';
 import {
-  ATTACHMENT_MIME_TYPES_BY_EXTENSION,
   IMPORT_MAX_PAGES,
   MAX_ATTACHMENT_SIZE_BYTES,
   TAG_NAME_MAX_LENGTH,
   TITLE_MAX_LENGTH,
 } from '../../common/variables.global.js';
+import { toComparableName } from '../../common/slug.js';
 import { MarkdownLinkRewriter } from '../../pages/services/markdown-link-rewriter.js';
 import type {
   IgnoredImportFile,
   ImportArchiveContent,
   ImportSourceFile,
 } from './import-archive.reader.js';
+import {
+  attachmentMimeType,
+  isMarkdownFile,
+  MARKDOWN_EXTENSIONS,
+} from './import-file-types.js';
 import {
   ImportMarkdownConverter,
   type ImportLinkResolver,
@@ -73,7 +78,6 @@ interface ResolvableEntry {
   target: ImportResolvedTarget;
 }
 
-const MARKDOWN_EXTENSIONS = ['.md', '.markdown'];
 const FOLDER_NOTE_NAMES = ['index', 'readme'];
 const FRONTMATTER = /^---[ \t]*\n([\s\S]*?)\n---[ \t]*(?:\n|$)/;
 const LEADING_BLANK_LINES = /^(?:[ \t]*\n)+/;
@@ -87,9 +91,8 @@ export class ImportTreeBuilder {
     const mediaFiles = new Map<string, ImportSourceFile>();
     const ignoredFiles: IgnoredImportFile[] = [...archive.ignored];
     for (const file of archive.files) {
-      const extension = posix.extname(file.path).toLowerCase();
-      const mimeType = ATTACHMENT_MIME_TYPES_BY_EXTENSION[extension.slice(1)];
-      if (MARKDOWN_EXTENSIONS.includes(extension)) {
+      const mimeType = attachmentMimeType(file.path);
+      if (isMarkdownFile(file.path)) {
         notes.set(file.path, file);
       } else if (!mimeType) {
         ignoredFiles.push({ path: file.path, reason: 'unsupported_type' });
@@ -342,9 +345,9 @@ export class ImportTreeBuilder {
       if (
         name &&
         name.length <= TAG_NAME_MAX_LENGTH &&
-        !byLowerName.has(name.toLowerCase())
+        !byLowerName.has(toComparableName(name))
       ) {
-        byLowerName.set(name.toLowerCase(), name);
+        byLowerName.set(toComparableName(name), name);
       }
     }
     return [...byLowerName.values()];
@@ -430,10 +433,7 @@ export class ImportTreeBuilder {
       media.push({
         path,
         filename,
-        mimeType:
-          ATTACHMENT_MIME_TYPES_BY_EXTENSION[
-            posix.extname(filename).slice(1).toLowerCase()
-          ],
+        mimeType: attachmentMimeType(filename)!,
         size: file.data.length,
         data: file.data,
         ownerKey,

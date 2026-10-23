@@ -10,7 +10,9 @@ import {
   IMPORT_MAX_ARCHIVE_SIZE_BYTES,
   IMPORT_MAX_UNCOMPRESSED_SIZE_BYTES,
   IMPORT_MAX_UNCOMPRESSED_SIZE_MB,
+  MAX_ATTACHMENT_SIZE_BYTES,
 } from '../../common/variables.global.js';
+import { attachmentMimeType, isMarkdownFile } from './import-file-types.js';
 
 export interface UploadedImportFile {
   originalname: string;
@@ -37,7 +39,6 @@ export interface ImportArchiveContent {
   hiddenPaths: string[];
 }
 
-const MARKDOWN_EXTENSIONS = ['.md', '.markdown'];
 const SYMLINK_MODE = 0o120000;
 const FILE_TYPE_MASK = 0o170000;
 const UTF8_NAME_FLAG = 0x800;
@@ -57,20 +58,15 @@ export class ImportArchiveReader {
       );
     }
 
-    const extension = posix.extname(file.originalname).toLowerCase();
-    if (MARKDOWN_EXTENSIONS.includes(extension)) {
+    const filename = ImportArchiveReader.uploadedFilename(file.originalname);
+    if (isMarkdownFile(filename)) {
       return {
-        files: [
-          {
-            path: ImportArchiveReader.safeName(file.originalname),
-            data: file.buffer,
-          },
-        ],
+        files: [{ path: filename, data: file.buffer }],
         ignored: [],
         hiddenPaths: [],
       };
     }
-    if (extension === '.zip') {
+    if (posix.extname(filename).toLowerCase() === '.zip') {
       return ImportArchiveReader.readZip(file.buffer);
     }
     throw new UnsupportedImportFileException();
@@ -114,6 +110,11 @@ export class ImportArchiveReader {
         }
         if (entry.isEncrypted() || !entry.canDecodeFileData()) {
           content.ignored.push({ path, reason: 'encrypted' });
+          continue;
+        }
+        const skipReason = ImportArchiveReader.skipReason(path, entry);
+        if (skipReason) {
+          content.ignored.push({ path, reason: skipReason });
           continue;
         }
 
@@ -185,6 +186,21 @@ export class ImportArchiveReader {
     return Buffer.concat(chunks, size);
   }
 
+  private static skipReason(
+    path: string,
+    entry: Entry,
+  ): IgnoredImportFileReason | null {
+    if (isMarkdownFile(path)) {
+      return null;
+    }
+    if (!attachmentMimeType(path)) {
+      return 'unsupported_type';
+    }
+    return entry.uncompressedSize > MAX_ATTACHMENT_SIZE_BYTES
+      ? 'too_large'
+      : null;
+  }
+
   private static assertUncompressedSize(size: number): void {
     if (size > IMPORT_MAX_UNCOMPRESSED_SIZE_BYTES) {
       throw new ImportTooLargeException(
@@ -236,7 +252,15 @@ export class ImportArchiveReader {
     );
   }
 
-  private static safeName(filename: string): string {
-    return posix.basename(filename.replace(/\\/g, '/'));
+  private static uploadedFilename(originalname: string): string {
+    const name = posix.basename(originalname.replace(/\\/g, '/'));
+    if ([...name].some((character) => character.charCodeAt(0) > 0xff)) {
+      return name;
+    }
+    try {
+      return strictUtf8.decode(Buffer.from(name, 'latin1'));
+    } catch {
+      return name;
+    }
   }
 }

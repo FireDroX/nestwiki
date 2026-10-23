@@ -44,6 +44,7 @@ import { ImportsService } from './services/imports.service.js';
 
 const IMPORT_THROTTLE_LIMIT = 10;
 const IMPORT_THROTTLE_TTL_MS = 60000;
+const IMPORT_PREVIEW_THROTTLE_LIMIT = 30;
 
 @ApiTags('Imports')
 @ApiBearerAuth()
@@ -66,6 +67,12 @@ export class ImportsController {
   constructor(private readonly importsService: ImportsService) {}
 
   @Post('preview')
+  @Throttle({
+    default: {
+      limit: IMPORT_PREVIEW_THROTTLE_LIMIT,
+      ttl: IMPORT_THROTTLE_TTL_MS,
+    },
+  })
   @HttpCode(HttpStatus.OK)
   @UseInterceptors(
     FileInterceptor('file', {

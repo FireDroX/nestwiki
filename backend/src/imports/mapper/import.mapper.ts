@@ -1,4 +1,5 @@
 import { ResponseDto } from '../../common/dto/response.dto.js';
+import { toComparableName } from '../../common/slug.js';
 import type {
   ImportPlanPageDto,
   ImportPlanResponseDto,
@@ -17,19 +18,19 @@ export class ImportMapper {
       placement.pages.map((page) => [page.node.key, page.path]),
     );
     const existingTags = new Set(
-      plan.existingTagNames.map((name) => name.toLowerCase()),
+      plan.existingTagNames.map((name) => toComparableName(name)),
     );
     const usedTags = new Map<string, string>();
     for (const page of placement.pages) {
       for (const tag of page.node.tags) {
-        if (!usedTags.has(tag.toLowerCase())) {
-          usedTags.set(tag.toLowerCase(), tag);
+        if (!usedTags.has(toComparableName(tag))) {
+          usedTags.set(toComparableName(tag), tag);
         }
       }
     }
     const tags = [...usedTags.values()];
     const missingTags = tags.filter(
-      (tag) => !existingTags.has(tag.toLowerCase()),
+      (tag) => !existingTags.has(toComparableName(tag)),
     );
 
     return {
@@ -47,7 +48,7 @@ export class ImportMapper {
         totalSize: tree.media.reduce((total, media) => total + media.size, 0),
       },
       tags: {
-        existing: tags.filter((tag) => existingTags.has(tag.toLowerCase())),
+        existing: tags.filter((tag) => existingTags.has(toComparableName(tag))),
         missing: missingTags,
       },
       permissions: {
@@ -89,7 +90,7 @@ export class ImportMapper {
         mediaCount: page.node.links.filter((link) => link.kind === 'media')
           .length,
         action: page.action,
-        conflict: page.conflict,
+        conflict: page.conflict ? { path: page.conflict.path } : null,
         children: [],
       };
       dtoByKey.set(page.node.key, dto);

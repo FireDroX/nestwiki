@@ -7,7 +7,7 @@ export type ImportResolvedTarget =
 
 export type ImportLinkTarget =
   | { kind: 'page'; nodeKey: string; anchor: string | null }
-  | { kind: 'media'; path: string };
+  | { kind: 'media'; path: string; original: string };
 
 export interface ImportLinkResolver {
   resolvePath(fromFile: string, target: string): ImportResolvedTarget | null;
@@ -16,7 +16,7 @@ export interface ImportLinkResolver {
 
 export interface ImportLinkUrls {
   pagePath(nodeKey: string): string;
-  mediaUrl(path: string): string;
+  mediaUrl(path: string, original: string): string;
 }
 
 export interface ConvertedMarkdown {
@@ -42,6 +42,7 @@ const WIKILINK = /(?<!!)\[\[([^\]\n]+?)\]\]/g;
 const HIGHLIGHT = /==(?=\S)([^=\n]+?)(?<=\S)==/g;
 const HEADING_LINE = /^ {0,3}#{1,6}(?:\s|$)/;
 const INLINE_TAG = /(?:^|\s)#([\p{L}\p{N}_/-]+)/gu;
+const CSS = /<style\b[\s\S]*?<\/style>|\bstyle\s*=\s*("[^"]*"|'[^']*')/gi;
 const EXTERNAL_URL = /^(?:[a-z][a-z0-9+.-]*:|\/|#)/i;
 const IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.gif', '.webp'];
 const IMAGE_SIZE = /^(\d+)(?:x(\d+))?$/;
@@ -64,8 +65,9 @@ export class ImportMarkdownConverter {
     const linkTo = (
       target: ImportResolvedTarget,
       anchor: string | null,
+      original = target.kind === 'media' ? encodeURI(target.path) : '',
     ): ImportLinkTarget =>
-      target.kind === 'page' ? { ...target, anchor } : target;
+      target.kind === 'page' ? { ...target, anchor } : { ...target, original };
 
     const convertMarkdownLink = (url: string): string => {
       const raw = url.startsWith('<') ? url.slice(1, -1) : url;
@@ -83,7 +85,7 @@ export class ImportMarkdownConverter {
         return url;
       }
       const anchor = ImportMarkdownConverter.decode(anchorParts.join('#'));
-      return tokenFor(linkTo(target, anchor || null));
+      return tokenFor(linkTo(target, anchor || null, url));
     };
 
     const convertEmbed = (match: string, inner: string): string => {
@@ -105,9 +107,9 @@ export class ImportMarkdownConverter {
         const alt = size || !label ? posix.basename(name) : label;
         if (size) {
           const height = size[2] ? ` height="${size[2]}"` : '';
-          return `<img src="${tokenFor(target)}" alt="${ImportMarkdownConverter.escapeAttribute(alt)}" width="${size[1]}"${height}>`;
+          return `<img src="${tokenFor(linkTo(target, null))}" alt="${ImportMarkdownConverter.escapeAttribute(alt)}" width="${size[1]}"${height}>`;
         }
-        return `![${alt}](${tokenFor(target)})`;
+        return `![${alt}](${tokenFor(linkTo(target, null))})`;
       }
       return `[${label || ImportMarkdownConverter.displayName(name, anchor)}](${tokenFor(linkTo(target, anchor))})`;
     };
@@ -169,7 +171,7 @@ export class ImportMarkdownConverter {
     return body.replace(TOKEN, (_match: string, index: string) => {
       const link = links[Number(index)];
       if (link.kind === 'media') {
-        return urls.mediaUrl(link.path);
+        return urls.mediaUrl(link.path, link.original);
       }
       const anchor = link.anchor ? `#${toHeadingSlug(link.anchor)}` : '';
       return `/pages${urls.pagePath(link.nodeKey)}${anchor}`;
@@ -177,7 +179,7 @@ export class ImportMarkdownConverter {
   }
 
   private static collectInlineTags(text: string, tags: Set<string>): void {
-    for (const line of text.split('\n')) {
+    for (const line of text.replace(CSS, '').split('\n')) {
       if (HEADING_LINE.test(line)) {
         continue;
       }

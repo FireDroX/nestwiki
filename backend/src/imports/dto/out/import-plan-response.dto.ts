@@ -14,7 +14,7 @@ export interface ImportPlanPageDto {
   linkCount: number;
   mediaCount: number;
   action: ImportPageAction;
-  conflict: { id: string; path: string } | null;
+  conflict: { path: string } | null;
   children: ImportPlanPageDto[];
 }
 

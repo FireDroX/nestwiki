@@ -17,3 +17,10 @@ export function toHeadingSlug(text: string): string {
     .replace(NON_HEADING_SLUG_CHARACTERS, '')
     .replace(/ /g, '-');
 }
+
+export function toComparableName(name: string): string {
+  return name
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase();
+}

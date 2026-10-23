@@ -12,6 +12,7 @@ vi.mock('../../common/variables.global.js', async (importOriginal) => ({
   >()),
   IMPORT_MAX_ARCHIVE_SIZE_BYTES: 64 * 1024,
   IMPORT_MAX_UNCOMPRESSED_SIZE_BYTES: 32 * 1024,
+  MAX_ATTACHMENT_SIZE_BYTES: 4 * 1024,
 }));
 
 async function buildZip(
@@ -49,6 +50,37 @@ describe('ImportArchiveReader', () => {
 
     expect(content.files).toEqual([
       { path: 'Ma note.md', data: Buffer.from('# Ma note') },
+    ]);
+  });
+
+  it('decodes the UTF-8 name of a single file sent as latin1 by multipart', async () => {
+    const content = await ImportArchiveReader.read(
+      upload(
+        Buffer.from('Été à Paris.md').toString('latin1'),
+        Buffer.from('x'),
+      ),
+    );
+
+    expect(content.files[0].path).toBe('Été à Paris.md');
+  });
+
+  it('skips unsupported and oversized files without decompressing them', async () => {
+    const zip = await buildZip({
+      'note.md': Buffer.alloc(20 * 1024, 'n'),
+      'video.mp4': Buffer.alloc(20 * 1024, 'v'),
+      'huge.png': Buffer.alloc(8 * 1024, 'p'),
+      'small.png': Buffer.alloc(1024, 's'),
+    });
+
+    const content = await ImportArchiveReader.read(upload('vault.zip', zip));
+
+    expect(content.files.map((file) => file.path)).toEqual([
+      'note.md',
+      'small.png',
+    ]);
+    expect(content.ignored).toEqual([
+      { path: 'video.mp4', reason: 'unsupported_type' },
+      { path: 'huge.png', reason: 'too_large' },
     ]);
   });
 

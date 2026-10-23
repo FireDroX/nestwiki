@@ -160,7 +160,7 @@ describe('ImportsService', () => {
           path: '/docs/guide',
           title: 'Guide',
           action: 'skip',
-          conflict: { id: GUIDE_ID, path: '/docs/guide' },
+          conflict: { path: '/docs/guide' },
           children: [],
         },
       ],

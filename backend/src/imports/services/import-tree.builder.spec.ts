@@ -267,6 +267,44 @@ describe('ImportTreeBuilder', () => {
       ]);
     });
 
+    it('ignores CSS colors and merges tags that differ only by case or accents', () => {
+      const { tree } = importFiles({
+        'Note.md': [
+          '---',
+          'tags: [Café, cafe]',
+          '---',
+          '# Note',
+          '',
+          '<style>',
+          '.card { color: #e5e7eb; }',
+          '</style>',
+          '<span style="color: #abc">Texte</span> #CAFÉ #vrai',
+        ].join('\n'),
+      });
+
+      expect(tree.nodes[0].tags).toEqual(['Café', 'vrai']);
+    });
+
+    it('keeps the original link of a media that is not uploaded', () => {
+      const tree = ImportTreeBuilder.build(
+        archive({
+          'Note.md':
+            '# Note\n\n![a](<images/ma photo.png>) ![b](images/ma%20photo.png) ![[ma photo.png]]',
+          'images/ma photo.png': Buffer.from([1]),
+        }),
+      );
+      const [node] = tree.nodes;
+
+      expect(
+        ImportMarkdownConverter.render(node.body, node.links, {
+          pagePath: () => '',
+          mediaUrl: (_path, original) => original,
+        }),
+      ).toBe(
+        '# Note\n\n![a](<images/ma photo.png>) ![b](images/ma%20photo.png) ![ma photo.png](images/ma%20photo.png)',
+      );
+    });
+
     it('removes %%comments%% and converts ==highlights== outside code', () => {
       const { contentOf } = importFiles({
         'Note.md':
