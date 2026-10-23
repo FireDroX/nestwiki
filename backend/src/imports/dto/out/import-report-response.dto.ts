@@ -8,7 +8,6 @@ export interface ImportedPageDto {
 }
 
 export interface SkippedImportPageDto {
-  id: string | null;
   path: string;
   title: string;
   reason: ImportSkipReason;

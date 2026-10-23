@@ -3,6 +3,7 @@ import { Test } from '@nestjs/testing';
 import { ZipArchive } from 'archiver';
 import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 import { UserActivityLogService } from '../../activity/services/user-activity-log.service.js';
+import { PAGE_ACTIONS, type PageAction } from '../../common/permissions.js';
 import { InsufficientPagePermissionException } from '../../common/exceptions/pages/insufficient-page-permission.exception.js';
 import { PageNotFoundException } from '../../common/exceptions/pages/page-not-found.exception.js';
 import { ValidationException } from '../../common/exceptions/validation.exception.js';
@@ -51,6 +52,24 @@ async function zipFile(entries: Record<string, string | Buffer>) {
   return { originalname: 'import.zip', size: buffer.length, buffer };
 }
 
+async function effectiveActions(
+  can: Mock,
+  target: User,
+  pageIds: string[],
+): Promise<Map<string, PageAction[]>> {
+  const entries = await Promise.all(
+    pageIds.map(async (pageId) => {
+      const granted = await Promise.all(
+        PAGE_ACTIONS.map(async (action) =>
+          (await can(target, action, pageId)) ? [action] : [],
+        ),
+      );
+      return [pageId, granted.flat()] as const;
+    }),
+  );
+  return new Map(entries);
+}
+
 function markdownFile(name: string, content: string) {
   const buffer = Buffer.from(content);
   return { originalname: name, size: buffer.length, buffer };
@@ -97,7 +116,15 @@ describe('ImportsService', () => {
             indexImportedPages,
           },
         },
-        { provide: PermissionsService, useValue: { can, hasGlobal } },
+        {
+          provide: PermissionsService,
+          useValue: {
+            can,
+            hasGlobal,
+            getEffectivePageActionsBulk: (target: User, pageIds: string[]) =>
+              effectiveActions(can, target, pageIds),
+          },
+        },
         {
           provide: UsersService,
           useValue: { findById: vi.fn().mockResolvedValue(user) },
@@ -307,8 +334,8 @@ describe('ImportsService', () => {
         created: [{ path: '/docs/guide/nouveau' }],
         updated: [],
         skipped: [
-          { id: GUIDE_ID, path: '/docs/guide', reason: 'exists' },
-          { id: INSTALL_ID, path: '/docs/guide/install', reason: 'exists' },
+          { path: '/docs/guide', reason: 'exists' },
+          { path: '/docs/guide/install', reason: 'exists' },
         ],
       });
     });
@@ -378,12 +405,7 @@ describe('ImportsService', () => {
         INSTALL_ID,
       ]);
       expect(ImportMapper.toReportResponse(result).data?.skipped).toEqual([
-        {
-          id: GUIDE_ID,
-          path: '/docs/guide',
-          title: 'Guide v2',
-          reason: 'forbidden',
-        },
+        { path: '/docs/guide', title: 'Guide v2', reason: 'forbidden' },
       ]);
     });
 
@@ -514,6 +536,20 @@ describe('ImportsService', () => {
         ImportMapper.toReportResponse(withoutRight).data?.warnings.missingTags,
       ).toEqual(['nouveau']);
       expect(notAsked.skippedTags).toEqual(['nouveau']);
+    });
+
+    it('reuses an existing tag that differs only by case or accents, as the database does', async () => {
+      await service.execute(
+        markdownFile('note.md', '---\ntags: [PROJÉT]\n---\n# Note'),
+        { createMissingTags: 'true' },
+        currentUser,
+      );
+
+      const { createdPages, tags, pageTags } = writtenInput();
+      expect(tags).toEqual([]);
+      expect(pageTags).toEqual([
+        { pageId: createdPages[0].id, tagId: 'tag-projet' },
+      ]);
     });
 
     it('creates public pages when asked', async () => {

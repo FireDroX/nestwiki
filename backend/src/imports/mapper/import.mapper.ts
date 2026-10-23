@@ -97,7 +97,6 @@ export class ImportMapper {
       skipped: result.outcomes
         .filter((outcome) => outcome.action === 'skip')
         .map((outcome) => ({
-          id: outcome.pageId,
           path: outcome.planned.path,
           title: outcome.planned.node.title,
           reason: outcome.skipReason!,

@@ -5,6 +5,7 @@ import { UserActivityLogService } from '../../activity/services/user-activity-lo
 import { InsufficientPagePermissionException } from '../../common/exceptions/pages/insufficient-page-permission.exception.js';
 import { ValidationException } from '../../common/exceptions/validation.exception.js';
 import type { PageAction } from '../../common/permissions.js';
+import { toComparableName } from '../../common/slug.js';
 import type { AuthenticatedUser } from '../../common/strategies/jwt.strategy.js';
 import {
   DEFAULT_TAG_COLOR,
@@ -88,6 +89,8 @@ export interface ImportResult {
   rootPath: string | null;
 }
 
+type PageActionCheck = (action: PageAction, pageId: string) => boolean;
+
 const IMPORT_CHANGE_SUMMARY = 'Import';
 
 @Injectable()
@@ -123,7 +126,8 @@ export class ImportsService {
       'createMissingTags',
     );
     const { plan, user } = await this.buildPlan(file, dto, currentUser);
-    const outcomes = await this.authorizePages(plan, user);
+    const can = await this.existingPageActions(plan, user);
+    const outcomes = ImportsService.authorizePages(plan, can);
     const written = outcomes.filter(
       (outcome) => outcome.action !== 'skip',
     ) as (ImportPageOutcome & { pageId: string; versionId: string })[];
@@ -168,9 +172,9 @@ export class ImportsService {
           {
             pagePath: (nodeKey) =>
               outcomeByKey.get(nodeKey)?.planned.path ?? '',
-            mediaUrl: (path) => {
+            mediaUrl: (path, original) => {
               const id = attachmentIdByPath.get(path);
-              return id ? `/api/media/${id}/raw` : path;
+              return id ? `/api/media/${id}/raw` : original;
             },
           },
         );
@@ -202,11 +206,11 @@ export class ImportsService {
         }
       }
 
-      const tagging = await this.planTags(
+      const tagging = ImportsService.planTags(
         plan,
         written,
         createMissingTags,
-        user,
+        can,
       );
 
       await this.importsRepository.write({
@@ -313,22 +317,28 @@ export class ImportsService {
     }
   }
 
-  private async authorizePages(
+  private async existingPageActions(
     plan: ImportPlan,
     user: User,
-  ): Promise<ImportPageOutcome[]> {
-    const decisions = new Map<string, boolean>();
-    const can = async (action: PageAction, pageId: string) => {
-      const key = `${action}:${pageId}`;
-      if (!decisions.has(key)) {
-        decisions.set(
-          key,
-          await this.permissionsService.can(user, action, pageId),
-        );
-      }
-      return decisions.get(key)!;
-    };
+  ): Promise<PageActionCheck> {
+    const existingIds = [
+      ...new Set(
+        plan.placement.pages.flatMap((page) =>
+          page.conflict ? [page.conflict.id] : [],
+        ),
+      ),
+    ];
+    const actions = await this.permissionsService.getEffectivePageActionsBulk(
+      user,
+      existingIds,
+    );
+    return (action, pageId) => actions.get(pageId)?.includes(action) ?? false;
+  }
 
+  private static authorizePages(
+    plan: ImportPlan,
+    can: PageActionCheck,
+  ): ImportPageOutcome[] {
     const outcomes = new Map<string, ImportPageOutcome>();
     for (const planned of plan.placement.pages) {
       const parent = planned.node.parentKey
@@ -349,7 +359,7 @@ export class ImportsService {
       if (planned.action === 'skip') {
         outcome = skip('exists', planned.conflict!.id);
       } else if (planned.action === 'update') {
-        outcome = (await can('page.edit', planned.conflict!.id))
+        outcome = can('page.edit', planned.conflict!.id)
           ? {
               planned,
               action: 'update',
@@ -363,7 +373,7 @@ export class ImportsService {
       } else if (
         parent &&
         parent.action !== 'create' &&
-        !(await can('page.create_child', parent.pageId!))
+        !can('page.create_child', parent.pageId!)
       ) {
         outcome = skip('forbidden', null);
       } else {
@@ -380,18 +390,18 @@ export class ImportsService {
     return [...outcomes.values()];
   }
 
-  private async planTags(
+  private static planTags(
     plan: ImportPlan,
     written: (ImportPageOutcome & { pageId: string })[],
     createMissingTags: boolean,
-    user: User,
-  ): Promise<{
+    can: PageActionCheck,
+  ): {
     tags: ImportedTagInput[];
     pageTags: { pageId: string; tagId: string }[];
     skippedTags: string[];
-  }> {
+  } {
     const tagIdByName = new Map(
-      plan.existingTags.map((tag) => [tag.name.toLowerCase(), tag.id]),
+      plan.existingTags.map((tag) => [toComparableName(tag.name), tag.id]),
     );
     const canCreate = createMissingTags && plan.canCreateTags;
     const tags: ImportedTagInput[] = [];
@@ -401,26 +411,22 @@ export class ImportsService {
     for (const outcome of written) {
       if (
         outcome.action === 'update' &&
-        !(await this.permissionsService.can(
-          user,
-          'page.manage_tags',
-          outcome.pageId,
-        ))
+        !can('page.manage_tags', outcome.pageId)
       ) {
         continue;
       }
       for (const name of outcome.planned.node.tags) {
-        const lowerName = name.toLowerCase();
-        let tagId = tagIdByName.get(lowerName);
+        const nameKey = toComparableName(name);
+        let tagId = tagIdByName.get(nameKey);
         if (!tagId && canCreate) {
           tagId = randomUUID();
-          tagIdByName.set(lowerName, tagId);
+          tagIdByName.set(nameKey, tagId);
           tags.push({ id: tagId, name, color: DEFAULT_TAG_COLOR });
         }
         if (tagId) {
           pageTags.push({ pageId: outcome.pageId, tagId });
-        } else if (!skippedTags.has(lowerName)) {
-          skippedTags.set(lowerName, name);
+        } else if (!skippedTags.has(nameKey)) {
+          skippedTags.set(nameKey, name);
         }
       }
     }
