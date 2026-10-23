@@ -63,11 +63,13 @@ Config : trois fichiers `.env` séparés (chacun avec un `.env.example` à copie
 
 En complément du bump, chaque ticket terminé ajoute une section **en tête de `CHANGELOG.md`** (racine du dépôt) : `## <version> — <AAAA-MM-JJ>` puis une liste à puces décrivant le changement du point de vue de l'utilisateur, avec ⚠️ si une mise à jour demande une action. `CHANGELOG.md` est la source unique : `backend/src/database/release-notes.ts` le lit pour générer la page « Notes de version » seedée par `content-seed.ts` (regroupement par version mineure, sélecteur HTML + CSS sans JS), et la CI en extrait la section de la version pour la release GitHub. Ne plus écrire de notes de version dans `content-seed.ts`.
 
-La CI (`ci.yml`, push sur `main`) pousse les images `ghcr.io/firedrox/nestwiki-{backend,frontend}` avec les tags `X.Y.Z`, `X.Y`, `latest`, `sha-<commit>`, puis crée le tag `vX.Y.Z` et la release GitHub si elle n'existe pas. `deploy.yml` ne tourne que sur `FireDroX/nestwiki`.
+Branches : les PR de tickets visent **`dev`** (branche d'intégration), jamais `main` directement ; pour un epic à plusieurs tickets, chaque PR part de `dev` à jour une fois la précédente mergée, plutôt que d'empiler une longue pile de PR. `main` ne reçoit que des merges de `dev` (ou un correctif urgent), et c'est le seul déclencheur du déploiement.
+
+La CI (`ci.yml`) : sur un push sur `dev`, pousse les images `ghcr.io/firedrox/nestwiki-{backend,frontend}` taguées `dev`, `X.Y.Z-dev` et `sha-<commit>`, et publie `vX.Y.Z` en **pré-release** GitHub, sans déployer. Sur un push sur `main`, tague les images `X.Y.Z`, `X.Y`, `latest`, promeut en releases les pré-releases arrivées avec le merge, publie la release `vX.Y.Z` si elle n'existe pas, puis `deploy.yml` déploie (uniquement sur `FireDroX/nestwiki`).
 
 ## Architecture backend (`backend/src`)
 
-NestJS, un module par domaine, directement sous `src/` — **pas** de dossier `modules/` intermédiaire : `auth`, `users`, `pages`, `versions`, `media`, `search`, `comments`, `tags`, `permissions`, `activity`, `admin`, `mcp`, `meta`, `realtime`, `security`, `stats`, `storage`, `health`, plus `common/` (transverse : filtres, DTOs, exceptions, guards, décorateurs, stratégies JWT, constantes globales) et `config/` (TypeORM, validation de l'environnement).
+NestJS, un module par domaine, directement sous `src/` — **pas** de dossier `modules/` intermédiaire : `auth`, `users`, `pages`, `versions`, `media`, `search`, `comments`, `tags`, `permissions`, `activity`, `admin`, `mcp`, `meta`, `realtime`, `security`, `stats`, `storage`, `health`, `webhooks`, plus `common/` (transverse : filtres, DTOs, exceptions, guards, décorateurs, stratégies JWT, constantes globales) et `config/` (TypeORM, validation de l'environnement).
 
 Chaque module suit le même découpage en couches — pour une nouvelle feature, suivre le découpage de fichiers du module `auth`/`users` plutôt qu'en inventer un nouveau :
 

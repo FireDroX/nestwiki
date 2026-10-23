@@ -16,6 +16,8 @@ export function AdminNav() {
     { to: '/admin/mcp/audit-log', label: t('admin.mcpAuditTab') },
     { to: '/admin/audit-log', label: t('admin.auditLogTab') },
     { to: '/admin/activity-log', label: t('admin.activityLogTab') },
+    { to: '/admin/links', label: t('admin.brokenLinksTab') },
+    { to: '/admin/webhooks', label: t('admin.webhooksTab') },
   ]
 
   useEffect(() => {

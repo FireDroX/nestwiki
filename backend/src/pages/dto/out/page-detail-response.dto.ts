@@ -13,4 +13,5 @@ export interface PageDetailResponseDto {
   isFollowed: boolean;
   currentVersionId: string;
   permissions: PageAction[];
+  brokenLinks: string[];
 }

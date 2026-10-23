@@ -45,7 +45,8 @@
     "trash": "Corbeille",
     "administration": "Administration",
     "logout": "Déconnexion",
-    "toggleTheme": "Changer de thème"
+    "toggleTheme": "Changer de thème",
+    "import": "Importer"
   },
   "sidebar": {
     "filterPlaceholder": "Filtrer les pages...",
@@ -125,7 +126,9 @@
     "exportMarkdownPage": "Markdown brut (.md)",
     "exportMarkdownSubtree": "Markdown avec les sous-pages (.zip)",
     "exportFailed": "L'export a échoué.",
-    "deleted": "Page déplacée dans la corbeille."
+    "deleted": "Page déplacée dans la corbeille.",
+    "backlinksTitle": "Pages qui pointent ici",
+    "importHere": "Importer ici"
   },
   "trash": {
     "title": "Corbeille",
@@ -163,7 +166,15 @@
     "changeSummaryPlaceholder": "Décrivez votre modification...",
     "pageMoved": "Page déplacée.",
     "moveFailed": "Échec du déplacement de la page.",
+    "movedLinksUpdated_one": "{{count}} lien mis à jour dans {{pages}}",
+    "movedLinksUpdated_other": "{{count}} liens mis à jour dans {{pages}}",
+    "movedLinksPages_one": "{{count}} page",
+    "movedLinksPages_other": "{{count}} pages",
+    "movedLinksSkipped_one": "{{count}} page n'a pas pu être modifiée, ses liens restent cassés",
+    "movedLinksSkipped_other": "{{count}} pages n'ont pas pu être modifiées, leurs liens restent cassés",
     "pageSaved": "Page sauvegardée.",
+    "brokenLinksWarning_one": "{{count}} lien pointe vers une page introuvable",
+    "brokenLinksWarning_other": "{{count}} liens pointent vers des pages introuvables",
     "visibilityChanged": "Visibilité mise à jour.",
     "visibilityChangeFailed": "Échec du changement de visibilité.",
     "commentsEnabled": "Commentaires activés.",
@@ -200,6 +211,9 @@
     "pathLabel": "Chemin",
     "pathImmutable": "Le chemin ne peut pas être modifié après la création.",
     "parentLabel": "Page parente",
+    "linkingPages_one": "{{count}} page contient des liens vers cette page ou ses sous-pages.",
+    "linkingPages_other": "{{count}} pages contiennent des liens vers cette page ou ses sous-pages.",
+    "updateLinks": "Mettre à jour ces liens au déplacement",
     "none": "Aucune (racine)",
     "visibilityLabel": "Visibilité",
     "private": "Privée",
@@ -306,6 +320,8 @@
     "oauthClientsTab": "Clients OAuth",
     "auditLogTab": "Journal d'audit",
     "activityLogTab": "Activité",
+    "brokenLinksTab": "Liens cassés",
+    "webhooksTab": "Webhooks",
     "users": {
       "filterPlaceholder": "Filtrer les utilisateurs...",
       "loadError": "Échec du chargement des utilisateurs.",
@@ -575,7 +591,11 @@
         "access_rule.update": "Modification de règle d'accès",
         "access_rule.delete": "Suppression de règle d'accès",
         "comment.deleted_by_moderator": "Suppression de commentaire (modération)",
-        "comment.purged_by_moderator": "Purge des commentaires d'un utilisateur"
+        "comment.purged_by_moderator": "Purge des commentaires d'un utilisateur",
+        "webhook.create": "Création de webhook",
+        "webhook.update": "Modification de webhook",
+        "webhook.delete": "Suppression de webhook",
+        "webhook.rotate_secret": "Régénération du secret d'un webhook"
       }
     },
     "activityLog": {
@@ -597,6 +617,7 @@
         "page.deleted": "Page supprimée",
         "page.trash_restored": "Page restaurée depuis la corbeille",
         "page.purged": "Page supprimée définitivement",
+        "page.imported": "Pages importées",
         "page.restored": "Version restaurée",
         "page.visibility_changed": "Visibilité modifiée",
         "page.comments_enabled_changed": "Commentaires activés/désactivés",
@@ -605,6 +626,142 @@
         "media.deleted": "Média supprimé",
         "user.avatar_uploaded": "Photo de profil changée",
         "user.avatar_removed": "Photo de profil retirée"
+      }
+    },
+    "brokenLinks": {
+      "loadError": "Échec du chargement des liens cassés.",
+      "empty": "Aucun lien cassé.",
+      "columnSource": "Page source",
+      "columnTarget": "Chemin cible"
+    },
+    "webhooks": {
+      "intro": "Prévenez un service externe (Discord, Slack, n8n…) à chaque changement dans le wiki.",
+      "createButton": "Nouveau webhook",
+      "editButton": "Modifier",
+      "backToList": "Tous les webhooks",
+      "loadError": "Échec du chargement des webhooks.",
+      "loadOneError": "Échec du chargement du webhook.",
+      "empty": "Aucun webhook pour le moment.",
+      "columnName": "Nom",
+      "columnHost": "Hôte",
+      "columnFormat": "Format",
+      "columnEvents": "Événements",
+      "columnState": "État",
+      "columnLastDelivery": "Dernier envoi",
+      "columnStatus": "Statut",
+      "columnStatusCode": "Code HTTP",
+      "columnDuration": "Durée",
+      "eventsCount_one": "{{count}} événement",
+      "eventsCount_other": "{{count}} événements",
+      "neverDelivered": "Jamais",
+      "stateEnabled": "Actif",
+      "stateDisabled": "Désactivé",
+      "stateAutoDisabled": "Désactivé automatiquement",
+      "autoDisabledReason_one": "Après {{count}} échec d'envoi consécutif",
+      "autoDisabledReason_other": "Après {{count}} échecs d'envoi consécutifs",
+      "durationMs_one": "{{count}} ms",
+      "durationMs_other": "{{count}} ms",
+      "lastError": "Dernière erreur",
+      "yes": "Oui",
+      "no": "Non",
+      "settingsSection": "Configuration",
+      "created": "Webhook créé.",
+      "createFailed": "Échec de la création du webhook.",
+      "updated": "Webhook modifié.",
+      "updateFailed": "Échec de la modification du webhook.",
+      "deleted": "Webhook supprimé.",
+      "deleteFailed": "Échec de la suppression du webhook.",
+      "deleteConfirmTitle": "Supprimer ce webhook ?",
+      "deleteConfirmDescription": "« {{name}} » et tout son journal d'envois seront supprimés. Le service externe ne recevra plus rien.",
+      "formats": {
+        "json": "JSON",
+        "discord": "Discord",
+        "slack": "Slack"
+      },
+      "deliveryStatus": {
+        "pending": "En attente",
+        "success": "Réussi",
+        "failed": "Échec"
+      },
+      "eventGroups": {
+        "pages": "Pages",
+        "comments": "Commentaires",
+        "import": "Import"
+      },
+      "events": {
+        "page.created": "Page créée",
+        "page.updated": "Page modifiée",
+        "page.moved": "Page déplacée",
+        "page.deleted": "Page mise à la corbeille",
+        "page.restored": "Page restaurée",
+        "page.published": "Page publiée",
+        "comment.created": "Nouveau commentaire",
+        "pages.imported": "Pages importées"
+      },
+      "form": {
+        "createTitle": "Nouveau webhook",
+        "editTitle": "Modifier le webhook",
+        "description": "NestWiki enverra une requête POST signée à cette adresse pour chaque événement choisi.",
+        "nameLabel": "Nom",
+        "urlLabel": "URL",
+        "formatLabel": "Format",
+        "formatDetected": "Adresse {{format}} reconnue : format proposé automatiquement.",
+        "formatSuggested": "Adresse {{format}} reconnue : le format {{format}} est conseillé.",
+        "eventsLabel": "Événements",
+        "selectAllEvents": "Tout cocher",
+        "scopeLabel": "Limiter à un sous-arbre",
+        "scopeHint": "Seuls les événements de la page choisie et de ses sous-pages seront envoyés.",
+        "scopeSelected": "Limité à : {{path}} et ses sous-pages",
+        "scopeMissing": "Page introuvable",
+        "includePrivatePagesLabel": "Inclure les pages privées",
+        "includePrivatePagesWarning": "Les titres et chemins des pages privées seront envoyés à ce service externe.",
+        "enabledLabel": "Actif",
+        "createSubmit": "Créer le webhook",
+        "nameRequired": "Le nom est requis",
+        "nameTooLong": "Le nom ne peut pas dépasser {{count}} caractères",
+        "urlInvalid": "Saisissez une adresse http:// ou https:// valide",
+        "urlTooLong": "L'adresse ne peut pas dépasser {{count}} caractères",
+        "eventsRequired": "Choisissez au moins un événement"
+      },
+      "secret": {
+        "title": "Secret de signature",
+        "description": "Chaque envoi est signé avec ce secret (en-tête X-NestWiki-Signature) : le service qui le reçoit peut vérifier qu'il vient bien de ce wiki.",
+        "show": "Afficher",
+        "hide": "Masquer",
+        "copy": "Copier",
+        "copied": "Secret copié.",
+        "copyFailed": "Impossible de copier le secret.",
+        "rotate": "Régénérer",
+        "rotateConfirmTitle": "Régénérer le secret ?",
+        "rotateConfirmDescription": "L'ancien secret cesse immédiatement de fonctionner : les envois suivants seront signés avec le nouveau. Pensez à le reporter dans le service qui reçoit ce webhook.",
+        "rotated": "Nouveau secret généré.",
+        "rotateFailed": "Échec de la régénération du secret."
+      },
+      "test": {
+        "title": "Test",
+        "description": "Envoie immédiatement l'événement webhook.test, une seule fois, sans reprise en cas d'échec.",
+        "send": "Envoyer un test",
+        "sending": "Envoi…",
+        "failed": "Échec de l'envoi du test.",
+        "resultLabel": "Résultat du test"
+      },
+      "log": {
+        "title": "Journal des envois",
+        "statusFilter": "Filtrer par statut",
+        "allStatuses": "Tous les statuts",
+        "loadError": "Échec du chargement du journal des envois.",
+        "empty": "Aucun envoi pour le moment.",
+        "columnDate": "Date",
+        "columnEvent": "Événement",
+        "columnAttempts": "Tentatives",
+        "columnNextAttempt": "Prochaine tentative",
+        "attemptsCount_one": "{{count}} tentative",
+        "attemptsCount_other": "{{count}} tentatives",
+        "payload": "Contenu envoyé",
+        "redeliver": "Renvoyer",
+        "redelivered": "Envoi relancé.",
+        "redeliverFailed": "Échec du renvoi.",
+        "redeliverDisabled": "Le webhook est désactivé : réactivez-le pour renvoyer cet envoi."
       }
     }
   },
@@ -768,6 +925,7 @@
       "page.deleted": "Page supprimée",
       "page.trash_restored": "Page restaurée depuis la corbeille",
       "page.purged": "Page supprimée définitivement",
+      "page.imported": "Pages importées",
       "page.restored": "Version restaurée",
       "page.visibility_changed": "Visibilité modifiée",
       "page.comments_enabled_changed": "Commentaires activés/désactivés",
@@ -799,6 +957,7 @@
       "page.deleted": "delete",
       "page.trash_restored": "edit",
       "page.purged": "delete",
+      "page.imported": "create",
       "comment.created": "comment",
       "media.uploaded": "media",
       "media.deleted": "delete",
@@ -830,6 +989,121 @@
     },
     "toc": "Sur cette page",
     "headingLink": "Lien vers cette section",
-    "mermaidError": "Diagramme Mermaid invalide :"
+    "mermaidError": "Diagramme Mermaid invalide :",
+    "brokenLink": "Page introuvable"
+  },
+  "import": {
+    "title": "Importer des pages",
+    "intro": "Importez un coffre Obsidian, un dossier Markdown ou un export NestWiki : vérifiez l’aperçu, choisissez les options, puis lancez l’import.",
+    "steps": {
+      "file": "Fichier",
+      "preview": "Aperçu",
+      "import": "Import",
+      "report": "Rapport"
+    },
+    "file": {
+      "dropzone": "Glissez une archive .zip ou un fichier .md ici",
+      "choose": "Choisir un fichier",
+      "change": "Changer de fichier",
+      "formatsTitle": "Formats acceptés",
+      "formatObsidian": "Coffre Obsidian zippé (liens [[…]], images, notes de dossier, tags)",
+      "formatMarkdown": "Dossier Markdown zippé, avec liens relatifs entre fichiers",
+      "formatNestwiki": "Export NestWiki (.zip ou .md)",
+      "limits": "Jusqu’à {{archive}} Mo, {{uncompressed}} Mo une fois décompressé et {{pages}} pages.",
+      "invalidType": "Choisissez un fichier .zip ou .md.",
+      "tooLarge": "Ce fichier dépasse {{size}} Mo.",
+      "destinationLabel": "Destination",
+      "destinationHint": "Les pages importées seront créées sous cette page.",
+      "root": "Racine du wiki",
+      "chooseDestination": "Choisir la destination",
+      "searchPage": "Rechercher une page...",
+      "noPageFound": "Aucune page trouvée.",
+      "analyze": "Analyser",
+      "analyzing": "Analyse en cours…"
+    },
+    "preview": {
+      "formats": {
+        "nestwiki": "Export NestWiki",
+        "obsidian": "Coffre Obsidian",
+        "markdown": "Markdown"
+      },
+      "pages_one": "{{count}} page",
+      "pages_other": "{{count}} pages",
+      "media_one": "{{count}} média ({{size}})",
+      "media_other": "{{count}} médias ({{size}})",
+      "destination": "Destination : {{path}}",
+      "conflicts_one": "{{count}} page existe déjà au même endroit.",
+      "conflicts_other": "{{count}} pages existent déjà au même endroit.",
+      "pagesTitle": "Pages",
+      "conflictBadge": "Existe déjà",
+      "actions": {
+        "create": "Nouvelle",
+        "update": "Mise à jour",
+        "skip": "Ignorée"
+      },
+      "linkCount_one": "{{count}} lien",
+      "linkCount_other": "{{count}} liens",
+      "mediaCount_one": "{{count}} média",
+      "mediaCount_other": "{{count}} médias",
+      "optionsTitle": "Options",
+      "conflictLabel": "Pages déjà présentes",
+      "conflictModes": {
+        "skip": "Garder la page existante",
+        "rename": "Importer sous un autre nom (-2)",
+        "update": "Ajouter une nouvelle version"
+      },
+      "visibilityLabel": "Visibilité des nouvelles pages",
+      "private": "Privées",
+      "public": "Publiques",
+      "createMissingTags_one": "Créer le tag manquant : {{tags}}",
+      "createMissingTags_other": "Créer les {{count}} tags manquants : {{tags}}",
+      "back": "Retour",
+      "importButton_one": "Importer {{count}} page",
+      "importButton_other": "Importer {{count}} pages",
+      "nothingToImport": "Aucune page ne sera créée ni mise à jour avec ces options."
+    },
+    "warnings": {
+      "title": "Avertissements",
+      "unresolvedLinks": "Liens non résolus ({{count}})",
+      "unresolvedLink": "{{page}} → {{target}}",
+      "ignoredFiles": "Fichiers ignorés ({{count}})",
+      "missingTags": "Tags non créés ({{count}})",
+      "missingTagsHint": "Ces tags n’existent pas et ne seront pas créés.",
+      "mediaWithoutUpload_one": "{{count}} média ne sera pas importé : il faut le droit de téléverser des médias.",
+      "mediaWithoutUpload_other": "{{count}} médias ne seront pas importés : il faut le droit de téléverser des médias.",
+      "renamedSlugs": "Adresses renommées ({{count}})",
+      "renamedSlug": "{{from}} → {{page}}",
+      "ignoredReasons": {
+        "symlink": "lien symbolique",
+        "encrypted": "chiffré",
+        "unsupported_type": "type non pris en charge",
+        "too_large": "plus de 20 Mo",
+        "unreferenced": "utilisé par aucune note"
+      },
+      "renameReasons": {
+        "reserved": "nom réservé",
+        "duplicate": "doublon",
+        "conflict": "page existante"
+      }
+    },
+    "progress": {
+      "uploading": "Envoi du fichier… {{percent}} %",
+      "processing": "Création des pages…"
+    },
+    "report": {
+      "title": "Import terminé",
+      "created": "Créées",
+      "updated": "Mises à jour",
+      "skipped": "Ignorées",
+      "media": "Médias",
+      "tags": "Tags créés",
+      "skippedTitle": "Pages ignorées",
+      "skippedReasons": {
+        "exists": "existe déjà",
+        "forbidden": "droits insuffisants"
+      },
+      "open": "Ouvrir",
+      "again": "Nouvel import"
+    }
   }
 }

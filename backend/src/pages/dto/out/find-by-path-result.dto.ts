@@ -7,4 +7,5 @@ export interface FindByPathResultDto {
   version: PageVersion;
   isFollowed: boolean;
   permissions: PageAction[];
+  brokenLinks: string[];
 }

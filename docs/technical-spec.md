@@ -118,8 +118,20 @@ Chaque module vit directement sous `src/` (pas de dossier `modules/` intermédia
 | deletedAt        | datetime nullable     | soft delete : la page est dans la corbeille |
 | deletedById      | uuid nullable         | FK → User, auteur de la suppression    |
 | deletionRootId   | uuid nullable         | id de la page sur laquelle la suppression a été demandée, partagé par toute la cascade ; restaurer ou purger agit sur ce lot |
+| linksVersionId   | uuid nullable         | version dont les liens sont indexés dans `PageLink` ; différente de `currentVersionId` → réindexée au démarrage |
 
 L'unicité du slug par branche porte sur une colonne générée `active_slug` (`slug` si la page n'est pas supprimée, `NULL` sinon) : une page en corbeille ne réserve plus son slug. `trash` est un slug racine réservé.
+
+### PageLink
+
+Index des liens internes, recalculé à chaque nouvelle version d'une page (création, édition, fusion, restauration de version).
+
+| Champ        | Type          | Notes                                                                 |
+| ------------ | ------------- | --------------------------------------------------------------------- |
+| sourcePageId | uuid          | PK, FK → Page (`ON DELETE CASCADE`), page qui contient le lien        |
+| targetPath   | varchar(700)  | PK, chemin visé en minuscules, sans ancre, query ni slash final (ex. `/documentation/guide`) |
+
+Liens indexés : `/pages/<chemin>` et `<FRONTEND_URL>/pages/<chemin>`, en lien Markdown, définition de référence ou attribut `href`/`src`, hors code. Le chemin n'est résolu qu'à la lecture, contre l'arborescence des pages actives : un lien est cassé quand aucune page active n'a ce chemin (page déplacée, en corbeille, jamais créée), et redevient valide dès qu'une page reprend ce chemin. Les liens d'une page en corbeille ne comptent pas. Au démarrage, les pages dont `linksVersionId` ≠ `currentVersionId` sont réindexées (rattrapage, contenu écrit par `seed:content`) ; `pnpm run backfill:links` fait la même chose hors de Nest.
 
 ### PageVersion
 
@@ -243,6 +255,43 @@ Table clé/valeur générique pour les réglages globaux (pas par utilisateur). 
 | errorMessage | varchar nullable |                        |
 | createdAt    | datetime         |                        |
 
+### Webhook
+
+| Champ               | Type                          | Notes                                                                 |
+| ------------------- | ----------------------------- | --------------------------------------------------------------------- |
+| id                  | uuid                          | PK                                                                    |
+| name                | varchar(100)                  |                                                                       |
+| url                 | varchar(2048)                 | `http(s)`, réseau local autorisé                                      |
+| format              | enum `json\|discord\|slack`   | forme du corps envoyé                                                 |
+| events              | json                          | événements écoutés, ex. `["page.created", "comment.created"]`         |
+| secret              | varchar                       | `whsec_…`, stocké en clair pour signer, visible des admins, régénérable |
+| enabled             | boolean                       |                                                                       |
+| includePrivatePages | boolean                       | défaut `false` : les événements des pages privées sont ignorés        |
+| scopePageId         | uuid nullable                 | limite aux événements de cette page et de ses descendantes            |
+| consecutiveFailures | int                           | envois `failed` d'affilée ; désactivation automatique à 20            |
+| disabledReason      | varchar nullable              | renseigné par la désactivation automatique                            |
+| createdById         | uuid                          | FK → User (admin)                                                     |
+| createdAt/updatedAt | datetime                      |                                                                       |
+
+### WebhookDelivery
+
+| Champ          | Type                               | Notes                                                       |
+| -------------- | ---------------------------------- | ----------------------------------------------------------- |
+| id             | uuid                               | PK, envoyé dans `X-NestWiki-Delivery`                       |
+| webhookId      | uuid                               | FK → Webhook, suppression en cascade                        |
+| event          | varchar                            | ex. `page.updated`, `webhook.test`                          |
+| payload        | mediumtext                         | corps exact envoyé, figé au moment de l'événement           |
+| status         | enum `pending\|success\|failed`    |                                                             |
+| attempts       | int                                | 6 au maximum                                                |
+| nextAttemptAt  | datetime(6) nullable               | prochaine tentative ; reprises à 1 min, 5 min, 30 min, 2 h, 6 h |
+| lastStatusCode | int nullable                       |                                                             |
+| lastError      | varchar nullable                   |                                                             |
+| durationMs     | int nullable                       |                                                             |
+| createdAt      | datetime                           | purgé après 30 jours                                        |
+| deliveredAt    | datetime(6) nullable               |                                                             |
+
+Les événements (`page.created`, `page.updated`, `page.moved`, `page.deleted`, `page.restored`, `page.published`, `comment.created`, `pages.imported`) partent des événements de domaine émis par `PagesService`, `PageTrashService`, `CommentsService` et `ImportsService` (un seul `pages.imported` par import) ; `WebhookEventsListener` les reçoit de façon asynchrone et crée les envois, que `WebhookDeliveryService` traite hors de la requête (au fil de l'eau, puis toutes les 30 s pour les reprises, qui survivent à un redémarrage). Les payloads ne contiennent jamais le contenu d'une page ou d'un commentaire : titre, chemin, URL absolue, auteur, résumé de modification. Chaque envoi est un `POST` JSON avec `User-Agent: NestWiki/<version>`, `X-NestWiki-Event`, `X-NestWiki-Delivery`, `X-NestWiki-Timestamp` et `X-NestWiki-Signature: sha256=<HMAC-SHA256(secret, timestamp + "." + corps)>` ; délai de 10 s, redirections non suivies, succès sur un code 2xx, pas de reprise sur une redirection (3xx) ni sur un 4xx autre que 408 et 429. Un événement qu'aucun webhook actif n'écoute ne déclenche aucune requête sur les pages.
+
 ---
 
 ## 5. Récapitulatif complet des endpoints API
@@ -283,13 +332,15 @@ Toutes les routes `/admin/users` sont accessibles aux administrateurs ou à quic
 
 | Méthode | Route              | Auth             | Description               |
 | ------- | ------------------ | ---------------- | ------------------------- |
-| POST    | /pages             | `page.create_root` (racine) ou `page.create_child` (sur le parent) | Créer une page |
+| POST    | /pages             | `page.create_root` (racine) ou `page.create_child` (sur le parent) | Créer une page ; la réponse contient `brokenLinks` (chemins des liens internes du contenu vers une page inexistante, en corbeille ou illisible pour l'appelant), comme `PATCH /pages/:id` et `GET /pages/*path` |
 | GET     | /pages/tree        | selon visibilité | Arborescence complète     |
 | GET     | /pages/*path       | selon visibilité | Lire une page par son chemin complet (slugs des ancêtres, comme dans l'URL) |
 | GET     | /pages/:id/stats   | selon visibilité | Stats d'une page (vues, dernière modification, versions, commentaires, contributeurs) — n'incrémente pas les vues |
+| GET     | /pages/:id/backlinks | selon visibilité | Pages lisibles par l'appelant qui contiennent un lien vers la page (`id`, `title`, `path`, `updatedAt`, triées par titre, sans la page elle-même) ; `?subtree=true` inclut les liens vers ses sous-pages, et la page elle-même si elle pointe vers l'une d'elles |
+| GET     | /admin/links/broken | admin | Liens internes cassés de tout le wiki, paginés (`page`, `limit`) : `{ items: [{ sourcePage: { id, title, path }, targetPath }], total }`, triés par chemin de la page source |
 | PATCH   | /pages/:id         | `page.edit` sur la page | Éditer (nouvelle version) ; avec un `baseVersionId` périmé, fusion à 3 voies automatique, ou en cas de conflit réponse `conflict: true` avec `segments` (blocs `ok`/`conflict`), `currentVersionAuthorName`, `currentVersionCreatedAt`, `currentVersionContent` (contenu de la version courante, rechargé si l'utilisateur abandonne ses modifications) et `mergedContent` (marqueurs, conservé pour l'API/MCP), sans rien enregistrer |
 | POST    | /pages/:id/merge-preview | `page.edit` sur la page | Prévisualiser une fusion à 3 voies (base/mine/theirs) sans sauvegarder ; en cas de conflit, renvoie aussi `segments`, `currentVersionAuthorName`, `currentVersionCreatedAt` et `currentVersionContent` |
-| PATCH   | /pages/:id/move    | `page.move` sur la page | Déplacer dans l'arbre     |
+| PATCH   | /pages/:id/move    | `page.move` sur la page | Déplacer dans l'arbre ; avec `updateLinks: true`, chaque page que l'appelant peut éditer et qui pointe vers la page ou une de ses sous-pages reçoit une nouvelle version aux chemins mis à jour (ancre, paramètres et code conservés). Les pages en corbeille sont corrigées aussi. Renvoie la version courante après correction, avec en plus `linksUpdated`, `pagesUpdated` et `pagesSkipped` (pages non modifiables ou en échec, laissées en liens cassés) ; un échec de correction n'annule pas le déplacement |
 | DELETE  | /pages/:id         | `page.delete` sur la page | Déplacer dans la corbeille (`?cascade=true` obligatoire si la page a des enfants) |
 | GET     | /pages/:id/subtree-content | selon visibilité | La page et ses sous-pages lisibles, en ordre de parcours en profondeur (`id`, `title`, `slug`, `path`, `depth`, `content`, `tags`, `updatedAt`) ; une page illisible est exclue avec son sous-arbre. Sert à l'impression PDF (`/print/*`) |
 | GET     | /pages/:id/export?scope=page\|subtree | selon visibilité | Export Markdown brut : `scope=page` (défaut) → `<slug>.md` ; `scope=subtree` → `<slug>.zip` (un `.md` par page, sous-pages dans `<slug>/`, médias lisibles dans `_media/<id>-<fichier>`). En-tête YAML `title`, `tags`, `updatedAt`, `source` ; liens entre pages exportées et vers les médias réécrits en chemins relatifs, autres liens du wiki en URL absolue (`FRONTEND_URL`). Limité à 10 requêtes/min par client (comme `subtree-content`) ; 413 au-delà de 500 pages ou 200 médias ; médias lus un par un pendant l'envoi de l'archive |
@@ -340,6 +391,13 @@ Voir aussi `/pages/*path` et `/pages/tree`, qui exposent respectivement `permiss
 | GET     | /media/:id/url | selon visibilité | URL présignée                                                         |
 | DELETE  | /media/:id     | `media.delete`   | Supprimer (409 si le média est encore référencé ailleurs)             |
 
+### Import
+
+| Méthode | Route            | Auth | Description |
+| ------- | ---------------- | ---- | ----------- |
+| POST    | /imports/preview | `page.create_child` sur `parentId` (ou `page.create_root` sans `parentId`) | Multipart : `file` (`.zip` ≤ 100 Mo ou `.md`), `parentId?`, `conflict?` (`skip` par défaut, `rename`, `update`). N'écrit rien : renvoie le plan d'import (`format` détecté `nestwiki`/`obsidian`/`markdown`, arbre des pages avec chemin final, titre, tags, nombre de liens et de médias, `action` `create`/`update`/`skip` et chemin de la page existante en `conflict` ; médias à téléverser ; tags existants/manquants ; droits `tag.create`/`media.upload` ; avertissements : liens non résolus, fichiers ignorés, tags non créables, médias sans `media.upload`, slugs renommés). Export NestWiki, coffre Obsidian (`[[wikilinks]]`, `![[inclusions]]`, notes de dossier, alias, tags, `%%commentaires%%`, `==surligné==`) et Markdown simple (liens relatifs). 400 si archive invalide ou chemin `..`/absolu ; 413 au-delà de 100 Mo, 500 Mo décompressés (contrôlés pendant la décompression) ou 1 000 pages. Limité à 30 requêtes/min ; les fichiers de type non accepté ou de plus de 20 Mo ne sont pas décompressés |
+| POST    | /imports         | idem `/imports/preview` | Mêmes champs que l'aperçu plus `visibility?` (`private` par défaut, `public`) et `createMissingTags?`. Recalcule le plan puis l'exécute : pages créées de parent à enfant (une version chacune, `changeSummary` « Import », auteur = l'utilisateur), `update` → nouvelle `PageVersion` seulement avec `page.edit` (sinon ignorée, raison `forbidden`), sous-pages d'une page existante seulement avec `page.create_child` sur elle. Médias téléversés si `media.upload` (liens réécrits en `/api/media/<id>/raw`), tags existants appliqués, tags absents créés si `createMissingTags` et `tag.create`. Pages, versions, médias et tags écrits dans une transaction ; en cas d'échec, rollback et suppression des objets déjà téléversés. Index des liens alimenté, un seul `page.tree.changed` et un seul `pages.imported`, journal d'activité `page.imported`. 201 + rapport : `created`/`updated` (id, chemin, titre), `skipped` (raison `exists` ou `forbidden`), `media.uploaded`, `tags.created`/`tags.skipped`, avertissements de l'aperçu, `rootPath`. Limité à 10 requêtes/min |
+
 ### Tags
 
 | Méthode | Route                  | Auth     | Description                |
@@ -371,6 +429,20 @@ Voir aussi `/pages/*path` et `/pages/tree`, qui exposent respectivement `permiss
 | GET       | /admin/mcp/api-keys     | admin                | Lister les clés API MCP                             |
 | DELETE    | /admin/mcp/api-keys/:id | admin                | Révoquer une clé                                    |
 | GET       | /admin/mcp/audit-log    | admin                | Journal des actions effectuées par les IA           |
+
+### Webhooks sortants
+
+| Méthode | Route                                         | Auth  | Description |
+| ------- | --------------------------------------------- | ----- | ----------- |
+| GET     | /admin/webhooks                               | admin | Lister les webhooks, avec leur secret et leur dernier envoi (`lastDelivery` : `createdAt`, `status`, `lastStatusCode`, ou `null`) |
+| POST    | /admin/webhooks                               | admin | Créer un webhook (`name`, `url`, `events`, `format?`, `includePrivatePages?`, `scopePageId?`, `enabled?`) ; secret généré ; audit `webhook.create` |
+| GET     | /admin/webhooks/:id                           | admin | Lire un webhook |
+| PATCH   | /admin/webhooks/:id                           | admin | Modifier un webhook ; le réactiver remet à zéro `consecutiveFailures` ; audit `webhook.update` |
+| DELETE  | /admin/webhooks/:id                           | admin | Supprimer un webhook et ses envois ; audit `webhook.delete` |
+| POST    | /admin/webhooks/:id/test                      | admin | Envoyer `webhook.test` immédiatement, une seule fois, et renvoyer l'envoi |
+| POST    | /admin/webhooks/:id/rotate-secret             | admin | Régénérer le secret ; audit `webhook.rotate_secret` |
+| GET     | /admin/webhooks/:id/deliveries                | admin | Envois paginés, du plus récent (`?status=pending\|success\|failed&page&limit`) |
+| POST    | /admin/webhooks/deliveries/:deliveryId/redeliver | admin | Renvoyer un envoi : nouvel envoi au même contenu, tenté immédiatement puis repris en cas d'échec (une seule tentative pour une copie de `webhook.test`) ; 409 si le webhook est désactivé |
 
 ### Sécurité
 

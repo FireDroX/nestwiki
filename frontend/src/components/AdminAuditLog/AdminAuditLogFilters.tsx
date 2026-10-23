@@ -25,6 +25,10 @@ export const ADMIN_AUDIT_LOG_ACTIONS = [
   'access_rule.delete',
   'comment.deleted_by_moderator',
   'comment.purged_by_moderator',
+  'webhook.create',
+  'webhook.update',
+  'webhook.delete',
+  'webhook.rotate_secret',
 ] as const
 
 interface AdminAuditLogFiltersProps {

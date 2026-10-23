@@ -35,6 +35,6 @@ import { AdminVersionController } from './version.controller.js';
     AdminAuditLogService,
     VersionCheckService,
   ],
-  exports: [AdminAuditLogService],
+  exports: [AdminAuditLogService, VersionCheckService],
 })
 export class AdminModule {}

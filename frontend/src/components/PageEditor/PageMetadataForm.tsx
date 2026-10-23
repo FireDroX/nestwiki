@@ -29,6 +29,9 @@ interface PageMetadataFormProps {
   excludePageId?: string | null
   commentsEnabled?: boolean
   onParentChange?: (newParentId: string | null) => void
+  linkingPageCount?: number
+  updateLinks?: boolean
+  onUpdateLinksChange?: (updateLinks: boolean) => void
   onVisibilityChange?: (visibility: PageVisibility) => void
   onCommentsEnabledChange?: (commentsEnabled: boolean) => void
 }
@@ -41,6 +44,9 @@ export function PageMetadataForm({
   excludePageId,
   commentsEnabled,
   onParentChange,
+  linkingPageCount = 0,
+  updateLinks,
+  onUpdateLinksChange,
   onVisibilityChange,
   onCommentsEnabledChange,
 }: PageMetadataFormProps) {
@@ -137,6 +143,18 @@ export function PageMetadataForm({
             {parentLabel}
           </span>
         </Button>
+        {mode === 'edit' && linkingPageCount > 0 && (
+          <>
+            <FieldDescription>{t('pageMetadataForm.linkingPages', { count: linkingPageCount })}</FieldDescription>
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox
+                checked={updateLinks}
+                onCheckedChange={(checked) => onUpdateLinksChange?.(checked === true)}
+              />
+              <span>{t('pageMetadataForm.updateLinks')}</span>
+            </label>
+          </>
+        )}
       </Field>
       <Controller
         control={control}
