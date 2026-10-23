@@ -76,12 +76,16 @@ import { CreatePageAccessRuleDto } from './dto/in/create-page-access-rule.dto.js
 import { CreatePageDto } from './dto/in/create-page.dto.js';
 import { DeletePageQueryDto } from './dto/in/delete-page-query.dto.js';
 import { ExportPageQueryDto } from './dto/in/export-page-query.dto.js';
+import { GetBacklinksQueryDto } from './dto/in/get-backlinks-query.dto.js';
 import { MergePreviewDto } from './dto/in/merge-preview.dto.js';
 import { MovePageDto } from './dto/in/move-page.dto.js';
 import { SetCommentsEnabledDto } from './dto/in/set-comments-enabled.dto.js';
 import { UpdatePageDto } from './dto/in/update-page.dto.js';
+import { PageBacklinkDto } from './dto/out/page-backlink-response.dto.js';
+import { PageCreateResponseDto } from './dto/out/page-create-response.dto.js';
 import { PageDetailResponseDto } from './dto/out/page-detail-response.dto.js';
 import { PageMergePreviewResponseDto } from './dto/out/page-merge-preview-response.dto.js';
+import { PageMoveResponseDto } from './dto/out/page-move-response.dto.js';
 import { PageResponseDto } from './dto/out/page-response.dto.js';
 import { PageStatsResponseDto } from './dto/out/page-stats-response.dto.js';
 import type { SubtreePageResponseDto } from './dto/out/subtree-page-response.dto.js';
@@ -146,9 +150,10 @@ export class PagesController {
   async create(
     @Body() dto: CreatePageDto,
     @CurrentUser() user: AuthenticatedUser,
-  ): Promise<ResponseDto<PageResponseDto>> {
-    const { page, version } = await this.pagesService.createPage(dto, user.id);
-    return PageMapper.toResponse(page, version);
+  ): Promise<ResponseDto<PageCreateResponseDto>> {
+    return PageMapper.toCreateResponse(
+      await this.pagesService.createPage(dto, user.id),
+    );
   }
 
   @Patch(':id')
@@ -227,10 +232,17 @@ export class PagesController {
   @Patch(':id/move')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: "Déplacer une page dans l'arborescence" })
+  @ApiOperation({
+    summary: "Déplacer une page dans l'arborescence",
+    description:
+      "Avec updateLinks à true, chaque page qui pointe vers la page déplacée ou une de ses descendantes, et que l'utilisateur peut éditer, reçoit une nouvelle version avec les chemins mis à jour. La réponse compte les liens et les pages mis à jour, et les pages ignorées faute de droit d'édition.",
+  })
   @ApiParam({ name: 'id', description: 'Identifiant de la page à déplacer' })
   @ApiBody({ type: MovePageDto })
-  @ApiOkResponse({ description: 'Page déplacée avec succès.' })
+  @ApiOkResponse({
+    description:
+      'Page déplacée, avec linksUpdated, pagesUpdated et pagesSkipped.',
+  })
   @ApiUnauthorizedResponse({
     description: 'Authentification requise.',
     type: ErrorResponseDto,
@@ -251,13 +263,10 @@ export class PagesController {
     @Param('id') id: string,
     @Body() dto: MovePageDto,
     @CurrentUser() user: AuthenticatedUser,
-  ): Promise<ResponseDto<PageResponseDto>> {
-    const { page, version } = await this.pagesService.movePage(
-      id,
-      dto,
-      user.id,
+  ): Promise<ResponseDto<PageMoveResponseDto>> {
+    return PageMapper.toMoveResponse(
+      await this.pagesService.movePage(id, dto, user.id),
     );
-    return PageMapper.toResponse(page, version);
   }
 
   @Patch(':id/visibility')
@@ -1087,6 +1096,36 @@ export class PagesController {
     return PageMapper.toStatsResponse(stats);
   }
 
+  @Get(':id/backlinks')
+  @UseGuards(OptionalJwtAuthGuard)
+  @ApiOperation({
+    summary: 'Pages qui pointent vers une page',
+    description:
+      'Authentification optionnelle : seules les pages lisibles par le demandeur sont listées. subtree=true inclut les liens vers les sous-pages.',
+  })
+  @ApiParam({ name: 'id', description: 'Identifiant de la page' })
+  @ApiQuery({ name: 'subtree', required: false, enum: ['true', 'false'] })
+  @ApiOkResponse({
+    description: 'Pages sources (id, titre, chemin, dernière modification).',
+  })
+  @ApiForbiddenResponse({
+    description: 'Page privée, accès non autorisé.',
+    type: ErrorResponseDto,
+  })
+  @ApiNotFoundResponse({
+    description: "La page n'existe pas.",
+    type: ErrorResponseDto,
+  })
+  async getBacklinks(
+    @Param('id') id: string,
+    @Query() query: GetBacklinksQueryDto,
+    @CurrentUser() user?: AuthenticatedUser,
+  ): Promise<ResponseDto<PageBacklinkDto[]>> {
+    return PageMapper.toBacklinksResponse(
+      await this.pagesService.getBacklinks(id, query, user),
+    );
+  }
+
   @Get('*path')
   @UseGuards(OptionalJwtAuthGuard)
   @ApiOperation({
@@ -1115,8 +1154,8 @@ export class PagesController {
     @Param('path') path: string[],
     @CurrentUser() user?: AuthenticatedUser,
   ): Promise<ResponseDto<PageDetailResponseDto>> {
-    const { page, version, isFollowed, permissions } =
-      await this.pagesService.findByPath(path, user);
-    return PageMapper.toDetailResponse(page, version, isFollowed, permissions);
+    return PageMapper.toDetailResponse(
+      await this.pagesService.findByPath(path, user),
+    );
   }
 }

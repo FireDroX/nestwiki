@@ -16,6 +16,7 @@ import { useFileUpload } from '#hooks/useFileUpload'
 import { usePageTree } from '#hooks/usePageTree'
 import { usePermissions } from '#hooks/usePermissions'
 import { extractErrorMessage } from '#lib/api-errors'
+import { warnAboutBrokenLinks } from '#lib/broken-links-warning'
 import { findPathToNode } from '#utils/page-tree'
 import { createPageMetadataSchema, type PageMetadataFormValues } from '#schemas/page-metadata.schema'
 
@@ -64,6 +65,7 @@ export function PageCreate() {
           : []
         const path = [...ancestors.map((node) => node.slug), created.slug].join('/')
         editor.markSaved()
+        warnAboutBrokenLinks(created.brokenLinks)
         await refresh()
         navigate(`/pages/${path}`)
       } catch (error) {

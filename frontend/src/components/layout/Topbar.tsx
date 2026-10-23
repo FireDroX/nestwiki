@@ -1,4 +1,4 @@
-import { LogOut, Menu, Moon, Search, Shield, Sun, Trash2, User } from 'lucide-react'
+import { FileUp, LogOut, Menu, Moon, Search, Shield, Sun, Trash2, User } from 'lucide-react'
 import { Link } from 'react-router'
 import { useTranslation } from 'react-i18next'
 import { useTheme } from 'next-themes'
@@ -17,7 +17,14 @@ import { UserRole } from '#api/auth'
 import { avatarRawUrl } from '#api/users'
 import { useAuth } from '#hooks/useAuth'
 import { useCurrentUser } from '#hooks/useCurrentUser'
+import { usePageTree } from '#hooks/usePageTree'
+import { usePermissions } from '#hooks/usePermissions'
 import { cn } from '#lib/utils'
+import type { PageTreeNode } from '#api/pages'
+
+function canCreateChildSomewhere(nodes: PageTreeNode[]): boolean {
+  return nodes.some((node) => node.canCreateChild || canCreateChildSomewhere(node.children))
+}
 
 interface TopbarProps {
   onOpenSidebar: () => void
@@ -28,6 +35,9 @@ export function Topbar({ onOpenSidebar }: TopbarProps) {
   const user = useCurrentUser()
   const { status, logout } = useAuth()
   const { resolvedTheme, setTheme } = useTheme()
+  const { hasGlobal } = usePermissions()
+  const { tree } = usePageTree()
+  const canImport = hasGlobal('page.create_root') || canCreateChildSomewhere(tree)
 
   return (
     <header className="flex h-14 w-full shrink-0 items-center gap-3 border-b border-border bg-background px-4 print:hidden">
@@ -90,6 +100,14 @@ export function Topbar({ onOpenSidebar }: TopbarProps) {
                 {t('topbar.trash')}
               </Link>
             </DropdownMenuItem>
+            {canImport && (
+              <DropdownMenuItem asChild>
+                <Link to="/import">
+                  <FileUp />
+                  {t('topbar.import')}
+                </Link>
+              </DropdownMenuItem>
+            )}
             {user?.role === UserRole.Admin && (
               <DropdownMenuItem asChild>
                 <Link to="/admin/users">

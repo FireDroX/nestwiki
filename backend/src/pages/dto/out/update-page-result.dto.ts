@@ -11,4 +11,5 @@ export interface UpdatePageResultDto {
   currentVersionAuthorName?: string | null;
   currentVersionCreatedAt?: Date;
   currentVersionContent?: string;
+  brokenLinks?: string[];
 }

@@ -36,7 +36,9 @@ export const RESERVED_CHILD_OF_ROOT_PAGE_SLUGS: readonly string[] = [
   'tags',
   'access-rules',
   'stats',
+  'backlinks',
 ];
+export const PAGE_LINK_TARGET_MAX_LENGTH = 700;
 export const TITLE_MAX_LENGTH = 255;
 export const CHANGE_SUMMARY_MAX_LENGTH = 255;
 export const UUID_REGEX =
@@ -105,3 +107,42 @@ export const OAUTH_REFRESH_TOKEN_EXPIRY_DAYS = 30;
 export const OAUTH_PKCE_CODE_CHALLENGE_METHOD = 'S256';
 export const EXPORT_MAX_PAGES = 500;
 export const EXPORT_MAX_MEDIA = 200;
+export const WEBHOOK_NAME_MAX_LENGTH = 100;
+export const WEBHOOK_URL_MAX_LENGTH = 2048;
+export const WEBHOOK_SECRET_PREFIX = 'whsec_';
+export const WEBHOOK_TIMEOUT_MS = 10_000;
+export const WEBHOOK_RETRY_DELAYS_MS = [
+  60_000,
+  5 * 60_000,
+  30 * 60_000,
+  2 * 3_600_000,
+  6 * 3_600_000,
+];
+export const WEBHOOK_MAX_ATTEMPTS = WEBHOOK_RETRY_DELAYS_MS.length + 1;
+export const WEBHOOK_AUTO_DISABLE_THRESHOLD = 20;
+export const WEBHOOK_DELIVERY_RETENTION_DAYS = 30;
+export const WEBHOOK_POLL_INTERVAL_MS = 30_000;
+export const WEBHOOK_PURGE_INTERVAL_MS = 3_600_000;
+export const WEBHOOK_DUE_BATCH_SIZE = 50;
+export const WEBHOOK_ERROR_MAX_LENGTH = 500;
+export const IMPORT_MAX_ARCHIVE_SIZE_MB = 100;
+export const IMPORT_MAX_ARCHIVE_SIZE_BYTES =
+  IMPORT_MAX_ARCHIVE_SIZE_MB * 1024 * 1024;
+export const IMPORT_MAX_UNCOMPRESSED_SIZE_MB = 500;
+export const IMPORT_MAX_UNCOMPRESSED_SIZE_BYTES =
+  IMPORT_MAX_UNCOMPRESSED_SIZE_MB * 1024 * 1024;
+export const IMPORT_MAX_PAGES = 1000;
+export const ATTACHMENT_MIME_TYPES_BY_EXTENSION: Record<string, string> = {
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  gif: 'image/gif',
+  webp: 'image/webp',
+  pdf: 'application/pdf',
+  txt: 'text/plain',
+  doc: 'application/msword',
+  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  xls: 'application/vnd.ms-excel',
+  xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  zip: 'application/zip',
+};

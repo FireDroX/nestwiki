@@ -11,6 +11,10 @@ import { PermissionsService } from '../../permissions/services/permissions.servi
 import { User } from '../../users/entities/user.entity.js';
 import { UsersService } from '../../users/services/users.service.js';
 import { Page } from '../entities/page.entity.js';
+import {
+  PAGE_RESTORED_EVENT,
+  PageRestoredEvent,
+} from '../events/page-restored.event.js';
 import { PAGE_TREE_CHANGED_EVENT } from '../events/page-tree-changed.event.js';
 import type { PageTrashRepository } from '../persistence/page-trash.repository.js';
 import type { PagesRepository } from '../persistence/page.repository.js';
@@ -209,6 +213,10 @@ describe('PageTrashService', () => {
 
       expect(pageTrashRepository.restoreBatch).toHaveBeenCalledWith('root');
       expect(eventEmitter.emit).toHaveBeenCalledWith(PAGE_TREE_CHANGED_EVENT);
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        PAGE_RESTORED_EVENT,
+        new PageRestoredEvent('root', 'me'),
+      );
       expect(userActivityLogService.record).toHaveBeenCalledWith(
         expect.objectContaining({
           userId: 'me',

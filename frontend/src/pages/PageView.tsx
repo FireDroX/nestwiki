@@ -1,6 +1,6 @@
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { History, Pencil } from 'lucide-react'
+import { FileUp, History, Pencil } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { deletePage } from '#api/pages'
@@ -13,6 +13,7 @@ import { DeletePageDialog } from '#components/PageView/DeletePageDialog'
 import { ExportMenu } from '#components/PageView/ExportMenu'
 import { ContributorsList } from '#components/PageView/ContributorsList'
 import { FollowButton } from '#components/PageView/FollowButton'
+import { PageBacklinks } from '#components/PageView/PageBacklinks'
 import { PageTagList } from '#components/PageView/PageTagList'
 import {
   TableOfContentsCollapsible,
@@ -97,6 +98,7 @@ export function PageView() {
   const canEdit = canOnPage(page, 'page.edit')
   const canManageAccess = canOnPage(page, 'page.manage_permissions')
   const canDelete = canOnPage(page, 'page.delete')
+  const canImportHere = !!user && canOnPage(page, 'page.create_child')
   const { status: treeStatus, tree, refresh: refreshTree } = usePageTree()
   const navigate = useNavigate()
   const [isDeleting, setIsDeleting] = useState(false)
@@ -213,6 +215,13 @@ export function PageView() {
                 />
               )}
               <ExportMenu pageId={page.id} pathSegments={pathSegments} hasChildren={descendantCount > 0} />
+              {canImportHere && (
+                <Button variant="outline" size="sm" asChild>
+                  <Link to={`/import?parent=${page.id}`}>
+                    <FileUp /> {t('pageView.importHere')}
+                  </Link>
+                </Button>
+              )}
               {canManageAccess && (
                 <PageAccessPanel
                   key={`access-${page.id}`}
@@ -242,9 +251,10 @@ export function PageView() {
           </>
         )}
         <div ref={contentRef}>
-          <MarkdownRenderer content={page.content} mode="full" />
+          <MarkdownRenderer content={page.content} mode="full" brokenLinks={page.brokenLinks} />
         </div>
         <div className="space-y-6 print:hidden">
+          <PageBacklinks key={`backlinks-${page.id}`} pageId={page.id} />
           {page.commentsEnabled && <CommentThread pageId={page.id} />}
           <ContributorsList pageId={page.id} />
         </div>

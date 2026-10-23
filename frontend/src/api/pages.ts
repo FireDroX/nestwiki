@@ -31,6 +31,7 @@ export interface PageDetail {
   isFollowed: boolean
   currentVersionId: string
   permissions: PageAction[]
+  brokenLinks: string[]
 }
 
 export async function getPageByPath(pathSegments: string[]): Promise<PageDetail> {
@@ -65,6 +66,7 @@ export interface PageUpdateResult {
   currentVersionId: string
   updatedAt: string
   conflict: boolean
+  brokenLinks?: string[]
   mergedContent?: string
   segments?: MergeSegment[]
   currentVersionAuthorName?: string | null
@@ -91,6 +93,7 @@ export interface PageCreateResult {
   title: string
   parentId: string | null
   visibility: PageVisibility
+  brokenLinks: string[]
 }
 
 export async function createPage(payload: CreatePagePayload): Promise<PageCreateResult> {
@@ -98,8 +101,32 @@ export async function createPage(payload: CreatePagePayload): Promise<PageCreate
   return data.data
 }
 
-export async function movePage(id: string, newParentId: string | null): Promise<void> {
-  await apiClient.patch(`/pages/${id}/move`, { newParentId })
+export interface PageBacklink {
+  id: string
+  title: string
+  path: string
+  updatedAt: string
+}
+
+export async function getBacklinks(id: string, { subtree = false } = {}): Promise<PageBacklink[]> {
+  const { data } = await apiClient.get<ResponseDto<PageBacklink[]>>(`/pages/${id}/backlinks`, {
+    params: subtree ? { subtree: 'true' } : undefined,
+  })
+  return data.data
+}
+
+export interface PageMoveResult {
+  linksUpdated: number
+  pagesUpdated: number
+  pagesSkipped: number
+}
+
+export async function movePage(id: string, newParentId: string | null, updateLinks: boolean): Promise<PageMoveResult> {
+  const { data } = await apiClient.patch<ResponseDto<PageMoveResult>>(`/pages/${id}/move`, {
+    newParentId,
+    updateLinks,
+  })
+  return data.data
 }
 
 export async function changePageVisibility(id: string, visibility: PageVisibility): Promise<void> {

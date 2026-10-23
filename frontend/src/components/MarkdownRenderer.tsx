@@ -1,4 +1,4 @@
-import { type ComponentProps, memo, type ReactNode, useId } from 'react'
+import { type ComponentProps, createContext, memo, type ReactNode, useContext, useId, useMemo } from 'react'
 import type { Element } from 'hast'
 import ReactMarkdown from 'react-markdown'
 import rehypeKatex from 'rehype-katex'
@@ -6,6 +6,7 @@ import rehypeRaw from 'rehype-raw'
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize'
 import remarkGfm from 'remark-gfm'
 import remarkMath from 'remark-math'
+import { useTranslation } from 'react-i18next'
 import 'katex/dist/katex.min.css'
 import { ApiReferenceViewer } from '#components/ApiReferenceViewer'
 import { CodeBlock } from '#components/CodeBlock'
@@ -19,6 +20,7 @@ import { MERMAID_TAG_NAME, rehypeMermaid } from '#lib/markdown-mermaid'
 import { rehypeHardenFullMode } from '#lib/markdown-sanitize'
 import { rehypeScopeStyles } from '#lib/markdown-css-scope'
 import { cn } from '#lib/utils'
+import { toLinkedPagePath } from '#utils/page-link'
 
 function isPdfUrl(href: string): boolean {
   const withoutQuery = href.split(/[?#]/)[0]
@@ -53,6 +55,38 @@ interface MarkdownRendererProps {
   content: string
   mode?: 'full' | 'restricted'
   anchorPrefix?: string
+  brokenLinks?: string[]
+}
+
+const NO_BROKEN_LINKS: ReadonlySet<string> = new Set()
+const BrokenLinksContext = createContext(NO_BROKEN_LINKS)
+
+function MarkdownLink({ href, children, className, node: _node, ...rest }: ComponentProps<'a'> & { node?: unknown }) {
+  const { t } = useTranslation()
+  const brokenLinks = useContext(BrokenLinksContext)
+  if (href && isPdfUrl(href)) {
+    const filename = toPlainText(children) || href.split('/').pop() || href
+    return <PdfPreview url={href} filename={filename} interactive className="my-2 h-[28rem] max-w-2xl" />
+  }
+  const linkedPath = href && brokenLinks.size > 0 ? toLinkedPagePath(href, window.location.origin) : null
+  if (linkedPath && brokenLinks.has(linkedPath)) {
+    return (
+      <a
+        href={href}
+        {...rest}
+        data-broken-link=""
+        title={t('markdown.brokenLink')}
+        className={cn('decoration-destructive decoration-dotted', className)}
+      >
+        {children}
+      </a>
+    )
+  }
+  return (
+    <a href={href} className={className} {...rest}>
+      {children}
+    </a>
+  )
 }
 
 const MARKDOWN_BODY_CLASSES = cn(
@@ -94,19 +128,7 @@ const markdownComponents = {
   h4: (props: ComponentProps<'h4'>) => <MarkdownHeading level={4} {...props} />,
   h5: (props: ComponentProps<'h5'>) => <MarkdownHeading level={5} {...props} />,
   h6: (props: ComponentProps<'h6'>) => <MarkdownHeading level={6} {...props} />,
-  a({ href, children, node: _node, ...rest }: ComponentProps<'a'> & { node?: unknown }) {
-    if (href && isPdfUrl(href)) {
-      const filename = toPlainText(children) || href.split('/').pop() || href
-      return (
-        <PdfPreview url={href} filename={filename} interactive className="my-2 h-[28rem] max-w-2xl" />
-      )
-    }
-    return (
-      <a href={href} {...rest}>
-        {children}
-      </a>
-    )
-  },
+  a: MarkdownLink,
   code({ className, children, node: _node, ...rest }: ComponentProps<'code'> & { node?: unknown }) {
     const match = /language-(\w+)/.exec(className ?? '')
     if (match) {
@@ -124,8 +146,13 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
   content,
   mode = 'restricted',
   anchorPrefix,
+  brokenLinks,
 }: MarkdownRendererProps) {
   const scopeId = useId()
+  const brokenLinkSet = useMemo(
+    () => (mode === 'full' && brokenLinks?.length ? new Set(brokenLinks) : NO_BROKEN_LINKS),
+    [mode, brokenLinks],
+  )
   const remarkPlugins: Array<unknown> =
     mode === 'full' ? [remarkGfm, [remarkMath, { singleDollarTextMath: false }]] : [remarkGfm]
   const rehypePlugins: Array<unknown> =
@@ -138,13 +165,15 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
 
   return (
     <div id={mode === 'full' ? scopeId : undefined} className={MARKDOWN_BODY_CLASSES}>
-      <ReactMarkdown
-        remarkPlugins={remarkPlugins as Parameters<typeof ReactMarkdown>[0]['remarkPlugins']}
-        rehypePlugins={rehypePlugins as Parameters<typeof ReactMarkdown>[0]['rehypePlugins']}
-        components={markdownComponents}
-      >
-        {content}
-      </ReactMarkdown>
+      <BrokenLinksContext.Provider value={brokenLinkSet}>
+        <ReactMarkdown
+          remarkPlugins={remarkPlugins as Parameters<typeof ReactMarkdown>[0]['remarkPlugins']}
+          rehypePlugins={rehypePlugins as Parameters<typeof ReactMarkdown>[0]['rehypePlugins']}
+          components={markdownComponents}
+        >
+          {content}
+        </ReactMarkdown>
+      </BrokenLinksContext.Provider>
     </div>
   )
 })
