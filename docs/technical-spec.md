@@ -391,6 +391,12 @@ Voir aussi `/pages/*path` et `/pages/tree`, qui exposent respectivement `permiss
 | GET     | /media/:id/url | selon visibilité | URL présignée                                                         |
 | DELETE  | /media/:id     | `media.delete`   | Supprimer (409 si le média est encore référencé ailleurs)             |
 
+### Import
+
+| Méthode | Route            | Auth | Description |
+| ------- | ---------------- | ---- | ----------- |
+| POST    | /imports/preview | `page.create_child` sur `parentId` (ou `page.create_root` sans `parentId`) | Multipart : `file` (`.zip` ≤ 100 Mo ou `.md`), `parentId?`, `conflict?` (`skip` par défaut, `rename`, `update`). N'écrit rien : renvoie le plan d'import (`format` détecté `nestwiki`/`obsidian`/`markdown`, arbre des pages avec chemin final, titre, tags, nombre de liens et de médias, `action` `create`/`update`/`skip` et page existante en `conflict` ; médias à téléverser ; tags existants/manquants ; droits `tag.create`/`media.upload` ; avertissements : liens non résolus, fichiers ignorés, tags non créables, médias sans `media.upload`, slugs renommés). Export NestWiki, coffre Obsidian (`[[wikilinks]]`, `![[inclusions]]`, notes de dossier, alias, tags, `%%commentaires%%`, `==surligné==`) et Markdown simple (liens relatifs). 400 si archive invalide ou chemin `..`/absolu ; 413 au-delà de 100 Mo, 500 Mo décompressés (contrôlés pendant la décompression) ou 1 000 pages. Limité à 10 requêtes/min |
+
 ### Tags
 
 | Méthode | Route                  | Auth     | Description                |

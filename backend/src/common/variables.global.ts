@@ -125,3 +125,24 @@ export const WEBHOOK_POLL_INTERVAL_MS = 30_000;
 export const WEBHOOK_PURGE_INTERVAL_MS = 3_600_000;
 export const WEBHOOK_DUE_BATCH_SIZE = 50;
 export const WEBHOOK_ERROR_MAX_LENGTH = 500;
+export const IMPORT_MAX_ARCHIVE_SIZE_MB = 100;
+export const IMPORT_MAX_ARCHIVE_SIZE_BYTES =
+  IMPORT_MAX_ARCHIVE_SIZE_MB * 1024 * 1024;
+export const IMPORT_MAX_UNCOMPRESSED_SIZE_MB = 500;
+export const IMPORT_MAX_UNCOMPRESSED_SIZE_BYTES =
+  IMPORT_MAX_UNCOMPRESSED_SIZE_MB * 1024 * 1024;
+export const IMPORT_MAX_PAGES = 1000;
+export const ATTACHMENT_MIME_TYPES_BY_EXTENSION: Record<string, string> = {
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  gif: 'image/gif',
+  webp: 'image/webp',
+  pdf: 'application/pdf',
+  txt: 'text/plain',
+  doc: 'application/msword',
+  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  xls: 'application/vnd.ms-excel',
+  xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  zip: 'application/zip',
+};

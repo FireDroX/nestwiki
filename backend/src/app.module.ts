@@ -12,6 +12,7 @@ import { CommentsModule } from './comments/comments.module.js';
 import { ThrottlerBehindProxyGuard } from './common/guards/throttler-behind-proxy.guard.js';
 import { JwtAuthModule } from './common/jwt-auth.module.js';
 import { HealthModule } from './health/health.module.js';
+import { ImportsModule } from './imports/imports.module.js';
 import { McpModule } from './mcp/mcp.module.js';
 import { MediaModule } from './media/media.module.js';
 import { MetaModule } from './meta/meta.module.js';
@@ -63,6 +64,7 @@ const GLOBAL_THROTTLE_LIMIT = 100;
     StatsModule,
     MetaModule,
     WebhooksModule,
+    ImportsModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerBehindProxyGuard }],
 })
