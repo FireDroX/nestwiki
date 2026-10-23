@@ -45,7 +45,8 @@
     "trash": "Trash",
     "administration": "Administration",
     "logout": "Sign out",
-    "toggleTheme": "Toggle theme"
+    "toggleTheme": "Toggle theme",
+    "import": "Import"
   },
   "sidebar": {
     "filterPlaceholder": "Filter pages...",
@@ -126,7 +127,8 @@
     "exportMarkdownSubtree": "Markdown with sub-pages (.zip)",
     "exportFailed": "Export failed.",
     "deleted": "Page moved to the trash.",
-    "backlinksTitle": "Pages linking here"
+    "backlinksTitle": "Pages linking here",
+    "importHere": "Import here"
   },
   "trash": {
     "title": "Trash",
@@ -615,6 +617,7 @@
         "page.deleted": "Page deleted",
         "page.trash_restored": "Page restored from the trash",
         "page.purged": "Page permanently deleted",
+        "page.imported": "Pages imported",
         "page.restored": "Version restored",
         "page.visibility_changed": "Visibility changed",
         "page.comments_enabled_changed": "Comments enabled/disabled",
@@ -922,6 +925,7 @@
       "page.deleted": "Page deleted",
       "page.trash_restored": "Page restored from the trash",
       "page.purged": "Page permanently deleted",
+      "page.imported": "Pages imported",
       "page.restored": "Version restored",
       "page.visibility_changed": "Visibility changed",
       "page.comments_enabled_changed": "Comments toggled",
@@ -953,6 +957,7 @@
       "page.deleted": "delete",
       "page.trash_restored": "edit",
       "page.purged": "delete",
+      "page.imported": "create",
       "comment.created": "comment",
       "media.uploaded": "media",
       "media.deleted": "delete",
@@ -986,5 +991,119 @@
     "headingLink": "Link to this section",
     "mermaidError": "Invalid Mermaid diagram:",
     "brokenLink": "Page not found"
+  },
+  "import": {
+    "title": "Import pages",
+    "intro": "Import an Obsidian vault, a Markdown folder or a NestWiki export: check the preview, pick the options, then run the import.",
+    "steps": {
+      "file": "File",
+      "preview": "Preview",
+      "import": "Import",
+      "report": "Report"
+    },
+    "file": {
+      "dropzone": "Drop a .zip archive or a .md file here",
+      "choose": "Choose a file",
+      "change": "Change file",
+      "formatsTitle": "Accepted formats",
+      "formatObsidian": "Zipped Obsidian vault ([[…]] links, images, folder notes, tags)",
+      "formatMarkdown": "Zipped Markdown folder with relative links between files",
+      "formatNestwiki": "NestWiki export (.zip or .md)",
+      "limits": "Up to {{archive}} MB, {{uncompressed}} MB once uncompressed and {{pages}} pages.",
+      "invalidType": "Choose a .zip or .md file.",
+      "tooLarge": "This file is larger than {{size}} MB.",
+      "destinationLabel": "Destination",
+      "destinationHint": "Imported pages will be created under this page.",
+      "root": "Wiki root",
+      "chooseDestination": "Choose the destination",
+      "searchPage": "Search a page...",
+      "noPageFound": "No page found.",
+      "analyze": "Analyze",
+      "analyzing": "Analyzing…"
+    },
+    "preview": {
+      "formats": {
+        "nestwiki": "NestWiki export",
+        "obsidian": "Obsidian vault",
+        "markdown": "Markdown"
+      },
+      "pages_one": "{{count}} page",
+      "pages_other": "{{count}} pages",
+      "media_one": "{{count}} media file ({{size}})",
+      "media_other": "{{count}} media files ({{size}})",
+      "destination": "Destination: {{path}}",
+      "conflicts_one": "{{count}} page already exists at the same place.",
+      "conflicts_other": "{{count}} pages already exist at the same place.",
+      "pagesTitle": "Pages",
+      "conflictBadge": "Already exists",
+      "actions": {
+        "create": "New",
+        "update": "Updated",
+        "skip": "Skipped"
+      },
+      "linkCount_one": "{{count}} link",
+      "linkCount_other": "{{count}} links",
+      "mediaCount_one": "{{count}} media file",
+      "mediaCount_other": "{{count}} media files",
+      "optionsTitle": "Options",
+      "conflictLabel": "Pages that already exist",
+      "conflictModes": {
+        "skip": "Keep the existing page",
+        "rename": "Import under another name (-2)",
+        "update": "Add a new version"
+      },
+      "visibilityLabel": "Visibility of new pages",
+      "private": "Private",
+      "public": "Public",
+      "createMissingTags_one": "Create the missing tag: {{tags}}",
+      "createMissingTags_other": "Create the {{count}} missing tags: {{tags}}",
+      "back": "Back",
+      "importButton_one": "Import {{count}} page",
+      "importButton_other": "Import {{count}} pages",
+      "nothingToImport": "No page will be created or updated with these options."
+    },
+    "warnings": {
+      "title": "Warnings",
+      "unresolvedLinks": "Unresolved links ({{count}})",
+      "unresolvedLink": "{{page}} → {{target}}",
+      "ignoredFiles": "Ignored files ({{count}})",
+      "missingTags": "Tags not created ({{count}})",
+      "missingTagsHint": "These tags do not exist and will not be created.",
+      "mediaWithoutUpload_one": "{{count}} media file will not be imported: uploading media requires a permission.",
+      "mediaWithoutUpload_other": "{{count}} media files will not be imported: uploading media requires a permission.",
+      "renamedSlugs": "Renamed addresses ({{count}})",
+      "renamedSlug": "{{from}} → {{page}}",
+      "ignoredReasons": {
+        "symlink": "symbolic link",
+        "encrypted": "encrypted",
+        "unsupported_type": "unsupported type",
+        "too_large": "over 20 MB",
+        "unreferenced": "used by no note"
+      },
+      "renameReasons": {
+        "reserved": "reserved name",
+        "duplicate": "duplicate",
+        "conflict": "existing page"
+      }
+    },
+    "progress": {
+      "uploading": "Uploading the file… {{percent}} %",
+      "processing": "Creating the pages…"
+    },
+    "report": {
+      "title": "Import complete",
+      "created": "Created",
+      "updated": "Updated",
+      "skipped": "Skipped",
+      "media": "Media",
+      "tags": "Tags created",
+      "skippedTitle": "Skipped pages",
+      "skippedReasons": {
+        "exists": "already exists",
+        "forbidden": "insufficient permissions"
+      },
+      "open": "Open",
+      "again": "New import"
+    }
   }
 }

@@ -20,6 +20,7 @@ import { AdminUsers } from '#pages/AdminUsers'
 import { AdminWebhookDetail } from '#pages/AdminWebhookDetail'
 import { AdminWebhooks } from '#pages/AdminWebhooks'
 import { Home } from '#pages/Home'
+import { ImportWizard } from '#pages/ImportWizard'
 import { Login } from '#pages/Login'
 import { OAuthConsent } from '#pages/OAuthConsent'
 import { PageCreate } from '#pages/PageCreate'
@@ -59,6 +60,7 @@ export function App() {
           <Route element={<ProtectedRoute />}>
             <Route path="/profile" element={<Profile />} />
             <Route path="/trash" element={<Trash />} />
+            <Route path="/import" element={<ImportWizard />} />
           </Route>
           <Route element={<ProtectedRoute roles={[UserRole.Admin]} />}>
             <Route path="/admin/settings" element={<AdminSettings />} />

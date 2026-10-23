@@ -27,6 +27,7 @@
 - **MCP server** — let Claude or any MCP-compatible assistant search, read and edit the wiki with the permissions of the user it acts for, via API keys or OAuth 2.0.
 - **Link previews** — rich Open Graph and Discord cards for public pages.
 - **Outgoing webhooks** — notify Discord, Slack, n8n or your own service when pages change or comments are posted, with HMAC-signed requests, automatic retries and a delivery log.
+- **Import from Obsidian or Markdown** — a step-by-step wizard turns a zipped Obsidian vault, a Markdown folder or a NestWiki export into pages: wikilinks, embeds, folder notes, tags and media are converted, with a preview of the resulting tree, conflict handling and an all-or-nothing import.
 - **Administration** — users, groups, system settings, admin audit log and user activity log.
 - **Security by default** — refuses to start with weak or default secrets, account lockout after repeated failed logins, breached-password checks, optional Cloudflare Turnstile on sign-up and login.
 - **English and French** user interface, light and dark themes.

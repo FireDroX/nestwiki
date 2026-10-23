@@ -45,7 +45,8 @@
     "trash": "Corbeille",
     "administration": "Administration",
     "logout": "Déconnexion",
-    "toggleTheme": "Changer de thème"
+    "toggleTheme": "Changer de thème",
+    "import": "Importer"
   },
   "sidebar": {
     "filterPlaceholder": "Filtrer les pages...",
@@ -126,7 +127,8 @@
     "exportMarkdownSubtree": "Markdown avec les sous-pages (.zip)",
     "exportFailed": "L'export a échoué.",
     "deleted": "Page déplacée dans la corbeille.",
-    "backlinksTitle": "Pages qui pointent ici"
+    "backlinksTitle": "Pages qui pointent ici",
+    "importHere": "Importer ici"
   },
   "trash": {
     "title": "Corbeille",
@@ -615,6 +617,7 @@
         "page.deleted": "Page supprimée",
         "page.trash_restored": "Page restaurée depuis la corbeille",
         "page.purged": "Page supprimée définitivement",
+        "page.imported": "Pages importées",
         "page.restored": "Version restaurée",
         "page.visibility_changed": "Visibilité modifiée",
         "page.comments_enabled_changed": "Commentaires activés/désactivés",
@@ -922,6 +925,7 @@
       "page.deleted": "Page supprimée",
       "page.trash_restored": "Page restaurée depuis la corbeille",
       "page.purged": "Page supprimée définitivement",
+      "page.imported": "Pages importées",
       "page.restored": "Version restaurée",
       "page.visibility_changed": "Visibilité modifiée",
       "page.comments_enabled_changed": "Commentaires activés/désactivés",
@@ -953,6 +957,7 @@
       "page.deleted": "delete",
       "page.trash_restored": "edit",
       "page.purged": "delete",
+      "page.imported": "create",
       "comment.created": "comment",
       "media.uploaded": "media",
       "media.deleted": "delete",
@@ -986,5 +991,119 @@
     "headingLink": "Lien vers cette section",
     "mermaidError": "Diagramme Mermaid invalide :",
     "brokenLink": "Page introuvable"
+  },
+  "import": {
+    "title": "Importer des pages",
+    "intro": "Importez un coffre Obsidian, un dossier Markdown ou un export NestWiki : vérifiez l’aperçu, choisissez les options, puis lancez l’import.",
+    "steps": {
+      "file": "Fichier",
+      "preview": "Aperçu",
+      "import": "Import",
+      "report": "Rapport"
+    },
+    "file": {
+      "dropzone": "Glissez une archive .zip ou un fichier .md ici",
+      "choose": "Choisir un fichier",
+      "change": "Changer de fichier",
+      "formatsTitle": "Formats acceptés",
+      "formatObsidian": "Coffre Obsidian zippé (liens [[…]], images, notes de dossier, tags)",
+      "formatMarkdown": "Dossier Markdown zippé, avec liens relatifs entre fichiers",
+      "formatNestwiki": "Export NestWiki (.zip ou .md)",
+      "limits": "Jusqu’à {{archive}} Mo, {{uncompressed}} Mo une fois décompressé et {{pages}} pages.",
+      "invalidType": "Choisissez un fichier .zip ou .md.",
+      "tooLarge": "Ce fichier dépasse {{size}} Mo.",
+      "destinationLabel": "Destination",
+      "destinationHint": "Les pages importées seront créées sous cette page.",
+      "root": "Racine du wiki",
+      "chooseDestination": "Choisir la destination",
+      "searchPage": "Rechercher une page...",
+      "noPageFound": "Aucune page trouvée.",
+      "analyze": "Analyser",
+      "analyzing": "Analyse en cours…"
+    },
+    "preview": {
+      "formats": {
+        "nestwiki": "Export NestWiki",
+        "obsidian": "Coffre Obsidian",
+        "markdown": "Markdown"
+      },
+      "pages_one": "{{count}} page",
+      "pages_other": "{{count}} pages",
+      "media_one": "{{count}} média ({{size}})",
+      "media_other": "{{count}} médias ({{size}})",
+      "destination": "Destination : {{path}}",
+      "conflicts_one": "{{count}} page existe déjà au même endroit.",
+      "conflicts_other": "{{count}} pages existent déjà au même endroit.",
+      "pagesTitle": "Pages",
+      "conflictBadge": "Existe déjà",
+      "actions": {
+        "create": "Nouvelle",
+        "update": "Mise à jour",
+        "skip": "Ignorée"
+      },
+      "linkCount_one": "{{count}} lien",
+      "linkCount_other": "{{count}} liens",
+      "mediaCount_one": "{{count}} média",
+      "mediaCount_other": "{{count}} médias",
+      "optionsTitle": "Options",
+      "conflictLabel": "Pages déjà présentes",
+      "conflictModes": {
+        "skip": "Garder la page existante",
+        "rename": "Importer sous un autre nom (-2)",
+        "update": "Ajouter une nouvelle version"
+      },
+      "visibilityLabel": "Visibilité des nouvelles pages",
+      "private": "Privées",
+      "public": "Publiques",
+      "createMissingTags_one": "Créer le tag manquant : {{tags}}",
+      "createMissingTags_other": "Créer les {{count}} tags manquants : {{tags}}",
+      "back": "Retour",
+      "importButton_one": "Importer {{count}} page",
+      "importButton_other": "Importer {{count}} pages",
+      "nothingToImport": "Aucune page ne sera créée ni mise à jour avec ces options."
+    },
+    "warnings": {
+      "title": "Avertissements",
+      "unresolvedLinks": "Liens non résolus ({{count}})",
+      "unresolvedLink": "{{page}} → {{target}}",
+      "ignoredFiles": "Fichiers ignorés ({{count}})",
+      "missingTags": "Tags non créés ({{count}})",
+      "missingTagsHint": "Ces tags n’existent pas et ne seront pas créés.",
+      "mediaWithoutUpload_one": "{{count}} média ne sera pas importé : il faut le droit de téléverser des médias.",
+      "mediaWithoutUpload_other": "{{count}} médias ne seront pas importés : il faut le droit de téléverser des médias.",
+      "renamedSlugs": "Adresses renommées ({{count}})",
+      "renamedSlug": "{{from}} → {{page}}",
+      "ignoredReasons": {
+        "symlink": "lien symbolique",
+        "encrypted": "chiffré",
+        "unsupported_type": "type non pris en charge",
+        "too_large": "plus de 20 Mo",
+        "unreferenced": "utilisé par aucune note"
+      },
+      "renameReasons": {
+        "reserved": "nom réservé",
+        "duplicate": "doublon",
+        "conflict": "page existante"
+      }
+    },
+    "progress": {
+      "uploading": "Envoi du fichier… {{percent}} %",
+      "processing": "Création des pages…"
+    },
+    "report": {
+      "title": "Import terminé",
+      "created": "Créées",
+      "updated": "Mises à jour",
+      "skipped": "Ignorées",
+      "media": "Médias",
+      "tags": "Tags créés",
+      "skippedTitle": "Pages ignorées",
+      "skippedReasons": {
+        "exists": "existe déjà",
+        "forbidden": "droits insuffisants"
+      },
+      "open": "Ouvrir",
+      "again": "Nouvel import"
+    }
   }
 }
