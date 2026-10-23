@@ -2,6 +2,11 @@
 
 All notable changes to NestWiki are documented here, newest first, one `## <version> — <date>` section per release. This file is the single source for the in-app "Notes de version" page, which groups releases by minor version (`1.0`, `0.31`…). Entries up to 0.31.10 were written in French, the project's original language.
 
+## 1.3.8 — 2026-10-23
+
+- Sécurité : mise à jour des dépendances concernées par 3 alertes Dependabot — `follow-redirects` 1.16.1 (deux failles hautes : des en-têtes d'identification pouvaient être transmis à un autre domaine lors d'une redirection) et `hono` 4.13.11 (les middlewares pouvaient être contournés sur les chemins de fichiers statiques), déjà embarqué depuis la 1.3.2.
+- Sécurité : mise à jour des dépendances signalées par `pnpm audit` — `dompurify` 3.4.17 utilisé par les diagrammes Mermaid (une faille critique et une haute de contournement du nettoyage HTML), `ip-address` 10.7.4 et `stream-json` 3.7.0 (blocages du serveur par une entrée malveillante), et `vitest` 4.1.12 pour les tests.
+
 ## 1.3.7 — 2026-10-23
 
 - Nouvel assistant d'import : **Importer** dans le menu de votre avatar, ou **Importer ici** sur une page (à côté d'« Exporter ») pour créer les pages dessous. Il apparaît si vous pouvez créer des pages à la racine ou des sous-pages quelque part.
