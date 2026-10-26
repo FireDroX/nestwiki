@@ -2,6 +2,11 @@
 
 All notable changes to NestWiki are documented here, newest first, one `## <version> — <date>` section per release. This file is the single source for the in-app "Notes de version" page, which groups releases by minor version (`1.0`, `0.31`…). Entries up to 0.31.10 were written in French, the project's original language.
 
+## 1.3.9 — 2026-10-26
+
+- Sécurité : mise à jour des dépendances signalées par `pnpm audit` — `body-parser` 2.4.0 et `multer` 2.5.0 (deux failles hautes : un corps de requête compressé ou un envoi de fichier interrompu pouvait bloquer le serveur), `fast-uri` 3.1.9 (quatre failles moyennes et faibles d'interprétation d'URL) et `undici` 6.29.1 pour les outils de développement et de test.
+- Outils : `shadcn` 4.22.1, qui passe à `zod` 4 (faille haute d'épuisement mémoire dans `zod` 3), utilisé uniquement pour générer les composants d'interface.
+
 ## 1.3.8 — 2026-10-23
 
 - Sécurité : mise à jour des dépendances concernées par 3 alertes Dependabot — `follow-redirects` 1.16.1 (deux failles hautes : des en-têtes d'identification pouvaient être transmis à un autre domaine lors d'une redirection) et `hono` 4.13.11 (les middlewares pouvaient être contournés sur les chemins de fichiers statiques), déjà embarqué depuis la 1.3.2.
