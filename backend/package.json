@@ -87,7 +87,7 @@
     "@types/archiver": "^8.0.0",
     "@types/cookie-parser": "^1.4.10",
     "@types/express": "^5.0.0",
-    "@types/node": "^26.5.1",
+    "@types/node": "^26.6.5",
     "@types/passport-jwt": "^4.0.1",
     "@types/supertest": "^7.0.0",
     "@types/yauzl": "^3.4.0",
