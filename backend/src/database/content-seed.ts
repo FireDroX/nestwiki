@@ -115,6 +115,18 @@ const PAGE_TREE_SEED: PageSeed[] = [
     <strong>Marquages disponibles</strong>
     <span>Markdown, HTML/CSS et LaTeX dans le contenu d'une page</span>
   </a>
+  <a class="doc-link-card" href="/pages/documentation/retroliens-liens-casses">
+    <strong>Rétroliens et liens cassés</strong>
+    <span>Pages qui pointent ici et liens vers des pages introuvables</span>
+  </a>
+  <a class="doc-link-card" href="/pages/documentation/webhooks">
+    <strong>Webhooks</strong>
+    <span>Prévenir Discord, Slack ou n8n des changements du wiki</span>
+  </a>
+  <a class="doc-link-card" href="/pages/documentation/importer-obsidian-markdown">
+    <strong>Importer depuis Obsidian ou Markdown</strong>
+    <span>Créer des pages depuis un coffre, un dossier ou un export</span>
+  </a>
   <a class="doc-link-card" href="/pages/documentation/notes-de-version">
     <strong>Notes de version</strong>
     <span>Historique de tous les changements</span>
@@ -643,6 +655,7 @@ Ce même guide est envoyé dans les instructions du serveur à la connexion : la
 | \`wiki_create_page\` | Créer une page (slug, titre, contenu, page parente, visibilité) |
 | \`wiki_update_page\` | Modifier titre/contenu (crée une nouvelle version) |
 | \`wiki_get_page\` | Récupérer une page par son chemin complet (ex. \`docs/guide\`) |
+| \`wiki_get_backlinks\` | Lister les pages qui contiennent un lien vers une page (par id ou chemin complet) |
 | \`wiki_list_pages\` | Lister l'arbre entier, ou les enfants directs d'une page |
 | \`wiki_delete_page\` | Déplacer une page dans la corbeille (\`cascade\` obligatoire si elle a des enfants) |
 | \`wiki_list_trash\` | Lister les pages de la corbeille que la clé peut restaurer |
@@ -862,6 +875,14 @@ La syntaxe [CommonMark](https://commonmark.org/) + [GFM](https://github.github.c
 </div>
 </div>
 
+## Liens entre pages
+
+<span class="mode-badge pages-only">Pages uniquement</span>
+
+Pour pointer vers une autre page du wiki, écrivez son chemin complet depuis la racine : \`[Installation](/pages/documentation/guide-demarrage/installation)\`, éventuellement suivi d'une ancre (\`/pages/documentation#endpoints\`). L'adresse complète de l'instance (\`https://<instance>/pages/...\`) fonctionne aussi. Ces liens alimentent la section « Pages qui pointent ici » de la page visée.
+
+Un lien vers une page introuvable (jamais créée, déplacée ou mise à la corbeille) est **souligné en pointillés rouges**, avec l'infobulle « Page introuvable » ; il reste cliquable. Voir [Rétroliens et liens cassés](/pages/documentation/retroliens-liens-casses) pour le détail.
+
 ## Ancres et sommaire
 
 <span class="mode-badge pages-only">Pages uniquement</span>
@@ -1050,10 +1071,290 @@ flowchart LR
 | Markdown / GFM | ✅ | ✅ |
 | Encadrés (\`> [!NOTE]\`…) | ✅ | ✅ |
 | Ancres sur les titres et sommaire | ✅ | ❌ |
+| Liens internes signalés quand la page est introuvable | ✅ | ❌ |
 | HTML arbitraire (sauf balises interdites) | ✅ | ❌ (HTML très restreint) |
 | CSS (\`<style>\`, scopé) | ✅ | ❌ |
 | LaTeX (\`$$...$$\`) | ✅ | ❌ |
 | Diagrammes Mermaid | ✅ | ❌ |`,
+      },
+      {
+        slug: 'retroliens-liens-casses',
+        title: 'Rétroliens et liens cassés',
+        tags: ['documentation', 'guide'],
+        content: `# Rétroliens et liens cassés
+
+NestWiki tient un index des liens entre pages. Il sert à afficher, sous chaque page, les pages qui pointent vers elle, et à repérer les liens vers des pages qui n'existent pas ou plus.
+
+## Ce qui compte comme un lien interne
+
+- Un lien Markdown (\`[texte](/pages/...)\`), une définition de référence (\`[ref]: /pages/...\`) ou un attribut HTML \`href\`/\`src\` dont l'adresse commence par \`/pages/\` ou par l'adresse complète de l'instance suivie de \`/pages/\`.
+- L'ancre (\`#section\`), les paramètres (\`?x=1\`), la barre finale et la casse sont ignorés : \`/pages/Documentation/#endpoints\` compte comme un lien vers \`/pages/documentation\`.
+- Ne comptent pas : les liens écrits dans un bloc de code ou du code en ligne, les liens externes, les médias et les liens vers une section de la même page (\`#ancre\`).
+
+Seule la version actuelle d'une page est indexée : un lien retiré dans une nouvelle version disparaît de l'index.
+
+## Pages qui pointent ici
+
+Sous le contenu d'une page, avant les commentaires, la section « Pages qui pointent ici » liste les pages qui contiennent un lien vers elle, avec leur fil d'Ariane. Vous n'y voyez que les pages que vous avez le droit de lire, et une page mise à la corbeille n'y figure plus. La section est masquée quand aucune page ne pointe vers celle-ci.
+
+La même liste est disponible par l'API (\`GET /api/pages/:id/backlinks\`, avec \`?subtree=true\` pour inclure les liens vers les sous-pages) et par l'outil MCP \`wiki_get_backlinks\`.
+
+## Quand un lien est cassé
+
+Un lien est cassé quand aucune page ne se trouve à son chemin : la page n'a jamais été créée, elle a été déplacée ailleurs dans l'arborescence sans mettre à jour ses liens, ou elle est dans la corbeille. Il redevient valide de lui-même dès qu'une page reprend ce chemin, par exemple quand la page est restaurée depuis la corbeille.
+
+## Déplacer une page sans casser ses liens
+
+Une page est adressée par son chemin complet : la déplacer change son adresse et celle de toutes ses sous-pages. Dans l'éditeur, sous « Page parente », NestWiki indique combien de pages contiennent des liens vers la page ou ses sous-pages (la page elle-même comprise si elle pointe vers ses sous-pages), avec la case « Mettre à jour ces liens au déplacement », cochée par défaut.
+
+Case cochée, chaque page concernée reçoit, juste après le déplacement, une nouvelle version avec les chemins corrigés :
+
+- l'ancre et les paramètres sont conservés, et une adresse complète de l'instance reste une adresse complète ;
+- le code (blocs et code en ligne) n'est jamais modifié ;
+- les liens entre pages du sous-arbre déplacé sont corrigés aussi ;
+- une page qui contient plusieurs liens concernés ne reçoit qu'une seule nouvelle version, à votre nom, avec le résumé « Liens mis à jour après le déplacement de « titre » ». L'historique garde l'ancienne version, comme pour toute modification.
+
+Les pages en corbeille sont corrigées aussi, pour que leurs liens restent valides si elles sont restaurées. Seules les pages que vous avez le droit de modifier sont corrigées. Les autres gardent leurs liens, désormais cassés : la notification qui suit le déplacement les compte, et elles apparaissent dans l'onglet « Liens cassés ». Aucune redirection n'est créée depuis l'ancien chemin.
+
+Par l'API, \`PATCH /api/pages/:id/move\` accepte \`updateLinks: true\` (désactivé par défaut) et renvoie \`linksUpdated\`, \`pagesUpdated\` et \`pagesSkipped\`.
+
+Un lien vers une page privée que vous n'avez pas le droit de lire est signalé de la même façon : NestWiki ne révèle pas qu'elle existe.
+
+## Où voir les liens cassés
+
+- **Dans la page** : le lien est souligné en pointillés rouges, avec l'infobulle « Page introuvable ». Il reste cliquable.
+- **À l'enregistrement** : un avertissement liste les chemins introuvables. Il n'empêche pas l'enregistrement.
+- **Administration → Liens cassés** (administrateurs) : tous les liens cassés du wiki, avec la page source (lien vers son éditeur) et le chemin visé. Aussi disponible par l'API : \`GET /api/admin/links/broken\`.`,
+      },
+      {
+        slug: 'webhooks',
+        title: 'Webhooks',
+        tags: ['documentation', 'guide', 'api'],
+        content: `# Webhooks
+
+Un webhook prévient un autre service (Discord, Slack, n8n, un script maison…) quand quelque chose change dans le wiki : NestWiki envoie une requête \`POST\` signée à l'adresse de votre choix pour chaque événement coché.
+
+Les webhooks se gèrent dans **Administration → Webhooks** (administrateurs uniquement), ou par l'API \`/api/admin/webhooks\`. Les adresses du réseau local (\`http://192.168.1.20:5678/…\`) sont acceptées.
+
+## Créer un webhook
+
+1. **Administration → Webhooks → Nouveau webhook**.
+2. Donnez un nom et collez l'adresse. Une adresse \`discord.com/api/webhooks/…\` ou \`hooks.slack.com/…\` sélectionne d'elle-même le format Discord ou Slack ; sinon le format JSON est utilisé.
+3. Cochez les événements à envoyer, ou « Tout cocher ».
+4. Optionnel : limitez le webhook au sous-arbre d'une page. Seuls les événements de cette page et de ses sous-pages seront envoyés.
+5. Optionnel : cochez « Inclure les pages privées ». Sans cette case, les événements des pages privées ne sont jamais envoyés.
+6. Sur la fiche du webhook, cliquez sur « Envoyer un test » pour vérifier que le service répond.
+
+> [!WARNING] Pages privées
+> Avec « Inclure les pages privées », les titres et chemins des pages privées partent vers le service externe. Le contenu des pages et des commentaires, lui, n'est jamais envoyé, quel que soit le réglage.
+
+## Événements
+
+| Événement | Quand | Données (\`data\`) |
+| --- | --- | --- |
+| \`page.created\` | Une page est créée | \`page\` |
+| \`page.updated\` | Une nouvelle version est enregistrée, y compris par une restauration de version ou une mise à jour des liens après un déplacement |\`page\`, \`versionId\`, \`changeSummary\` (ou \`null\`) |
+| \`page.moved\` | Une page est déplacée sous une autre page parente | \`page\`, \`fromPath\`, \`toPath\` |
+| \`page.deleted\` | Une page est mise à la corbeille | \`page\`, \`descendantCount\` (sous-pages emportées avec elle) |
+| \`page.restored\` | Une page sort de la corbeille | \`page\` |
+| \`page.published\` | Une page privée devient publique | \`page\` |
+| \`comment.created\` | Un commentaire est ajouté | \`page\`, \`commentId\` |
+| \`pages.imported\` | Un import de pages se termine | \`pageCount\` (pages créées et mises à jour), \`createdCount\`, \`updatedCount\`, \`page\` (page racine de l'import, si elle existe) |
+| \`webhook.test\` | Bouton « Envoyer un test » | \`message\` |
+
+\`page\` décrit la page concernée : \`id\`, \`title\`, \`path\` (chemin complet, ex. \`/documentation/webhooks\`) et \`url\` (adresse absolue de la page). Un événement sans page, comme un import à la racine, n'est envoyé qu'aux webhooks qui ne sont pas limités à un sous-arbre.
+
+## Format JSON
+
+Le corps est une enveloppe JSON :
+
+\`\`\`json
+{
+  "id": "0b6c0f4e-2c1a-4b8e-9f3d-5a7e1c2d3b4a",
+  "event": "page.updated",
+  "occurredAt": "2026-10-22T08:30:00.000Z",
+  "instance": { "url": "https://wiki.example.com", "version": "1.3.4" },
+  "actor": { "id": "5f1e…", "displayName": "Alice" },
+  "data": {
+    "page": {
+      "id": "9a2b…",
+      "title": "Installation",
+      "path": "/documentation/guide-demarrage/installation",
+      "url": "https://wiki.example.com/pages/documentation/guide-demarrage/installation"
+    },
+    "versionId": "c3d4…",
+    "changeSummary": "Ajout de la section Docker"
+  }
+}
+\`\`\`
+
+\`actor\` est l'utilisateur à l'origine de l'événement, ou \`null\` s'il est inconnu. \`instance.url\` vient de la variable \`FRONTEND_URL\` du serveur.
+
+Chaque requête porte ces en-têtes :
+
+| En-tête | Valeur |
+| --- | --- |
+| \`Content-Type\` | \`application/json\` |
+| \`User-Agent\` | \`NestWiki/<version>\` |
+| \`X-NestWiki-Event\` | le nom de l'événement |
+| \`X-NestWiki-Delivery\` | l'identifiant de l'envoi (le même à chaque reprise) |
+| \`X-NestWiki-Timestamp\` | l'heure de la tentative, en secondes Unix |
+| \`X-NestWiki-Signature\` | \`sha256=<signature>\` |
+
+## Formats Discord et Slack
+
+- **Discord** : le corps est un message de webhook Discord, envoyé sous le nom « NestWiki », avec un embed : titre « Page modifiée : Installation » qui pointe vers la page, description (résumé de modification, ancien et nouveau chemin, nombre de sous-pages), couleur selon l'événement, auteur, adresse du wiki et heure.
+- **Slack** : le corps est un message Slack (\`text\` et \`blocks\` en mrkdwn) avec le même titre cliquable, la même description et, en dessous, l'auteur et l'adresse du wiki.
+
+Dans ces deux formats, l'enveloppe JSON n'est pas envoyée, mais les en-têtes et la signature restent les mêmes.
+
+## Vérifier la signature
+
+Chaque webhook a son secret (\`whsec_…\`), visible sur sa fiche. La signature est un HMAC-SHA256, en hexadécimal, de la chaîne \`<timestamp>.<corps>\` : la valeur de \`X-NestWiki-Timestamp\`, un point, puis le corps de la requête **tel qu'il a été reçu**, octet pour octet. Calculez-la sur le corps brut, avant tout décodage JSON.
+
+Exemple avec Node.js et Express :
+
+\`\`\`js
+import express from 'express';
+import { createHmac, timingSafeEqual } from 'node:crypto';
+
+const SECRET = process.env.NESTWIKI_WEBHOOK_SECRET;
+const MAX_AGE_SECONDS = 300;
+const app = express();
+
+app.post('/nestwiki', express.raw({ type: 'application/json' }), (req, res) => {
+  const timestamp = req.get('X-NestWiki-Timestamp') ?? '';
+  const signature = req.get('X-NestWiki-Signature') ?? '';
+  const expected =
+    'sha256=' +
+    createHmac('sha256', SECRET)
+      .update(timestamp + '.' + req.body.toString('utf8'))
+      .digest('hex');
+
+  const valid =
+    signature.length === expected.length &&
+    timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
+  const fresh = Math.abs(Date.now() / 1000 - Number(timestamp)) < MAX_AGE_SECONDS;
+  if (!valid || !fresh) {
+    return res.sendStatus(401);
+  }
+
+  const event = JSON.parse(req.body.toString('utf8'));
+  console.log(event.event, event.data.page?.title);
+  res.sendStatus(204);
+});
+
+app.listen(3001);
+\`\`\`
+
+Refuser un timestamp trop ancien empêche de rejouer une requête interceptée. Si le secret a fuité, régénérez-le depuis la fiche du webhook : l'ancien cesse immédiatement de fonctionner, pensez à reporter le nouveau dans le service qui reçoit les envois.
+
+## Envois, reprises et désactivation automatique
+
+- Les envois partent toujours en arrière-plan : ils ne ralentissent jamais l'enregistrement d'une page.
+- Un envoi réussit quand le service répond par un code 2xx en moins de 10 secondes. Les redirections ne sont pas suivies : une réponse 3xx est un échec immédiat, sans reprise. Utilisez l'adresse finale (souvent en \`https://\`).
+- En cas d'échec, NestWiki réessaie **après 1 min, 5 min, 30 min, 2 h puis 6 h**, soit 6 tentatives au plus. Les reprises survivent à un redémarrage du serveur.
+- Pas de reprise sur une réponse 4xx (l'adresse ou la requête est refusée), sauf 408 et 429.
+- Après **20 envois consécutifs en échec** (toutes reprises épuisées), le webhook est **désactivé automatiquement** : la liste l'affiche « Désactivé automatiquement » et les envois en attente sont abandonnés. Corrigez le problème puis réactivez-le en le modifiant : le compteur d'échecs repart de zéro. Un envoi réussi remet aussi le compteur à zéro.
+- Le bouton « Envoyer un test » ne fait qu'une tentative, sans reprise, et ne compte pas dans les échecs.
+
+## Journal des envois
+
+La fiche d'un webhook liste ses envois, du plus récent au plus ancien, filtrables par statut (en attente, réussi, échec) : date, événement, code HTTP, durée, nombre de tentatives et prochaine tentative. Cliquez sur un envoi pour voir le contenu exact envoyé et la dernière erreur. « Renvoyer » crée un nouvel envoi au même contenu, tenté immédiatement puis repris en cas d'échec ; le renvoi d'un test ne fait, comme le test, qu'une tentative. Un webhook désactivé ne peut pas renvoyer d'envoi : réactivez-le d'abord. Les envois sont gardés 30 jours.
+
+Les créations, modifications, suppressions et régénérations de secret sont inscrites au journal d'audit.
+
+## Recette : Discord
+
+1. Dans Discord, ouvrez **Paramètres du salon → Intégrations → Webhooks → Nouveau webhook**, puis **Copier l'URL du webhook**.
+2. Dans NestWiki, **Administration → Webhooks → Nouveau webhook** : collez l'adresse, le format Discord est sélectionné tout seul.
+3. Cochez par exemple \`page.created\`, \`page.updated\` et \`comment.created\`, puis cliquez sur « Envoyer un test » sur la fiche : un message « Test du webhook NestWiki » arrive dans le salon.
+
+Slack fonctionne de la même façon avec l'adresse d'une application « Incoming Webhooks » (\`https://hooks.slack.com/services/…\`).
+
+## Recette : n8n
+
+1. Dans n8n, créez un workflow qui commence par un nœud **Webhook** : méthode \`POST\`, un chemin de votre choix (ex. \`nestwiki\`).
+2. Copiez son adresse (« Test URL » pendant la mise au point, « Production URL » une fois le workflow activé) et créez dans NestWiki un webhook au format **JSON** avec cette adresse.
+3. Cliquez sur « Envoyer un test » : n8n reçoit l'événement \`webhook.test\`.
+4. Dans les nœuds suivants, l'enveloppe est disponible dans \`{{ $json.body }}\` : par exemple \`{{ $json.body.event }}\` pour le nom de l'événement et \`{{ $json.body.data.page.url }}\` pour l'adresse de la page. Un nœud **Switch** sur \`{{ $json.body.event }}\` permet de traiter chaque événement différemment.
+
+Les en-têtes, dont la signature, sont dans \`{{ $json.headers }}\`. Pour vérifier la signature dans n8n, activez l'option « Raw Body » du nœud Webhook et appliquez la méthode décrite plus haut dans un nœud Code ou Crypto.`,
+      },
+      {
+        slug: 'importer-obsidian-markdown',
+        title: 'Importer depuis Obsidian ou Markdown',
+        tags: ['documentation', 'guide'],
+        content: `# Importer depuis Obsidian ou Markdown
+
+L'assistant d'import crée d'un coup toute une arborescence de pages à partir d'un coffre Obsidian, d'un dossier de fichiers Markdown ou d'un export NestWiki. Il s'ouvre depuis le menu de votre avatar (**Importer**) ou depuis une page (**Importer ici**, à côté d'« Exporter ») : les pages importées sont alors créées sous cette page.
+
+Il faut le droit de créer des sous-pages sur la page de destination, ou de créer des pages racines pour importer à la racine du wiki.
+
+## Les étapes
+
+1. **Fichier** : glissez une archive \`.zip\` ou un fichier \`.md\`, puis choisissez la destination.
+2. **Aperçu** : NestWiki lit l'archive sans rien créer et affiche l'arbre des pages avec leur chemin final. Les pages qui existent déjà au même endroit sont signalées, et les avertissements sont regroupés : liens non résolus, fichiers ignorés, tags qui ne seront pas créés, médias, adresses renommées.
+3. **Import** : choisissez les options puis lancez l'import. La barre indique l'envoi du fichier, puis la création des pages.
+4. **Rapport** : nombre de pages créées, mises à jour et ignorées, médias et tags, avec un bouton pour ouvrir la page importée.
+
+## Formats acceptés
+
+- **Coffre Obsidian** : zippez le dossier du coffre. Le dossier \`.obsidian/\` et les fichiers cachés sont ignorés.
+- **Dossier Markdown** : des fichiers \`.md\` organisés en dossiers, avec des liens relatifs entre eux (\`../autre.md\`, \`./image.png\`, avec ou sans extension).
+- **Export NestWiki** : l'archive produite par « Exporter → Markdown avec les sous-pages (.zip) », ou un seul fichier \`.md\`.
+
+## Arborescence, titres et adresses
+
+- Chaque dossier devient une page parente. Son contenu vient de sa note de dossier si elle existe : \`Projet/Projet.md\`, \`Projet.md\` à côté du dossier \`Projet/\`, ou \`index.md\` / \`README.md\` dans le dossier. Sinon la page contient seulement son titre.
+- Le titre vient du \`title\` du frontmatter, sinon du premier titre \`# \`, sinon du nom du fichier. Le frontmatter est retiré du contenu, et une note qui ne commence pas par \`# Titre\` le reçoit.
+- L'adresse de chaque page est tirée du nom du fichier ou du dossier (\`Été à Paris.md\` → \`ete-a-paris\`). Un nom réservé (\`trash\`, \`tags\`…) ou un doublon au même niveau reçoit un suffixe \`-2\`, \`-3\`, listé dans les avertissements.
+
+## Conversion Obsidian → NestWiki
+
+| Obsidian | Dans NestWiki |
+| --- | --- |
+| \`[[Note]]\`, \`[[Note\\|texte]]\` | Lien vers le chemin complet de la page importée |
+| \`[[Note#Titre]]\`, \`[[#Titre]]\` | Lien vers la section, ancre au format NestWiki |
+| \`![[image.png]]\` | Image téléversée dans la médiathèque |
+| \`![[image.png\\|300]]\` | \`<img width="300">\` (largeur conservée) |
+| \`![[Note]]\` (inclusion) | Lien vers la page |
+| \`![[document.pdf]]\` | Lien vers le fichier, affiché en lecteur PDF |
+| Note de dossier | Contenu de la page parente |
+| \`aliases\` du frontmatter | Noms de plus pour retrouver la note dans les liens |
+| \`tags\` du frontmatter et \`#tag\` dans le texte | Tags de la page (hors code et titres) |
+| \`==surligné==\` | \`<mark>surligné</mark>\` |
+| \`%%commentaire%%\` | Retiré |
+| \`> [!note]\` | Encadré, déjà compatible |
+
+Un lien \`[[Note]]\` est résolu comme dans Obsidian : par le nom de fichier s'il est unique dans le coffre, sinon par la note la plus proche dans l'arborescence. Un lien vers un fichier absent de l'archive est laissé tel quel et listé dans « Liens non résolus ».
+
+## Médias
+
+Les images et fichiers utilisés par au moins une note (PNG, JPEG, GIF, WebP, PDF, texte, Word, Excel, ZIP, 20 Mo maximum chacun) sont téléversés dans la médiathèque, et leurs liens sont réécrits vers \`/api/media/<id>/raw\`. Les autres fichiers sont ignorés et listés. Sans le droit de téléverser des médias, aucun média n'est importé et le lien d'origine reste dans la page.
+
+## Pages qui existent déjà
+
+Quand une page existe déjà au même chemin, trois choix :
+
+- **Garder la page existante** (par défaut) : elle n'est pas modifiée, et les sous-pages de l'archive sont importées sous elle.
+- **Importer sous un autre nom** : la page importée reçoit un suffixe \`-2\`, et les liens de l'archive pointent vers ce nouveau chemin.
+- **Ajouter une nouvelle version** : la page existante reçoit une version « Import » avec le contenu de l'archive. L'historique garde l'ancienne version. Une page que vous ne pouvez pas modifier est ignorée et signalée dans le rapport.
+
+Les nouvelles pages sont privées par défaut ; l'option « Publiques » les rend lisibles par tout le monde. Les tags absents du wiki sont créés si vous cochez « Créer les tags manquants » (droit de créer des tags requis), sinon ils sont ignorés et signalés.
+
+## Tout ou rien
+
+L'import se fait en une seule fois : si une étape échoue, aucune page n'est créée et les fichiers déjà envoyés sont supprimés. Un import déclenche un seul webhook \`pages.imported\` et apparaît dans le journal d'activité.
+
+## Limites
+
+- Archive de 100 Mo maximum, 500 Mo une fois décompressée, 1 000 pages maximum.
+- Une archive qui contient des chemins dangereux (\`..\`, chemin absolu) est refusée, et les liens symboliques sont ignorés.
+
+## Aller-retour export → import
+
+Exporter une page avec ses sous-pages puis importer l'archive redonne la même arborescence, les mêmes titres, tags et liens entre pages, avec les images. Réimporter la même archive au même endroit retrouve les pages déjà importées : gardez-les, ou ajoutez-leur une nouvelle version pour les mettre à jour.`,
       },
       {
         slug: 'notes-de-version',

@@ -13,6 +13,10 @@ import { CreateCommentDto } from '../dto/in/create-comment.dto.js';
 import { UpdateCommentDto } from '../dto/in/update-comment.dto.js';
 import { Comment } from '../entities/comment.entity.js';
 import { COMMENT_CHANGED_EVENT } from '../events/comment-changed.event.js';
+import {
+  COMMENT_CREATED_EVENT,
+  CommentCreatedEvent,
+} from '../events/comment-created.event.js';
 import type { CommentsRepository } from '../persistence/comment.repository.js';
 import { CommentsService } from './comments.service.js';
 
@@ -115,6 +119,17 @@ describe('CommentsService', () => {
     expect(eventEmitter.emit).toHaveBeenCalledWith(COMMENT_CHANGED_EVENT, {
       pageId: 'page-1',
     });
+  });
+
+  it('emits COMMENT_CREATED_EVENT after creating a comment', async () => {
+    commentsRepository.create.mockResolvedValue(buildComment());
+
+    await service.createComment('page-1', { content: 'hello' }, author);
+
+    expect(eventEmitter.emit).toHaveBeenCalledWith(
+      COMMENT_CREATED_EVENT,
+      new CommentCreatedEvent(buildComment().id, 'page-1', author.id),
+    );
   });
 
   it('emits COMMENT_CHANGED_EVENT with the pageId after editing a comment', async () => {

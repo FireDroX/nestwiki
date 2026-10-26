@@ -20,7 +20,22 @@ import { SetCommentsEnabledDto } from '../dto/in/set-comments-enabled.dto.js';
 import { UpdatePageDto } from '../dto/in/update-page.dto.js';
 import { Page } from '../entities/page.entity.js';
 import { PageVersion } from '../entities/page-version.entity.js';
-import { PAGE_PUBLISHED_EVENT } from '../events/page-published.event.js';
+import {
+  PAGE_CREATED_EVENT,
+  PageCreatedEvent,
+} from '../events/page-created.event.js';
+import {
+  PAGE_MOVED_EVENT,
+  PageMovedEvent,
+} from '../events/page-moved.event.js';
+import {
+  PAGE_PUBLISHED_EVENT,
+  PagePublishedEvent,
+} from '../events/page-published.event.js';
+import {
+  PAGE_TRASHED_EVENT,
+  PageTrashedEvent,
+} from '../events/page-trashed.event.js';
 import { PAGE_TREE_CHANGED_EVENT } from '../events/page-tree-changed.event.js';
 import { PAGE_VERSION_CREATED_EVENT } from '../events/page-version-created.event.js';
 import type { PageFollowRepository } from '../persistence/page-follow.repository.js';
@@ -28,6 +43,8 @@ import type { PagesRepository } from '../persistence/page.repository.js';
 import { PermissionsService } from '../../permissions/services/permissions.service.js';
 import { User } from '../../users/entities/user.entity.js';
 import { UsersService } from '../../users/services/users.service.js';
+import { PageLinksService } from './page-links.service.js';
+import { PageReferenceService } from './page-reference.service.js';
 import { PageMergeService } from './page-merge.service.js';
 import { PagesService } from './pages.service.js';
 
@@ -121,12 +138,21 @@ describe('PagesService', () => {
   let pageMergeService: { merge: ReturnType<typeof vi.fn> };
   let eventEmitter: { emit: ReturnType<typeof vi.fn> };
   let userActivityLogService: { record: ReturnType<typeof vi.fn> };
+  let pageLinksService: {
+    syncPage: Mock<PageLinksService['syncPage']>;
+    findBrokenTargets: Mock<PageLinksService['findBrokenTargets']>;
+    findLinkingPageIds: Mock<PageLinksService['findLinkingPageIds']>;
+    rewriteAfterMove: Mock<PageLinksService['rewriteAfterMove']>;
+  };
+  let pageReferenceService: {
+    pathsOf: Mock<PageReferenceService['pathsOf']>;
+  };
 
   beforeEach(async () => {
     pagesRepository = {
       findById: vi.fn(),
       findBySlugAndParent: vi.fn(),
-      findAll: vi.fn(),
+      findAll: vi.fn().mockResolvedValue([]),
       findVersionById: vi.fn(),
       findCurrentVersions: vi.fn(),
       createWithFirstVersion: vi.fn(),
@@ -180,6 +206,17 @@ describe('PagesService', () => {
     };
     eventEmitter = { emit: vi.fn() };
     userActivityLogService = { record: vi.fn().mockResolvedValue(undefined) };
+    pageLinksService = {
+      syncPage: vi.fn().mockResolvedValue(undefined),
+      findBrokenTargets: vi.fn().mockResolvedValue([]),
+      findLinkingPageIds: vi.fn().mockResolvedValue([]),
+      rewriteAfterMove: vi.fn().mockResolvedValue({
+        linksUpdated: 0,
+        pagesUpdated: 0,
+        pagesSkipped: 0,
+      }),
+    };
+    pageReferenceService = { pathsOf: vi.fn().mockResolvedValue(new Map()) };
 
     const module = await Test.createTestingModule({
       providers: [
@@ -191,6 +228,8 @@ describe('PagesService', () => {
         { provide: PageMergeService, useValue: pageMergeService },
         { provide: EventEmitter2, useValue: eventEmitter },
         { provide: UserActivityLogService, useValue: userActivityLogService },
+        { provide: PageLinksService, useValue: pageLinksService },
+        { provide: PageReferenceService, useValue: pageReferenceService },
       ],
     }).compile();
 
@@ -879,6 +918,173 @@ describe('PagesService', () => {
       expect(pagesRepository.updateParent).not.toHaveBeenCalled();
     });
 
+    describe('updating the links', () => {
+      const docs = buildPage({ id: otherId, slug: 'docs', title: 'Docs' });
+      const guide = buildPage({
+        id: pageId,
+        slug: 'guide',
+        title: 'Guide',
+        parentId: otherId,
+      });
+      const archive = buildPage({ id: childId, slug: 'archive' });
+
+      beforeEach(() => {
+        const pages = [docs, guide, archive];
+        pagesRepository.findById.mockImplementation((id: string) =>
+          Promise.resolve(pages.find((p) => p.id === id) ?? null),
+        );
+        const paths = new Map([
+          [otherId, '/docs'],
+          [pageId, '/docs/guide'],
+          [childId, '/archive'],
+        ]);
+        pageReferenceService.pathsOf.mockImplementation((ids: string[]) =>
+          Promise.resolve(
+            new Map(
+              ids.flatMap((id) =>
+                paths.has(id) ? [[id, paths.get(id)!] as const] : [],
+              ),
+            ),
+          ),
+        );
+        pagesRepository.findVersionById.mockResolvedValue(buildVersion());
+        pagesRepository.findBySlugAndParent.mockResolvedValue(null);
+        pagesRepository.updateParent.mockImplementation((page, parentId) =>
+          Promise.resolve({ ...page, parentId }),
+        );
+      });
+
+      it('rewrites the links from the old path to the new one when asked', async () => {
+        pageLinksService.rewriteAfterMove.mockResolvedValue({
+          linksUpdated: 12,
+          pagesUpdated: 4,
+          pagesSkipped: 1,
+        });
+
+        const result = await service.movePage(
+          pageId,
+          { newParentId: childId, updateLinks: true },
+          'user-1',
+        );
+
+        expect(pageLinksService.rewriteAfterMove).toHaveBeenCalledWith(
+          { from: '/docs/guide', to: '/archive/guide' },
+          'Guide',
+          expect.objectContaining({ id: 'user-1' }),
+        );
+        expect(
+          pagesRepository.updateParent.mock.invocationCallOrder[0],
+        ).toBeLessThan(
+          pageLinksService.rewriteAfterMove.mock.invocationCallOrder[0],
+        );
+        expect(result.links).toEqual({
+          linksUpdated: 12,
+          pagesUpdated: 4,
+          pagesSkipped: 1,
+        });
+      });
+
+      it("returns the moved page's new version when its own links were rewritten", async () => {
+        pageLinksService.rewriteAfterMove.mockImplementation(() => {
+          pagesRepository.findById.mockResolvedValue({
+            ...guide,
+            parentId: childId,
+            currentVersionId: 'version-2',
+          });
+          return Promise.resolve({
+            linksUpdated: 1,
+            pagesUpdated: 1,
+            pagesSkipped: 0,
+          });
+        });
+        pagesRepository.findVersionById.mockImplementation((id: string) =>
+          Promise.resolve(buildVersion({ id })),
+        );
+
+        const result = await service.movePage(
+          pageId,
+          { newParentId: childId, updateLinks: true },
+          'user-1',
+        );
+
+        expect(result.page.currentVersionId).toBe('version-2');
+        expect(result.version.id).toBe('version-2');
+      });
+
+      it('computes the new path of a page moved to the root', async () => {
+        await service.movePage(
+          pageId,
+          { newParentId: null, updateLinks: true },
+          'user-1',
+        );
+
+        expect(pageLinksService.rewriteAfterMove).toHaveBeenCalledWith(
+          { from: '/docs/guide', to: '/guide' },
+          'Guide',
+          expect.anything(),
+        );
+      });
+
+      it('announces the move with the old and the new path', async () => {
+        await service.movePage(pageId, { newParentId: childId }, 'user-1');
+
+        expect(eventEmitter.emit).toHaveBeenCalledWith(
+          PAGE_MOVED_EVENT,
+          new PageMovedEvent(pageId, 'user-1', '/docs/guide', '/archive/guide'),
+        );
+      });
+
+      it('neither announces a move nor rewrites links when the path does not change', async () => {
+        await service.movePage(
+          pageId,
+          { newParentId: otherId, updateLinks: true },
+          'user-1',
+        );
+
+        expect(eventEmitter.emit).not.toHaveBeenCalledWith(
+          PAGE_MOVED_EVENT,
+          expect.anything(),
+        );
+        expect(pageLinksService.rewriteAfterMove).not.toHaveBeenCalled();
+      });
+
+      it('only resolves the paths of the page and its new parent', async () => {
+        await service.movePage(pageId, { newParentId: childId }, 'user-1');
+
+        expect(pageReferenceService.pathsOf).toHaveBeenCalledWith([
+          pageId,
+          childId,
+        ]);
+        expect(pagesRepository.findAll).not.toHaveBeenCalled();
+      });
+
+      it('leaves the links alone by default', async () => {
+        const result = await service.movePage(
+          pageId,
+          { newParentId: childId },
+          'user-1',
+        );
+
+        expect(pageLinksService.rewriteAfterMove).not.toHaveBeenCalled();
+        expect(result.links).toEqual({
+          linksUpdated: 0,
+          pagesUpdated: 0,
+          pagesSkipped: 0,
+        });
+      });
+
+      it('rejects an updateLinks that is not a boolean', async () => {
+        await expect(
+          service.movePage(
+            pageId,
+            { newParentId: childId, updateLinks: 'yes' as unknown as boolean },
+            'user-1',
+          ),
+        ).rejects.toBeInstanceOf(ValidationException);
+        expect(pagesRepository.updateParent).not.toHaveBeenCalled();
+      });
+    });
+
     it('requires the page.create_root global permission to move a page to the root', async () => {
       pagesRepository.findById.mockResolvedValue(
         buildPage({ id: pageId, parentId: otherId }),
@@ -905,6 +1111,24 @@ describe('PagesService', () => {
       visibility: 'public',
     };
 
+    it('announces the new page', async () => {
+      pagesRepository.findBySlugAndParent.mockResolvedValue(null);
+      pagesRepository.createWithFirstVersion.mockResolvedValue({
+        page: buildPage({ id: 'new-1' }),
+        version: buildVersion({ id: 'v-new' }),
+      });
+
+      await service.createPage(
+        { slug: 'new', title: 'New', content: 'x', visibility: 'public' },
+        'user-1',
+      );
+
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        PAGE_CREATED_EVENT,
+        new PageCreatedEvent('new-1', 'user-1'),
+      );
+    });
+
     it('creates the page and its first version', async () => {
       pagesRepository.findBySlugAndParent.mockResolvedValue(null);
       const created = {
@@ -923,7 +1147,7 @@ describe('PagesService', () => {
         visibility: 'public',
         createdById: 'user-1',
       });
-      expect(result).toBe(created);
+      expect(result).toEqual({ ...created, brokenLinks: [] });
     });
 
     it.each(['tree', 'trash'])(
@@ -936,7 +1160,14 @@ describe('PagesService', () => {
       },
     );
 
-    it.each(['versions', 'comments', 'tags', 'access-rules', 'stats'])(
+    it.each([
+      'versions',
+      'comments',
+      'tags',
+      'access-rules',
+      'stats',
+      'backlinks',
+    ])(
       'throws ReservedSlugException for "%s" directly under a root page',
       async (slug) => {
         pagesRepository.findById.mockResolvedValue(
@@ -1469,6 +1700,11 @@ describe('PagesService', () => {
 
       await service.deletePage('parent', { cascade: 'true' }, 'user-1');
 
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        PAGE_TRASHED_EVENT,
+        new PageTrashedEvent('parent', 'user-1', 1),
+      );
+
       expect(
         permissionsService.getEffectivePageActionsBulk,
       ).toHaveBeenCalledWith(expect.anything(), ['child']);
@@ -1538,7 +1774,7 @@ describe('PagesService', () => {
 
       expect(eventEmitter.emit).toHaveBeenCalledWith(
         PAGE_PUBLISHED_EVENT,
-        expect.objectContaining({ pageId: page.id }),
+        new PagePublishedEvent(page.id, page.slug, page.title, 'user-1'),
       );
     });
 
@@ -1767,6 +2003,301 @@ describe('PagesService', () => {
       const result = await service.getFollowedPages(member);
 
       expect(result.map((entry) => entry.page.id)).toEqual(['page-1']);
+    });
+  });
+
+  describe('link index', () => {
+    it('indexes the links of a new page and reports the broken ones', async () => {
+      const created = {
+        page: buildPage({ id: 'new-1' }),
+        version: buildVersion({ id: 'v-new', content: '[x](/pages/gone)' }),
+      };
+      pagesRepository.findBySlugAndParent.mockResolvedValue(null);
+      pagesRepository.createWithFirstVersion.mockResolvedValue(created);
+      pageLinksService.findBrokenTargets.mockResolvedValue(['/gone']);
+
+      const result = await service.createPage(
+        {
+          slug: 'new',
+          title: 'New',
+          content: '[x](/pages/gone)',
+          visibility: 'public',
+        },
+        'user-1',
+      );
+
+      expect(pageLinksService.syncPage).toHaveBeenCalledWith(
+        'new-1',
+        'v-new',
+        '[x](/pages/gone)',
+      );
+      expect(pageLinksService.findBrokenTargets).toHaveBeenCalledWith(
+        '[x](/pages/gone)',
+        expect.objectContaining({ id: 'user-1' }),
+      );
+      expect(result.brokenLinks).toEqual(['/gone']);
+    });
+
+    it('still returns the created page when the broken links cannot be checked', async () => {
+      pagesRepository.findBySlugAndParent.mockResolvedValue(null);
+      pagesRepository.createWithFirstVersion.mockResolvedValue({
+        page: buildPage({ id: 'new-1' }),
+        version: buildVersion({ id: 'v-new' }),
+      });
+      pageLinksService.findBrokenTargets.mockRejectedValue(new Error('down'));
+
+      const result = await service.createPage(
+        { slug: 'new', title: 'New', content: 'x', visibility: 'public' },
+        'user-1',
+      );
+
+      expect(result.page.id).toBe('new-1');
+      expect(result.brokenLinks).toEqual([]);
+    });
+
+    it('indexes the links of a saved version and reports the broken ones', async () => {
+      const page = buildPage();
+      pagesRepository.findById.mockResolvedValue(page);
+      pagesRepository.findVersionById.mockResolvedValue(buildVersion());
+      pagesRepository.updateWithNewVersion.mockResolvedValue({
+        page: { ...page, currentVersionId: 'version-2' },
+        version: buildVersion({ id: 'version-2', content: 'saved' }),
+      });
+      pageLinksService.findBrokenTargets.mockResolvedValue(['/old']);
+
+      const result = await service.updatePage(
+        'page-1',
+        { content: 'saved' },
+        'user-1',
+      );
+
+      expect(pageLinksService.syncPage).toHaveBeenCalledWith(
+        'page-1',
+        'version-2',
+        'saved',
+      );
+      expect(pageLinksService.findBrokenTargets).toHaveBeenCalledWith(
+        'saved',
+        expect.objectContaining({ id: 'user-1' }),
+      );
+      expect(result.brokenLinks).toEqual(['/old']);
+    });
+
+    it('still reports a saved version when the broken links cannot be checked', async () => {
+      const page = buildPage();
+      pagesRepository.findById.mockResolvedValue(page);
+      pagesRepository.findVersionById.mockResolvedValue(buildVersion());
+      pagesRepository.updateWithNewVersion.mockResolvedValue({
+        page: { ...page, currentVersionId: 'version-2' },
+        version: buildVersion({ id: 'version-2', content: 'saved' }),
+      });
+      pageLinksService.findBrokenTargets.mockRejectedValue(new Error('down'));
+
+      const result = await service.updatePage(
+        'page-1',
+        { content: 'saved' },
+        'user-1',
+      );
+
+      expect(result.version.id).toBe('version-2');
+      expect(result.brokenLinks).toEqual([]);
+    });
+
+    it('leaves the index untouched when a save ends in a conflict', async () => {
+      arrangeConflict();
+
+      const result = await service.updatePage(
+        'page-1',
+        { content: 'mine', baseVersionId: 'version-1' },
+        'user-1',
+      );
+
+      expect(result.conflict).toBe(true);
+      expect(pageLinksService.syncPage).not.toHaveBeenCalled();
+    });
+
+    it('indexes the links of a restored version', async () => {
+      const page = buildPage();
+      pagesRepository.findById.mockResolvedValue(page);
+      pagesRepository.updateWithNewVersion.mockResolvedValue({
+        page: { ...page, currentVersionId: 'version-3' },
+        version: buildVersion({ id: 'version-3', content: 'restored' }),
+      });
+
+      await service.createNewVersionFromContent(
+        'page-1',
+        'restored',
+        'user-1',
+        null,
+      );
+
+      expect(pageLinksService.syncPage).toHaveBeenCalledWith(
+        'page-1',
+        'version-3',
+        'restored',
+      );
+    });
+
+    it('reports the broken links of a page read by its path', async () => {
+      const page = buildPage({ slug: 'docs' });
+      pagesRepository.findBySlugAndParent.mockResolvedValue(page);
+      pagesRepository.findVersionById.mockResolvedValue(
+        buildVersion({ content: '[x](/pages/gone)' }),
+      );
+      pageLinksService.findBrokenTargets.mockResolvedValue(['/gone']);
+
+      const result = await service.findByPath(['docs'], member);
+
+      expect(pageLinksService.findBrokenTargets).toHaveBeenCalledWith(
+        '[x](/pages/gone)',
+        expect.objectContaining({ id: member.id }),
+      );
+      expect(result.brokenLinks).toEqual(['/gone']);
+    });
+
+    it('checks the broken links of a page read anonymously as an anonymous reader', async () => {
+      pagesRepository.findBySlugAndParent.mockResolvedValue(
+        buildPage({ slug: 'docs' }),
+      );
+      pagesRepository.findVersionById.mockResolvedValue(
+        buildVersion({ content: '[x](/pages/hr)' }),
+      );
+
+      await service.findByPath(['docs']);
+
+      expect(pageLinksService.findBrokenTargets).toHaveBeenCalledWith(
+        '[x](/pages/hr)',
+        undefined,
+      );
+    });
+  });
+
+  describe('getBacklinks', () => {
+    const docs = buildPage({ id: 'docs', slug: 'docs', title: 'Docs' });
+    const guide = buildPage({
+      id: 'guide',
+      slug: 'guide',
+      parentId: 'docs',
+      title: 'Guide',
+    });
+    const faq = buildPage({ id: 'faq', slug: 'faq', title: 'FAQ' });
+    const secret = buildPage({
+      id: 'secret',
+      slug: 'secret',
+      title: 'Secret',
+      visibility: 'private',
+    });
+
+    beforeEach(() => {
+      pagesRepository.findById.mockImplementation((id: string) =>
+        Promise.resolve(
+          [docs, guide, faq, secret].find((page) => page.id === id) ?? null,
+        ),
+      );
+      pagesRepository.findAll.mockResolvedValue([docs, guide, faq, secret]);
+      pageLinksService.findLinkingPageIds.mockResolvedValue([
+        'faq',
+        'secret',
+        'guide',
+      ]);
+    });
+
+    it('lists the readable pages linking to the page with their path, sorted by title', async () => {
+      permissionsService.filterReadable.mockImplementation(
+        (_user: User | undefined, pages: Page[]) =>
+          Promise.resolve(pages.filter((page) => page.id !== 'secret')),
+      );
+
+      const backlinks = await service.getBacklinks('docs', {}, member);
+
+      expect(pageLinksService.findLinkingPageIds).toHaveBeenCalledWith(
+        '/docs',
+        false,
+      );
+      expect(backlinks).toEqual([
+        {
+          id: 'faq',
+          title: 'FAQ',
+          path: '/faq',
+          updatedAt: faq.updatedAt,
+        },
+        {
+          id: 'guide',
+          title: 'Guide',
+          path: '/docs/guide',
+          updatedAt: guide.updatedAt,
+        },
+      ]);
+    });
+
+    it('lists the page itself with subtree=true when it links to its own sub-pages', async () => {
+      pageLinksService.findLinkingPageIds.mockResolvedValue(['docs', 'faq']);
+
+      const backlinks = await service.getBacklinks(
+        'docs',
+        { subtree: 'true' },
+        member,
+      );
+
+      expect(backlinks.map((backlink) => backlink.id)).toEqual(['docs', 'faq']);
+    });
+
+    it('never lists the page itself otherwise', async () => {
+      pageLinksService.findLinkingPageIds.mockResolvedValue(['docs', 'faq']);
+
+      const backlinks = await service.getBacklinks('docs', {}, member);
+
+      expect(backlinks.map((backlink) => backlink.id)).toEqual(['faq']);
+    });
+
+    it('includes the links to the descendants when subtree=true', async () => {
+      await service.getBacklinks('docs', { subtree: 'true' }, member);
+
+      expect(pageLinksService.findLinkingPageIds).toHaveBeenCalledWith(
+        '/docs',
+        true,
+      );
+    });
+
+    it('throws PageNotFoundException for an unknown page', async () => {
+      await expect(
+        service.getBacklinks('missing', {}, member),
+      ).rejects.toBeInstanceOf(PageNotFoundException);
+    });
+
+    it('throws PageAccessForbiddenException when the page itself is not readable', async () => {
+      permissionsService.can.mockResolvedValue(false);
+
+      await expect(
+        service.getBacklinks('secret', {}, undefined),
+      ).rejects.toBeInstanceOf(PageAccessForbiddenException);
+      expect(pageLinksService.findLinkingPageIds).not.toHaveBeenCalled();
+    });
+
+    it('resolves the page from its path', async () => {
+      pagesRepository.findBySlugAndParent.mockImplementation(
+        (slug: string, parentId: string | null) =>
+          Promise.resolve(
+            slug === 'docs' && parentId === null
+              ? docs
+              : slug === 'guide' && parentId === 'docs'
+                ? guide
+                : null,
+          ),
+      );
+      pageLinksService.findLinkingPageIds.mockResolvedValue(['faq']);
+
+      const backlinks = await service.getBacklinksByPath(
+        ['docs', 'guide'],
+        member,
+      );
+
+      expect(pageLinksService.findLinkingPageIds).toHaveBeenCalledWith(
+        '/docs/guide',
+        false,
+      );
+      expect(backlinks.map((backlink) => backlink.id)).toEqual(['faq']);
+      expect(pagesRepository.incrementViewCount).not.toHaveBeenCalled();
     });
   });
 });

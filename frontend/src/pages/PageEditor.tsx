@@ -25,12 +25,15 @@ import {
   type PageVisibility,
 } from '#api/pages'
 import { useEditorState } from '#hooks/useEditorState'
+import { usePageBacklinks } from '#hooks/usePageBacklinks'
 import { useFileUpload } from '#hooks/useFileUpload'
 import { usePage } from '#hooks/usePage'
 import { usePageRealtimeSync } from '#hooks/usePageRealtimeSync'
 import { usePageTree } from '#hooks/usePageTree'
 import { usePermissions } from '#hooks/usePermissions'
 import { extractErrorMessage } from '#lib/api-errors'
+import { warnAboutBrokenLinks } from '#lib/broken-links-warning'
+import { announcePageMove } from '#lib/page-move-toast'
 import { findPathToNode } from '#utils/page-tree'
 import { createPageMetadataSchema, type PageMetadataFormValues } from '#schemas/page-metadata.schema'
 import { PAGE_PADDING } from '#utils/page-layout'
@@ -71,6 +74,9 @@ export function PageEditor() {
   const [baseVersionId, setBaseVersionId] = useState('')
   const [conflict, setConflict] = useState<MergeConflictDetails | null>(null)
   const [conflictVersionId, setConflictVersionId] = useState<string | null>(null)
+  const [updateLinks, setUpdateLinks] = useState(true)
+  const [moveCount, setMoveCount] = useState(0)
+  const linkingPages = usePageBacklinks(page?.id, { subtree: true, refreshKey: moveCount })
   const schema = useMemo(() => createPageMetadataSchema(t), [t])
 
   const { control, setValue, watch, getValues, reset } = useForm<PageMetadataFormValues>({
@@ -163,10 +169,11 @@ export function PageEditor() {
       return
     }
     try {
-      await movePage(page.id, newParentId)
+      const result = await movePage(page.id, newParentId, linkingPages.length > 0 && updateLinks)
       await refresh()
       setCurrentParentId(newParentId)
-      toast.success(t('pageEditor.pageMoved'))
+      setMoveCount((count) => count + 1)
+      announcePageMove(result)
     } catch (error) {
       setValue('parentId', currentParentId)
       toast.error(extractErrorMessage(error, t('pageEditor.moveFailed')))
@@ -231,6 +238,7 @@ export function PageEditor() {
       setBaseVersionId(result.currentVersionId)
       editor.markSaved()
       toast.success(t('pageEditor.pageSaved'))
+      warnAboutBrokenLinks(result.brokenLinks)
       navigate(returnPath)
     } catch (error) {
       setSaveError(extractErrorMessage(error))
@@ -294,6 +302,9 @@ export function PageEditor() {
             excludePageId={page.id}
             commentsEnabled={commentsEnabled}
             onParentChange={handleParentChange}
+            linkingPageCount={linkingPages.length}
+            updateLinks={updateLinks}
+            onUpdateLinksChange={setUpdateLinks}
             onVisibilityChange={handleVisibilityChange}
             onCommentsEnabledChange={handleCommentsEnabledChange}
           />

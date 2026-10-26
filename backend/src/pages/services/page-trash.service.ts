@@ -12,6 +12,10 @@ import type { User } from '../../users/entities/user.entity.js';
 import { UsersService } from '../../users/services/users.service.js';
 import { TrashEntryResponseDto } from '../dto/out/trash-entry-response.dto.js';
 import { Page } from '../entities/page.entity.js';
+import {
+  PAGE_RESTORED_EVENT,
+  PageRestoredEvent,
+} from '../events/page-restored.event.js';
 import { PAGE_TREE_CHANGED_EVENT } from '../events/page-tree-changed.event.js';
 import type { PageTrashRepository } from '../persistence/page-trash.repository.js';
 import type { PagesRepository } from '../persistence/page.repository.js';
@@ -90,6 +94,10 @@ export class PageTrashService {
       metadata: { title: page.title },
     });
     this.eventEmitter.emit(PAGE_TREE_CHANGED_EVENT);
+    this.eventEmitter.emit(
+      PAGE_RESTORED_EVENT,
+      new PageRestoredEvent(page.id, userId),
+    );
   }
 
   async purge(id: string, userId: string): Promise<void> {

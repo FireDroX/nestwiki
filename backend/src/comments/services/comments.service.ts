@@ -24,6 +24,10 @@ import { PurgeCommentsDto } from '../dto/in/purge-comments.dto.js';
 import { UpdateCommentDto } from '../dto/in/update-comment.dto.js';
 import { Comment } from '../entities/comment.entity.js';
 import { COMMENT_CHANGED_EVENT } from '../events/comment-changed.event.js';
+import {
+  COMMENT_CREATED_EVENT,
+  CommentCreatedEvent,
+} from '../events/comment-created.event.js';
 import type { CommentsRepository } from '../persistence/comment.repository.js';
 
 export interface AuthorInfo {
@@ -91,6 +95,10 @@ export class CommentsService {
       metadata: { pageId },
     });
     this.eventEmitter.emit(COMMENT_CHANGED_EVENT, { pageId });
+    this.eventEmitter.emit(
+      COMMENT_CREATED_EVENT,
+      new CommentCreatedEvent(comment.id, pageId, currentUser.id),
+    );
     const authorNames = await this.resolveAuthorNames([comment]);
     return { comment, authorNames };
   }

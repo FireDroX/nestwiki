@@ -364,4 +364,28 @@ describe('MarkdownRenderer', () => {
       expect(container.querySelector('h1')?.id).toBe('setup')
     })
   })
+  describe('broken internal links', () => {
+    const content = '[Guide](/pages/docs/guide#setup) [FAQ](/pages/faq) [Out](https://example.org)'
+
+    function linkNamed(container: HTMLElement, name: string) {
+      return [...container.querySelectorAll('a')].find((link) => link.textContent === name)
+    }
+
+    it('marks a link to a missing page as broken in full mode, and keeps it clickable', () => {
+      const { container } = render(
+        <MarkdownRenderer content={content} mode="full" brokenLinks={['/docs/guide']} />,
+      )
+      const broken = linkNamed(container, 'Guide')
+      expect(broken).toHaveAttribute('data-broken-link')
+      expect(broken).toHaveAttribute('title', 'Page introuvable')
+      expect(broken).toHaveAttribute('href', '/pages/docs/guide#setup')
+      expect(linkNamed(container, 'FAQ')).not.toHaveAttribute('data-broken-link')
+      expect(linkNamed(container, 'Out')).not.toHaveAttribute('data-broken-link')
+    })
+
+    it('does not mark links in restricted mode', () => {
+      const { container } = render(<MarkdownRenderer content={content} brokenLinks={['/docs/guide']} />)
+      expect(linkNamed(container, 'Guide')).not.toHaveAttribute('data-broken-link')
+    })
+  })
 })

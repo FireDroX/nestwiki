@@ -61,6 +61,7 @@ export function PageAccessTreeNode({
       )}
 
       <Checkbox
+        aria-label={node.title}
         checked={checkboxState}
         disabled={readOnly || isPending}
         onCheckedChange={() => onToggleNode(node)}

@@ -26,6 +26,8 @@
 - **Comments and tags** on every page.
 - **MCP server** — let Claude or any MCP-compatible assistant search, read and edit the wiki with the permissions of the user it acts for, via API keys or OAuth 2.0.
 - **Link previews** — rich Open Graph and Discord cards for public pages.
+- **Outgoing webhooks** — notify Discord, Slack, n8n or your own service when pages change or comments are posted, with HMAC-signed requests, automatic retries and a delivery log.
+- **Import from Obsidian or Markdown** — a step-by-step wizard turns a zipped Obsidian vault, a Markdown folder or a NestWiki export into pages: wikilinks, embeds, folder notes, tags and media are converted, with a preview of the resulting tree, conflict handling and an all-or-nothing import.
 - **Administration** — users, groups, system settings, admin audit log and user activity log.
 - **Security by default** — refuses to start with weak or default secrets, account lockout after repeated failed logins, breached-password checks, optional Cloudflare Turnstile on sign-up and login.
 - **English and French** user interface, light and dark themes.
@@ -99,7 +101,7 @@ docker compose up -d --build
 
 Migrations run automatically when the backend container starts.
 
-Admins are told when a newer release exists: the API asks GitHub's public API for the latest NestWiki release (at most every 6 hours, nothing about your instance is sent) and the web app shows a notice to administrators until they update or ignore that version. Set `UPDATE_CHECK=false` in `backend/.env` to disable this outbound request. Read the [changelog](CHANGELOG.md) before upgrading: entries flagged with ⚠️ need an action on your side. Pre-built images are also published as `ghcr.io/firedrox/nestwiki-backend` and `ghcr.io/firedrox/nestwiki-frontend`, tagged `latest`, `X.Y` and `X.Y.Z`.
+Admins are told when a newer release exists: the API asks GitHub's public API for the latest NestWiki release (at most every 6 hours, nothing about your instance is sent) and the web app shows a notice to administrators until they update or ignore that version. Set `UPDATE_CHECK=false` in `backend/.env` to disable this outbound request. Read the [changelog](CHANGELOG.md) before upgrading: entries flagged with ⚠️ need an action on your side. Pre-built images are also published as `ghcr.io/firedrox/nestwiki-backend` and `ghcr.io/firedrox/nestwiki-frontend`, tagged `latest`, `X.Y` and `X.Y.Z`. Work in progress lands first on the `dev` branch, published as GitHub pre-releases and as images tagged `dev` and `X.Y.Z-dev`: handy to try what's coming, not meant for production.
 
 ![Release notes, grouped by version](docs/screenshots/release-notes.jpg)
 

@@ -2,9 +2,9 @@ name: CI
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, dev]
   push:
-    branches: [main]
+    branches: [main, dev]
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -77,9 +77,10 @@ jobs:
 
   # Runs alongside the tests instead of after them: images are built on
   # every PR (never pushed) so a broken Dockerfile shows up before the
-  # merge, and on main only the immutable `sha-<commit>` tag is pushed
-  # here. `latest`/`X.Y.Z`/`X.Y` are added by `release`, once every
-  # test job (and the backend smoke test) has passed.
+  # merge, and on main and dev only the immutable `sha-<commit>` tag is
+  # pushed here. `latest`/`X.Y.Z`/`X.Y` (main) and `dev`/`X.Y.Z-dev`
+  # (dev) are added by `release`/`prerelease`, once every test job (and
+  # the backend smoke test) has passed.
   #
   # Only main writes the layer cache: a PR's cache scope can't be read
   # by other PRs, while every PR can read main's.
@@ -94,7 +95,8 @@ jobs:
       matrix:
         image: [backend, frontend]
     env:
-      PUSH: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+      PUSH: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev') }}
+      WRITE_CACHE: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     steps:
       - uses: actions/checkout@v7
 
@@ -127,7 +129,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build the image (and push its sha-<commit> tag on main)
+      - name: Build the image (and push its sha-<commit> tag on main and dev)
         uses: docker/build-push-action@v7
         with:
           context: .
@@ -140,7 +142,7 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=${{ matrix.image }}
-          cache-to: ${{ env.PUSH == 'true' && format('type=gha,mode=max,scope={0}', matrix.image) || '' }}
+          cache-to: ${{ env.WRITE_CACHE == 'true' && format('type=gha,mode=max,scope={0}', matrix.image) || '' }}
 
       - name: Smoke test the backend image (migrations, seeds, /api/health)
         if: matrix.image == 'backend'
@@ -209,18 +211,85 @@ jobs:
               "${repository}:sha-${GITHUB_SHA}"
           done
 
-      - name: Tag the version and publish its GitHub release
+      # Every version merged from dev was published as a pre-release:
+      # those up to this one become releases, and this version's
+      # pre-release is replaced by a release tagged on this main commit.
+      - name: Promote the merged pre-releases and publish the release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ steps.version.outputs.version }}
         run: |
-          if git ls-remote --exit-code --tags origin "refs/tags/v${VERSION}" > /dev/null; then
+          state="$(gh release view "v${VERSION}" --json isPrerelease --jq '.isPrerelease' 2>/dev/null || echo missing)"
+          if [ "$state" = false ]; then
             echo "v${VERSION} is already released, nothing to do."
             exit 0
           fi
-          awk -v heading="## ${VERSION} " 'index($0, heading) == 1 { found = 1; next } /^## / { if (found) exit } found' CHANGELOG.md > release-notes.md
-          if ! grep -q '[^[:space:]]' release-notes.md; then
-            echo "CHANGELOG.md has no '## ${VERSION} — <date>' section." >&2
-            exit 1
+          sh .github/scripts/changelog-section.sh "$VERSION"
+          gh release list --limit 200 --json tagName,isPrerelease --jq '.[] | select(.isPrerelease) | .tagName' |
+            while read -r tag; do
+              older="$(printf '%s\n%s\n' "${tag#v}" "$VERSION" | sort -V | head -n 1)"
+              if [ "$tag" != "v${VERSION}" ] && [ "$older" = "${tag#v}" ]; then
+                gh release edit "$tag" --prerelease=false --latest=false
+              fi
+            done
+          if [ "$state" = true ]; then
+            gh release delete "v${VERSION}" --cleanup-tag --yes
           fi
-          gh release create "v${VERSION}" --target "${GITHUB_SHA}" --title "v${VERSION}" --notes-file release-notes.md
+          gh release create "v${VERSION}" --target "${GITHUB_SHA}" --title "v${VERSION}" --notes-file release-notes.md --latest
+
+  # dev is the integration branch: every push publishes the tested
+  # images as `dev`/`X.Y.Z-dev` and the version as a GitHub pre-release,
+  # without deploying anything (deploy.yml only follows main).
+  prerelease:
+    name: pre-release
+    needs: [backend, backend-e2e, frontend, image]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Read the project version
+        id: version
+        run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Tag the tested images as dev and X.Y.Z-dev
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          for image in backend frontend; do
+            repository="${REGISTRY}/${owner}/nestwiki-${image}"
+            docker buildx imagetools create \
+              -t "${repository}:dev" \
+              -t "${repository}:${VERSION}-dev" \
+              "${repository}:sha-${GITHUB_SHA}"
+          done
+
+      # A new push of the same version (review fixes) moves its
+      # pre-release to this commit; a version already released on main
+      # is never touched.
+      - name: Publish the version as a GitHub pre-release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          state="$(gh release view "v${VERSION}" --json isPrerelease --jq '.isPrerelease' 2>/dev/null || echo missing)"
+          if [ "$state" = false ]; then
+            echo "v${VERSION} is already released: bump the version to publish a pre-release."
+            exit 0
+          fi
+          sh .github/scripts/changelog-section.sh "$VERSION"
+          if [ "$state" = true ]; then
+            gh release delete "v${VERSION}" --cleanup-tag --yes
+          fi
+          gh release create "v${VERSION}" --target "${GITHUB_SHA}" --title "v${VERSION}" --notes-file release-notes.md --prerelease

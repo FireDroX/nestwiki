@@ -2,6 +2,73 @@
 
 All notable changes to NestWiki are documented here, newest first, one `## <version> — <date>` section per release. This file is the single source for the in-app "Notes de version" page, which groups releases by minor version (`1.0`, `0.31`…). Entries up to 0.31.10 were written in French, the project's original language.
 
+## 1.3.8 — 2026-10-23
+
+- Sécurité : mise à jour des dépendances concernées par 3 alertes Dependabot — `follow-redirects` 1.16.1 (deux failles hautes : des en-têtes d'identification pouvaient être transmis à un autre domaine lors d'une redirection) et `hono` 4.13.11 (les middlewares pouvaient être contournés sur les chemins de fichiers statiques), déjà embarqué depuis la 1.3.2.
+- Sécurité : mise à jour des dépendances signalées par `pnpm audit` — `dompurify` 3.4.17 utilisé par les diagrammes Mermaid (une faille critique et une haute de contournement du nettoyage HTML), `ip-address` 10.7.4 et `stream-json` 3.7.0 (blocages du serveur par une entrée malveillante), et `vitest` 4.1.12 pour les tests.
+
+## 1.3.7 — 2026-10-23
+
+- Nouvel assistant d'import : **Importer** dans le menu de votre avatar, ou **Importer ici** sur une page (à côté d'« Exporter ») pour créer les pages dessous. Il apparaît si vous pouvez créer des pages à la racine ou des sous-pages quelque part.
+- Quatre étapes : déposez une archive `.zip` (coffre Obsidian, dossier Markdown, export NestWiki) ou un fichier `.md` et choisissez la destination ; vérifiez l'aperçu (arbre des pages avec leur chemin final, pages déjà présentes mises en évidence, avertissements repliables) ; choisissez quoi faire des pages existantes (garder, importer sous un autre nom, ajouter une nouvelle version), la visibilité et la création des tags manquants ; suivez l'envoi puis lisez le rapport, avec un bouton pour ouvrir la page importée.
+- Les erreurs du serveur (fichier trop gros, archive invalide, droits) s'affichent sur l'étape concernée, et l'arborescence se met à jour toute seule après l'import.
+- Le journal d'activité affiche les imports (« Pages importées »).
+- Nouvelle page de documentation « Importer depuis Obsidian ou Markdown » : formats acceptés, tableau de conversion Obsidian → NestWiki, conflits, limites et aller-retour export → import.
+
+## 1.3.6 — 2026-10-23
+
+- Import (côté serveur) : `POST /imports` crée réellement les pages calculées par l'aperçu, avec trois façons de gérer une page déjà présente au même endroit : la garder (par défaut), importer sous un nom suffixé `-2`, ou ajouter une nouvelle version à la page existante (seulement si vous pouvez la modifier). L'assistant d'import arrive dans la prochaine version.
+- Les pages importées sont privées par défaut (option publique), avec une version « Import » à votre nom. Les images et fichiers de l'archive sont téléversés (droit de téléverser des médias requis) et les liens entre pages pointent vers les chemins réellement créés, renommages compris. Les tags existants sont appliqués ; les tags absents sont créés sur demande si vous avez le droit d'en créer.
+- Tout ou rien : si une étape échoue, aucune page n'est créée et les fichiers déjà envoyés sont supprimés. Le rapport liste les pages créées, mises à jour et ignorées (avec la raison), les médias, les tags et les avertissements.
+- Un import ne déclenche qu'une seule notification : un seul webhook `pages.imported`, qui précise désormais le nombre de pages créées (`createdCount`) et mises à jour (`updatedCount`), et une seule entrée « page.imported » dans le journal d'activité.
+
+## 1.3.5 — 2026-10-23
+
+- Import (côté serveur, première étape) : NestWiki sait lire une archive `.zip` ou un fichier `.md` et calculer ce qu'un import créerait, sans rien écrire. L'import lui-même et l'assistant arrivent dans les prochaines versions ; en attendant, l'aperçu est disponible via l'API `POST /imports/preview`.
+- Trois formats reconnus : un export NestWiki (un export puis un import redonnent la même arborescence), un coffre Obsidian (liens `[[Note]]` sous toutes leurs formes, images `![[image.png|300]]`, notes de dossier, alias, tags du frontmatter et `#tags` du texte, `%%commentaires%%` retirés, `==surligné==`) et un dossier Markdown simple avec liens relatifs.
+- L'aperçu donne l'arbre des pages avec leur chemin final, les pages déjà présentes au même endroit, les médias à téléverser, les tags à créer, et regroupe les avertissements : liens non résolus, fichiers ignorés, slugs renommés.
+- Limites : archive de 100 Mo, 500 Mo une fois décompressée (vérifié pendant la décompression) et 1 000 pages ; une archive contenant des chemins dangereux est refusée.
+
+## 1.3.4 — 2026-10-22
+
+- Administration : nouvel onglet « Webhooks ». La liste montre pour chaque webhook l'hôte appelé, le format, le nombre d'événements, son état (actif, désactivé, ou désactivé automatiquement après une série d'échecs) et son dernier envoi.
+- Création et modification dans une fenêtre : nom, adresse, format (Discord ou Slack proposé automatiquement d'après l'adresse), événements groupés avec « Tout cocher », limitation à un sous-arbre choisi dans l'arborescence, inclusion des pages privées (avec un avertissement : leurs titres et chemins partent vers le service externe) et activation.
+- Fiche d'un webhook : secret de signature masqué, à afficher, copier ou régénérer ; bouton « Envoyer un test » avec le résultat sur place (code HTTP, durée, erreur) ; journal des envois paginé et filtrable par statut, avec le contenu envoyé, la dernière erreur et un bouton « Renvoyer ».
+- Le journal d'audit traduit les actions sur les webhooks et renvoie vers la fiche concernée.
+- Nouvelle page de documentation « Webhooks » : événements et données envoyées, formats, vérification de la signature, reprises, désactivation automatique, recettes Discord et n8n.
+
+## 1.3.3 — 2026-10-21
+
+- Webhooks sortants (côté serveur) : NestWiki peut prévenir un autre service (n8n, Discord, Slack, script maison) quand une page est créée, modifiée, déplacée, mise à la corbeille, restaurée ou publiée, quand un commentaire est ajouté, et à la fin d'un import. L'écran d'administration arrive dans la prochaine version ; en attendant, tout passe par l'API `/admin/webhooks` (administrateurs).
+- Trois formats : JSON générique, embed Discord et message Slack. Les pages privées sont ignorées sauf option contraire, et un webhook peut se limiter au sous-arbre d'une page. Le contenu des pages et des commentaires n'est jamais envoyé : seulement le titre, le chemin, le lien, l'auteur et le résumé de modification.
+- Chaque envoi est signé (`X-NestWiki-Signature`, HMAC-SHA256 avec le secret du webhook) et part toujours en arrière-plan, sans ralentir l'enregistrement. En cas d'échec, NestWiki réessaie après 1 min, 5 min, 30 min, 2 h puis 6 h, même après un redémarrage ; un webhook en échec 20 fois de suite est désactivé automatiquement. L'historique des envois est gardé 30 jours.
+- Les créations, modifications, suppressions et régénérations de secret de webhooks sont inscrites au journal d'audit.
+
+## 1.3.2 — 2026-10-21
+
+- Déplacer une page ne casse plus ses liens : dans l'éditeur, sous « Page parente », NestWiki indique combien de pages pointent vers la page ou ses sous-pages, avec la case « Mettre à jour ces liens au déplacement », cochée par défaut. Chaque page concernée reçoit une nouvelle version avec les chemins corrigés, ancres et code conservés.
+- Seules les pages que vous pouvez modifier sont corrigées, y compris celles en corbeille. La notification du déplacement résume les liens mis à jour et compte les pages laissées de côté, qui apparaissent dans l'onglet « Liens cassés ».
+- API : `PATCH /pages/:id/move` accepte `updateLinks` et renvoie `linksUpdated`, `pagesUpdated` et `pagesSkipped`.
+- La page de documentation « Rétroliens et liens cassés » décrit ce comportement.
+- Sécurité : Hono, utilisé par l'intégration MCP, passe en 4.13.11 (alerte Dependabot GHSA-5r4p-p66f-jhc7).
+
+## 1.3.1 — 2026-10-21
+
+- Sous le contenu de chaque page, une section « Pages qui pointent ici » liste les pages qui contiennent un lien vers elle, avec leur fil d'Ariane. Elle n'apparaît que s'il y en a, et ne montre que les pages que vous pouvez lire.
+- Un lien vers une page introuvable (jamais créée, déplacée, en corbeille ou que vous ne pouvez pas lire) est souligné en pointillés rouges, avec l'infobulle « Page introuvable ». Il reste cliquable. Les commentaires ne sont pas concernés.
+- Après l'enregistrement ou la création d'une page, un avertissement liste les liens qui pointent vers des pages introuvables. L'enregistrement n'est pas bloqué.
+- Administration : nouvel onglet « Liens cassés » qui recense tous les liens cassés du wiki, avec un lien vers l'éditeur de la page concernée.
+- Nouvelle page de documentation « Rétroliens et liens cassés », et « Marquages disponibles » décrit les liens entre pages.
+- Le formulaire de création refuse désormais tout de suite les adresses réservées `trash` (page racine) et `backlinks` (sous une page racine), au lieu de laisser le serveur les rejeter.
+
+## 1.3.0 — 2026-10-20
+
+- Le wiki garde désormais la trace des liens entre pages : chaque lien interne (`/pages/...` ou adresse complète du wiki) est indexé à chaque enregistrement, création, fusion ou restauration de version. L'affichage des « pages qui pointent ici » et des liens cassés arrive dans la prochaine version.
+- Les pages existantes sont indexées automatiquement au premier démarrage, rien à faire. En cas de besoin, `pnpm run backfill:links` relance l'indexation (dans le conteneur : `docker compose exec backend node dist/database/run-page-links-backfill.js`).
+- API : nouvel endpoint `GET /pages/:id/backlinks` (pages lisibles qui pointent vers la page, `?subtree=true` pour inclure ses sous-pages) et `GET /admin/links/broken` (liens vers une page inexistante ou en corbeille, administrateurs). Création, modification et lecture d'une page renvoient en plus `brokenLinks`, qui compte aussi les liens vers une page que l'appelant ne peut pas lire (pour ne pas révéler l'existence d'une page privée).
+- Intégration MCP : nouvel outil `wiki_get_backlinks`.
+- ⚠️ `backlinks` devient un nom réservé pour une page placée directement sous une page racine, comme `stats` : une page existante à l'adresse `/pages/<racine>/backlinks` doit être renommée.
+
 ## 1.2.5 — 2026-10-17
 
 - Les images Docker du backend et du frontend tournent désormais sous Node.js 24 (LTS) au lieu de Node.js 22. Rien à faire de votre côté : il suffit de récupérer les nouvelles images.

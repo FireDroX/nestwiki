@@ -174,4 +174,153 @@ describe('MarkdownLinkRewriter', () => {
       rewrite("It's ` alone\n\n[Install](/pages/docs/guide/install)"),
     ).toBe("It's ` alone\n\n[Install](guide/install.md)");
   });
+
+  describe('findPagePaths', () => {
+    function findPagePaths(content: string): string[] {
+      return MarkdownLinkRewriter.findPagePaths(content, INSTANCE_URL);
+    }
+
+    it('collects the page paths of inline links, reference definitions and HTML attributes', () => {
+      expect(
+        findPagePaths(
+          [
+            '[Install](/pages/docs/install)',
+            '<a href="/pages/docs/faq">FAQ</a>',
+            '[guide]: /pages/docs/guide',
+          ].join('\n'),
+        ),
+      ).toEqual(['/docs/install', '/docs/faq', '/docs/guide']);
+    });
+
+    it('treats absolute links to the instance like relative ones and ignores other hosts', () => {
+      expect(
+        findPagePaths(
+          `[a](${INSTANCE_URL}/pages/docs/a) [b](https://elsewhere.org/pages/docs/b)`,
+        ),
+      ).toEqual(['/docs/a']);
+    });
+
+    it('strips the anchor, the query string and trailing slashes', () => {
+      expect(
+        findPagePaths(
+          '[a](/pages/docs/a#setup) [b](/pages/docs/b?tab=1) [c](/pages/docs/c/)',
+        ),
+      ).toEqual(['/docs/a', '/docs/b', '/docs/c']);
+    });
+
+    it('lists each target once', () => {
+      expect(
+        findPagePaths('[a](/pages/docs/a) [again](/pages/docs/a#other)'),
+      ).toEqual(['/docs/a']);
+    });
+
+    it('ignores links inside code blocks and inline code', () => {
+      expect(
+        findPagePaths(
+          [
+            '`[a](/pages/docs/a)`',
+            '```',
+            '[b](/pages/docs/b)',
+            '```',
+            '[c](/pages/docs/c)',
+          ].join('\n'),
+        ),
+      ).toEqual(['/docs/c']);
+    });
+
+    it('decodes percent-encoded segments and lowercases the path like slugs', () => {
+      expect(findPagePaths('[a](/pages/Docs/caf%C3%A9)')).toEqual([
+        '/docs/café',
+      ]);
+    });
+
+    it('ignores links that do not point to a page', () => {
+      expect(
+        findPagePaths(
+          [
+            '[root](/pages/)',
+            '[trash](/pages/trash)',
+            '[media](/api/media/x/raw)',
+            '[anchor](#top)',
+            '[broken](/pages/docs/%E0%A4%A)',
+          ].join(' '),
+        ),
+      ).toEqual([]);
+    });
+  });
+
+  describe('movePagePaths', () => {
+    function movePagePaths(content: string) {
+      return MarkdownLinkRewriter.movePagePaths(
+        content,
+        { from: '/docs/guide', to: '/archive/old-guide' },
+        INSTANCE_URL,
+      );
+    }
+
+    it('points links to the moved page and its descendants at their new path', () => {
+      expect(
+        movePagePaths(
+          '[Guide](/pages/docs/guide) [Linux](/pages/docs/guide/install/linux)',
+        ),
+      ).toEqual({
+        content:
+          '[Guide](/pages/archive/old-guide) [Linux](/pages/archive/old-guide/install/linux)',
+        linksUpdated: 2,
+      });
+    });
+
+    it('keeps the anchor and the query string', () => {
+      expect(
+        movePagePaths(
+          '[a](/pages/docs/guide#setup) [b](/pages/docs/guide?tab=1#x)',
+        ).content,
+      ).toBe(
+        '[a](/pages/archive/old-guide#setup) [b](/pages/archive/old-guide?tab=1#x)',
+      );
+    });
+
+    it('keeps absolute links to the instance absolute', () => {
+      expect(
+        movePagePaths(`[a](${INSTANCE_URL}/pages/docs/guide/install)`).content,
+      ).toBe(`[a](${INSTANCE_URL}/pages/archive/old-guide/install)`);
+    });
+
+    it('rewrites reference definitions and HTML attributes', () => {
+      expect(
+        movePagePaths(
+          '<a href="/pages/docs/guide">Guide</a>\n[guide]: /pages/docs/guide/install',
+        ).content,
+      ).toBe(
+        '<a href="/pages/archive/old-guide">Guide</a>\n[guide]: /pages/archive/old-guide/install',
+      );
+    });
+
+    it('matches the path like the link index does', () => {
+      expect(
+        movePagePaths('[a](/pages/Docs/Guide/) [b](/pages/docs/gu%69de)')
+          .content,
+      ).toBe('[a](/pages/archive/old-guide) [b](/pages/archive/old-guide)');
+    });
+
+    it('keeps the end of the path as the author wrote it', () => {
+      expect(
+        movePagePaths('[x](/pages/Docs/Guide/Install/My%20Notes#top)').content,
+      ).toBe('[x](/pages/archive/old-guide/Install/My%20Notes#top)');
+    });
+
+    it('leaves code, other pages and other hosts untouched', () => {
+      const content = [
+        '`[a](/pages/docs/guide)`',
+        '```',
+        '[b](/pages/docs/guide)',
+        '```',
+        '[sibling](/pages/docs/guidelines)',
+        '[parent](/pages/docs)',
+        '[other](https://elsewhere.org/pages/docs/guide)',
+      ].join('\n');
+
+      expect(movePagePaths(content)).toEqual({ content, linksUpdated: 0 });
+    });
+  });
 });

@@ -8,6 +8,7 @@ import { useAuth } from '#hooks/useAuth'
 import { useUpdateNotification } from '#hooks/useUpdateNotification'
 import { AdminActivityLog } from '#pages/AdminActivityLog'
 import { AdminAuditLog } from '#pages/AdminAuditLog'
+import { AdminBrokenLinks } from '#pages/AdminBrokenLinks'
 import { AdminGroupDetail } from '#pages/AdminGroupDetail'
 import { AdminGroups } from '#pages/AdminGroups'
 import { AdminMcpAudit } from '#pages/AdminMcpAudit'
@@ -16,7 +17,10 @@ import { AdminOAuthClients } from '#pages/AdminOAuthClients'
 import { AdminSettings } from '#pages/AdminSettings'
 import { AdminUserDetail } from '#pages/AdminUserDetail'
 import { AdminUsers } from '#pages/AdminUsers'
+import { AdminWebhookDetail } from '#pages/AdminWebhookDetail'
+import { AdminWebhooks } from '#pages/AdminWebhooks'
 import { Home } from '#pages/Home'
+import { ImportWizard } from '#pages/ImportWizard'
 import { Login } from '#pages/Login'
 import { OAuthConsent } from '#pages/OAuthConsent'
 import { PageCreate } from '#pages/PageCreate'
@@ -56,6 +60,7 @@ export function App() {
           <Route element={<ProtectedRoute />}>
             <Route path="/profile" element={<Profile />} />
             <Route path="/trash" element={<Trash />} />
+            <Route path="/import" element={<ImportWizard />} />
           </Route>
           <Route element={<ProtectedRoute roles={[UserRole.Admin]} />}>
             <Route path="/admin/settings" element={<AdminSettings />} />
@@ -64,6 +69,9 @@ export function App() {
             <Route path="/admin/mcp/audit-log" element={<AdminMcpAudit />} />
             <Route path="/admin/audit-log" element={<AdminAuditLog />} />
             <Route path="/admin/activity-log" element={<AdminActivityLog />} />
+            <Route path="/admin/links" element={<AdminBrokenLinks />} />
+            <Route path="/admin/webhooks" element={<AdminWebhooks />} />
+            <Route path="/admin/webhooks/:id" element={<AdminWebhookDetail />} />
           </Route>
           <Route element={<ProtectedRoute permission="user.manage" />}>
             <Route path="/admin/users" element={<AdminUsers />} />

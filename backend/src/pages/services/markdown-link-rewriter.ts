@@ -1,10 +1,19 @@
 import { posix } from 'node:path';
+import {
+  PAGE_LINK_TARGET_MAX_LENGTH,
+  RESERVED_ROOT_PAGE_SLUGS,
+} from '../../common/variables.global.js';
 
 export interface LinkRewriteContext {
   currentFile: string;
   exportedPages: Map<string, string>;
   mediaFiles: Map<string, string>;
   instanceUrl: string;
+}
+
+export interface PagePathMove {
+  from: string;
+  to: string;
 }
 
 const LINK_TARGETS = [
@@ -14,6 +23,7 @@ const LINK_TARGETS = [
 ];
 const MEDIA_PATH = /^\/api\/media\/([0-9a-f-]{36})\/raw(?:\?[^#]*)?$/i;
 const PAGE_PATH = /^\/pages(\/[^#?]*)(?:\?[^#]*)?(#.*)?$/;
+const PAGE_PATH_AND_SUFFIX = /^\/pages(\/[^#?]*)(.*)$/s;
 const CODE =
   /^[ \t]*(`{3,}|~{3,})[^\n]*\n[\s\S]*?(?:^[ \t]*\1[^\n]*$|(?![\s\S]))|(`+)(?!`)(?:(?!\n[ \t]*\n)[\s\S])*?[^`]\2(?!`)/gm;
 
@@ -32,24 +42,103 @@ export class MarkdownLinkRewriter {
     );
   }
 
+  static movePagePaths(
+    content: string,
+    move: PagePathMove,
+    instanceUrl: string,
+  ): { content: string; linksUpdated: number } {
+    let linksUpdated = 0;
+    const rewritten = MarkdownLinkRewriter.mapOutsideCode(content, (text) =>
+      LINK_TARGETS.reduce(
+        (current, pattern) =>
+          current.replace(
+            pattern,
+            (match: string, prefix: string, url: string) => {
+              const moved = MarkdownLinkRewriter.moveUrl(
+                url,
+                move,
+                instanceUrl,
+              );
+              if (moved === null) {
+                return match;
+              }
+              linksUpdated += 1;
+              return `${prefix}${moved}`;
+            },
+          ),
+        text,
+      ),
+    );
+    return { content: rewritten, linksUpdated };
+  }
+
   static findMediaIds(content: string, instanceUrl: string): string[] {
     const ids = new Set<string>();
+    for (const path of MarkdownLinkRewriter.findInstancePaths(
+      content,
+      instanceUrl,
+    )) {
+      const media = MEDIA_PATH.exec(path);
+      if (media) {
+        ids.add(media[1].toLowerCase());
+      }
+    }
+    return [...ids];
+  }
+
+  static findPagePaths(content: string, instanceUrl: string): string[] {
+    const paths = new Set<string>();
+    for (const path of MarkdownLinkRewriter.findInstancePaths(
+      content,
+      instanceUrl,
+    )) {
+      const page = PAGE_PATH.exec(path);
+      const pagePath = page ? MarkdownLinkRewriter.toPagePath(page[1]) : null;
+      if (pagePath) {
+        paths.add(pagePath);
+      }
+    }
+    return [...paths];
+  }
+
+  private static findInstancePaths(
+    content: string,
+    instanceUrl: string,
+  ): string[] {
+    const paths: string[] = [];
     MarkdownLinkRewriter.mapOutsideCode(content, (text) => {
       for (const pattern of LINK_TARGETS) {
         for (const [, , url] of text.matchAll(pattern)) {
           const path = MarkdownLinkRewriter.toInstancePath(url, instanceUrl);
-          const media = path === null ? null : MEDIA_PATH.exec(path);
-          if (media) {
-            ids.add(media[1].toLowerCase());
+          if (path !== null) {
+            paths.push(path);
           }
         }
       }
       return text;
     });
-    return [...ids];
+    return paths;
   }
 
-  private static mapOutsideCode(
+  private static toPagePath(rawPath: string): string | null {
+    let path: string;
+    try {
+      path = decodeURIComponent(rawPath.replace(/\/+$/, '')).toLowerCase();
+    } catch {
+      return null;
+    }
+    const [rootSlug] = path.split('/').filter(Boolean);
+    if (
+      !rootSlug ||
+      RESERVED_ROOT_PAGE_SLUGS.includes(rootSlug) ||
+      path.length > PAGE_LINK_TARGET_MAX_LENGTH
+    ) {
+      return null;
+    }
+    return path;
+  }
+
+  static mapOutsideCode(
     content: string,
     transform: (text: string) => string,
   ): string {
@@ -88,6 +177,28 @@ export class MarkdownLinkRewriter {
     }
 
     return url;
+  }
+
+  private static moveUrl(
+    url: string,
+    move: PagePathMove,
+    instanceUrl: string,
+  ): string | null {
+    const path = MarkdownLinkRewriter.toInstancePath(url, instanceUrl);
+    const page = path === null ? null : PAGE_PATH_AND_SUFFIX.exec(path);
+    const pagePath = page ? MarkdownLinkRewriter.toPagePath(page[1]) : null;
+    const from = move.from.toLowerCase();
+    if (
+      !page ||
+      pagePath === null ||
+      (pagePath !== from && !pagePath.startsWith(`${from}/`))
+    ) {
+      return null;
+    }
+    const origin = path === url ? '' : instanceUrl;
+    const movedSegmentCount = from.split('/').length;
+    const rest = page[1].split('/').slice(movedSegmentCount).join('/');
+    return `${origin}/pages${move.to}${rest ? `/${rest}` : ''}${page[2]}`;
   }
 
   private static toInstancePath(
