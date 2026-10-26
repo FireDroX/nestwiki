@@ -6,14 +6,14 @@
 # even with an unchanged lockfile. Stripping it here keeps those layers
 # byte-identical (and served from the build cache) until the lockfile or
 # the dependency lists actually change.
-FROM node:24-alpine AS manifests
+FROM node:26-alpine AS manifests
 WORKDIR /app
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY backend/package.json backend/package.json
 COPY frontend/package.json frontend/package.json
 RUN node -e "for (const file of ['package.json', 'backend/package.json', 'frontend/package.json']) { const fs = require('fs'); const manifest = JSON.parse(fs.readFileSync(file, 'utf8')); delete manifest.version; fs.writeFileSync(file, JSON.stringify(manifest, null, 2) + '\n'); }"
 
-FROM node:24-alpine AS base
+FROM node:26-alpine AS base
 WORKDIR /app
 COPY --from=manifests /app/package.json ./
 RUN corepack enable && pnpm --version
@@ -37,7 +37,7 @@ RUN pnpm install --frozen-lockfile --prod --filter backend...
 # Plain node, no pnpm: entrypoint.sh runs the compiled migrations and
 # seeds from dist/ with `node` directly, so neither pnpm, tsx nor the
 # TypeScript sources are needed at runtime.
-FROM node:24-alpine AS runtime
+FROM node:26-alpine AS runtime
 ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=prod-deps /app/node_modules ./node_modules
