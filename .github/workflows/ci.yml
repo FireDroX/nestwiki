@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
-  NODE_VERSION: '24'
+  NODE_VERSION: '26'
   REGISTRY: ghcr.io
   DB_HOST: localhost
   DB_PORT: 3306

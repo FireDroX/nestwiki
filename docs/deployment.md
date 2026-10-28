@@ -8,7 +8,7 @@ Ce document décrit comment l'instance de l'auteur est déployée en continu (tu
 Deux versions du `docker-compose` sont disponibles :
 
 - **`docker-compose.yml`** — version complète (`mysql`, `minio`, `backend`, `frontend`), pour un serveur vierge qui n'a encore ni base de données ni stockage objet. Usage manuel uniquement (`docker compose up -d --build`), non branché sur le déploiement continu.
-- **`docker-compose.external.yml`** — version allégée (`backend`, `frontend` seulement), pour réutiliser un MariaDB/MySQL et un Minio déjà existants sur le serveur (ex. mutualisés avec d'autres apps) plutôt que d'en relancer une paire dédiée. Rejoint le réseau Docker **externe** `mariadb-network` où vivent déjà ces conteneurs, au lieu d'en créer un nouveau — adaptez le nom du réseau dans le fichier si le vôtre s'appelle différemment. **C'est celle-ci qu'utilise `.github/workflows/deploy.yml`** (`docker compose -f docker-compose.external.yml pull && docker compose -f docker-compose.external.yml up -d`) — pas de `--build` : les images `backend`/`frontend` y sont référencées par leur tag GHCR (`ghcr.io/firedrox/nestwiki-{backend,frontend}:latest`, poussées par `ci.yml` à chaque push sur `main`), le serveur les pull plutôt que de rebuild depuis les sources. Le déploiement continu part donc du principe que le mariadb/minio cible existe déjà sur le serveur ; adapter le workflow si un déploiement doit un jour repartir de la version complète.
+- **`docker-compose.external.yml`** — version allégée (`backend`, `frontend` seulement), pour réutiliser un MariaDB/MySQL et un Minio déjà existants sur le serveur (ex. mutualisés avec d'autres apps) plutôt que d'en relancer une paire dédiée. Le backend rejoint les réseaux Docker **externes** où vivent déjà ces conteneurs, nommés par `DATABASE_NETWORK` et `STORAGE_NETWORK` dans le `.env` racine (`mariadb-network` par défaut) ; le frontend reste seul avec le backend sur le réseau `default` du projet (voir [Isolation réseau](#isolation-réseau)). **C'est celle-ci qu'utilise `.github/workflows/deploy.yml`** (`docker compose -f docker-compose.external.yml pull && docker compose -f docker-compose.external.yml up -d`) — pas de `--build` : les images `backend`/`frontend` y sont référencées par leur tag GHCR (`ghcr.io/firedrox/nestwiki-{backend,frontend}:latest`, poussées par `ci.yml` à chaque push sur `main`), le serveur les pull plutôt que de rebuild depuis les sources. Le déploiement continu part donc du principe que le mariadb/minio cible existe déjà sur le serveur ; adapter le workflow si un déploiement doit un jour repartir de la version complète.
 
 `backend`/`frontend` se construisent depuis `backend/Dockerfile`/`frontend/Dockerfile` (contexte = racine du dépôt, pour le workspace pnpm) dans les deux cas — `docker-compose.yml` les build localement, `docker-compose.external.yml` référence les images déjà construites par `ci.yml`. `backend/Dockerfile` exécute `backend/entrypoint.sh` au démarrage du conteneur, directement avec `node` sur le code compilé de `dist/` (l'image ne contient ni pnpm, ni tsx, ni les sources TypeScript) : les migrations (`dist/config/data-source.js`), `dist/database/run-admin-seed.js` (premier admin depuis `ADMIN_*` s'il n'en existe aucun), `dist/database/content-seed.js` (documentation et notes de version générées depuis `CHANGELOG.md`), puis `dist/main.js` lancé en `exec` pour recevoir directement le `SIGTERM` de `docker stop`. Équivalent dans le conteneur de `pnpm run backfill:avatars` : `node --import ./scripts/register-stream-json-case-loader.mjs dist/database/run-avatar-backfill.js`. Le script tourne en `set -e` : si une étape échoue, le conteneur ne démarre pas plutôt que de tourner sur un schéma ou un contenu incohérent. Toutes les étapes sont idempotentes : redémarrer sans changement ne fait rien. Avant même d'ouvrir son port, le backend refuse de démarrer si un secret de `backend/.env` est absent ou par défaut (voir le README).
 
@@ -33,7 +33,7 @@ docker compose up -d --build
 ```bash
 git clone <url-du-dépôt> /chemin/vers/nestwiki
 cd /chemin/vers/nestwiki
-cp .env.example .env               # seul VITE_* est lu par cette version
+cp .env.example .env               # BIND_ADDRESS, DATABASE_NETWORK, STORAGE_NETWORK
 cp backend/.env.example backend/.env
 cp frontend/.env.example frontend/.env
 # backend/.env : DB_HOST/MINIO_ENDPOINT doivent pointer vers les noms de
@@ -63,6 +63,21 @@ docker run --rm -v <nom-projet>_minio-data:/data alpine chown -R 10001:10001 /da
 ```
 
 (nom exact du volume via `docker volume ls`). Un volume neuf (nouveau déploiement) n'a pas ce problème.
+
+### Isolation réseau
+
+Une RCE dans un conteneur ne doit pas donner accès aux autres services. Les deux compose publient les ports `3000`/`8080` sur `BIND_ADDRESS` (`127.0.0.1` par défaut : seul un reverse proxy ou un tunnel tournant sur l'hôte les atteint) et laissent le frontend sur le seul réseau `default`, avec le backend : il ne voit ni la base ni le stockage. `docker-compose.yml` met `mysql`/`minio` sur un réseau `backing` partagé uniquement avec le backend.
+
+Avec `docker-compose.external.yml`, isoler le backend des autres conteneurs du serveur demande des réseaux `--internal` dédiés, partagés uniquement avec la base et le stockage. Exemple de l'instance de l'auteur (sous-réseaux fixes pour pouvoir restreindre l'hôte de l'utilisateur SQL, ex. `'nestwiki'@'172.31.10.%'`) :
+
+```bash
+docker network create --internal --subnet 172.31.10.0/24 db-nestwiki
+docker network create --internal --subnet 172.31.11.0/24 storage-nestwiki
+docker network connect db-nestwiki mariadb
+docker network connect storage-nestwiki minio
+```
+
+puis dans le `.env` racine : `DATABASE_NETWORK=db-nestwiki` et `STORAGE_NETWORK=storage-nestwiki`. Docker ne publie pas de port sur un réseau `--internal` : le frontend et le backend gardent le réseau `default` (non internal) pour leurs ports publiés et la sortie Internet (webhooks, vérification des mises à jour). Les réseaux doivent exister avant `docker compose up`, sinon compose refuse de démarrer.
 
 Ces trois fichiers `.env` ne sont **jamais commités** (`.gitignore`) : sur un premier `git clone` sans eux, `docker compose up` échoue (variables manquantes) — c'est attendu, pas un bug. Une fois créés à la main comme ci-dessus, tous les déploiements suivants (manuels ou automatiques via CI/CD) fonctionnent.
 
