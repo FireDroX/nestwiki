@@ -1,8 +1,22 @@
 # Variante "mariadb/minio déjà existants sur le serveur" — voir la page
 # Déploiement (documentation/guide-demarrage/deploiement) pour le détail.
-# Ne définit ni `mysql` ni `minio` : rejoint le réseau Docker externe où
-# vivent déjà ces conteneurs (`mariadb-network`, à adapter si le vôtre
-# porte un autre nom) plutôt que d'en relancer une paire dédiée.
+# Ne définit ni `mysql` ni `minio` : rejoint les réseaux Docker externes
+# où vivent déjà ces conteneurs plutôt que d'en relancer une paire dédiée.
+#
+# Réseaux, nommés dans le .env racine (lu par docker compose) :
+# - `default` (créé par compose) : frontend + backend, porte les ports
+#   publiés. Le frontend ne voit ni la base ni le stockage.
+# - DATABASE_NETWORK : réseau où le backend joint la base.
+# - STORAGE_NETWORK : réseau où le backend joint le stockage objet.
+# Les deux valent `mariadb-network` par défaut (base et stockage sur un
+# même réseau partagé). Pour isoler, créer des réseaux --internal dédiés
+# partagés uniquement avec la base / le stockage, ex. :
+#   docker network create --internal db-nestwiki
+#   docker network connect db-nestwiki mariadb
+#
+# Ports publiés sur BIND_ADDRESS (127.0.0.1 par défaut) : seul un reverse
+# proxy ou un tunnel tournant sur l'hôte les atteint. 0.0.0.0 pour les
+# exposer sur toutes les interfaces.
 #
 # `backend/.env` doit pointer DB_HOST/MINIO_ENDPOINT vers les noms de
 # conteneur réels de ce mariadb/minio existants, pas `mysql`/`minio`.
@@ -26,20 +40,26 @@ services:
     env_file:
       - backend/.env
     ports:
-      - "3000:3000"
+      - "${BIND_ADDRESS:-127.0.0.1}:3000:3000"
     networks:
-      - mariadb-network
+      - default
+      - database
+      - storage
 
   frontend:
     image: ghcr.io/firedrox/nestwiki-frontend:latest
     restart: unless-stopped
     ports:
-      - "8080:80"
+      - "${BIND_ADDRESS:-127.0.0.1}:8080:80"
     depends_on:
       - backend
     networks:
-      - mariadb-network
+      - default
 
 networks:
-  mariadb-network:
+  database:
     external: true
+    name: ${DATABASE_NETWORK:-mariadb-network}
+  storage:
+    external: true
+    name: ${STORAGE_NETWORK:-mariadb-network}

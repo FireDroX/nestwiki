@@ -64,6 +64,34 @@ describe('HttpExceptionFilter', () => {
     expect(json).toHaveBeenCalledWith({ error: 'boom' });
   });
 
+  it('keeps the 4xx of a body-parser error, such as an invalid gzip body', () => {
+    const { response, status, json } = fakeResponse();
+    const invalidGzip = Object.assign(new Error('incorrect header check'), {
+      status: 400,
+      statusCode: 400,
+      expose: true,
+    });
+
+    HttpExceptionFilter.respond(invalidGzip, response);
+
+    expect(status).toHaveBeenCalledWith(400);
+    expect(json).toHaveBeenCalledWith({ error: 'incorrect header check' });
+  });
+
+  it('keeps a 500 for an error carrying a status it does not expose', () => {
+    const internal = Object.assign(new Error('internal'), {
+      status: 500,
+      expose: false,
+    });
+    const unexposed = Object.assign(new Error('hidden'), {
+      status: 400,
+      expose: false,
+    });
+
+    expect(HttpExceptionFilter.statusOf(internal)).toBe(500);
+    expect(HttpExceptionFilter.statusOf(unexposed)).toBe(500);
+  });
+
   it('exposes the status of an exception', () => {
     expect(HttpExceptionFilter.statusOf(new NotFoundException())).toBe(404);
     expect(HttpExceptionFilter.statusOf(new Error())).toBe(500);
