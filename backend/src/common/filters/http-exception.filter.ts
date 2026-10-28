@@ -35,9 +35,31 @@ export class HttpExceptionFilter implements ExceptionFilter {
   }
 
   static statusOf(exception: unknown): number {
-    return exception instanceof HttpException
-      ? exception.getStatus()
-      : HttpStatus.INTERNAL_SERVER_ERROR;
+    if (exception instanceof HttpException) {
+      return exception.getStatus();
+    }
+    if (HttpExceptionFilter.isExposedClientError(exception)) {
+      return exception.status;
+    }
+    return HttpStatus.INTERNAL_SERVER_ERROR;
+  }
+
+  private static isExposedClientError(
+    exception: unknown,
+  ): exception is Error & { status: number } {
+    if (!(exception instanceof Error)) {
+      return false;
+    }
+    const { status, expose } = exception as Error & {
+      status?: unknown;
+      expose?: unknown;
+    };
+    return (
+      expose === true &&
+      typeof status === 'number' &&
+      status >= 400 &&
+      status < 500
+    );
   }
 
   private static extractMessage(exception: unknown): string {
