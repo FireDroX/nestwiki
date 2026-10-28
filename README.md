@@ -58,7 +58,7 @@ For this all-in-one setup, `backend/.env` must point at the Compose services: `D
 docker compose up -d --build
 ```
 
-Open <http://localhost:8080> and sign in with the `ADMIN_EMAIL` / `ADMIN_PASSWORD` you configured. On first start the backend applies the database migrations, creates that admin account, and seeds the built-in documentation and release notes.
+Open <http://localhost:8080> and sign in with the `ADMIN_EMAIL` / `ADMIN_PASSWORD` you configured. The ports are published on `127.0.0.1` only: on a remote server, put a reverse proxy or tunnel in front of them, or set `BIND_ADDRESS=0.0.0.0`. On first start the backend applies the database migrations, creates that admin account, and seeds the built-in documentation and release notes.
 
 ## Configuration
 
@@ -71,6 +71,8 @@ There are three `.env` files, each with a commented `.env.example` next to it.
 | `MYSQL_ROOT_PASSWORD` | Root password of the bundled MySQL container. |
 | `MYSQL_DATABASE` | Database created on first start (`nestwiki`). |
 | `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY` | Credentials of the bundled object storage. |
+| `BIND_ADDRESS` | Host address the web app (`8080`) and API (`3000`) ports are published on: `127.0.0.1` (default) or `0.0.0.0`. |
+| `DATABASE_NETWORK`, `STORAGE_NETWORK` | `docker-compose.external.yml` only: existing Docker networks where the API reaches the database and the object storage (default `mariadb-network`). |
 | `VITE_API_URL` | Public URL of the API as seen by browsers, e.g. `https://wiki.example.com/api`. Baked into the web app at build time. |
 | `VITE_TURNSTILE_SITE_KEY` | Optional Cloudflare Turnstile site key for the sign-up and login forms. |
 

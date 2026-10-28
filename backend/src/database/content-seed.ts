@@ -398,7 +398,7 @@ pnpm run front:dev  # frontend sur http://localhost:5173
 Deux versions du \`docker-compose\` sont disponibles :
 
 - **\`docker-compose.yml\`** — version complète (\`mysql\`, \`minio\`, \`backend\`, \`frontend\`), pour un serveur vierge qui n'a encore ni base de données ni stockage objet. Usage manuel uniquement (\`docker compose up -d --build\`), non branché sur le déploiement continu.
-- **\`docker-compose.external.yml\`** — version allégée (\`backend\`, \`frontend\` seulement), pour réutiliser un MariaDB/MySQL et un Minio déjà existants sur le serveur (ex. mutualisés avec d'autres apps) plutôt que d'en relancer une paire dédiée. Rejoint le réseau Docker **externe** \`mariadb-network\` où vivent déjà ces conteneurs, au lieu d'en créer un nouveau — adaptez le nom du réseau dans le fichier si le vôtre s'appelle différemment. **C'est celle-ci qu'utilise \`.github/workflows/deploy.yml\`** (\`docker compose -f docker-compose.external.yml up -d --build\`) — le déploiement continu part donc du principe que le mariadb/minio cible existe déjà sur le serveur ; adapter le workflow si un déploiement doit un jour repartir de la version complète.
+- **\`docker-compose.external.yml\`** — version allégée (\`backend\`, \`frontend\` seulement), pour réutiliser un MariaDB/MySQL et un Minio déjà existants sur le serveur (ex. mutualisés avec d'autres apps) plutôt que d'en relancer une paire dédiée. Le backend rejoint les réseaux Docker **externes** où vivent déjà ces conteneurs, nommés par \`DATABASE_NETWORK\` et \`STORAGE_NETWORK\` dans le \`.env\` racine (\`mariadb-network\` par défaut, ou des réseaux \`--internal\` dédiés pour isoler le backend des autres conteneurs) ; le frontend reste seul avec le backend et ne voit ni la base ni le stockage. **C'est celle-ci qu'utilise \`.github/workflows/deploy.yml\`** (\`docker compose -f docker-compose.external.yml pull\` puis \`up -d\`) — le déploiement continu part donc du principe que le mariadb/minio cible existe déjà sur le serveur ; adapter le workflow si un déploiement doit un jour repartir de la version complète.
 
 \`backend\`/\`frontend\` se construisent depuis \`backend/Dockerfile\`/\`frontend/Dockerfile\` (contexte = racine du dépôt, pour le workspace pnpm) dans les deux cas. \`backend/Dockerfile\` exécute \`backend/entrypoint.sh\` au démarrage du conteneur, avec \`node\` directement sur le code compilé (l'image ne contient ni pnpm ni les sources TypeScript) : migrations, création du premier admin depuis \`ADMIN_*\` s'il n'en existe aucun, seed du contenu (documentation et notes de version), puis le serveur. Si une étape échoue, le conteneur ne démarre pas (\`set -e\`), plutôt que de tourner sur un schéma ou un contenu incohérent. Toutes les étapes sont idempotentes : redémarrer sans changement ne fait rien.
 
@@ -421,12 +421,14 @@ cp frontend/.env.example frontend/.env
 docker compose up -d --build
 \`\`\`
 
+Les ports \`3000\` et \`8080\` sont publiés sur \`BIND_ADDRESS\` (\`127.0.0.1\` par défaut) : seul un reverse proxy ou un tunnel tournant sur le serveur les atteint. \`BIND_ADDRESS=0.0.0.0\` dans le \`.env\` racine pour les exposer sur toutes les interfaces.
+
 **Version allégée (mariadb/minio déjà existants) :**
 
 \`\`\`bash
 git clone <url-du-dépôt> /chemin/vers/nestwiki
 cd /chemin/vers/nestwiki
-cp .env.example .env               # seul VITE_* est lu par cette version
+cp .env.example .env               # BIND_ADDRESS, DATABASE_NETWORK, STORAGE_NETWORK
 cp backend/.env.example backend/.env
 cp frontend/.env.example frontend/.env
 # backend/.env : DB_HOST/MINIO_ENDPOINT doivent pointer vers les noms de
