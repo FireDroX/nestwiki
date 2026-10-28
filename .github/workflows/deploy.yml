@@ -18,6 +18,12 @@ jobs:
     if: github.repository == 'FireDroX/nestwiki' && github.event.workflow_run.conclusion == 'success'
     permissions:
       packages: read
+    # ssh.addrien.fr sits behind Cloudflare Access: cloudflared (the SSH
+    # ProxyCommand) reads this Access service token from the environment
+    # instead of opening a browser login, which a runner cannot complete.
+    env:
+      TUNNEL_SERVICE_TOKEN_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+      TUNNEL_SERVICE_TOKEN_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
     steps:
       - name: Install cloudflared
         run: |

@@ -2,6 +2,12 @@
 
 All notable changes to NestWiki are documented here, newest first, one `## <version> — <date>` section per release. This file is the single source for the in-app "Notes de version" page, which groups releases by minor version (`1.0`, `0.31`…). Entries up to 0.31.10 were written in French, the project's original language.
 
+## 1.3.10 — 2026-10-28
+
+- Sécurité : les ports du backend (`3000`) et du frontend (`8080`) ne sont plus publiés que sur `127.0.0.1` par défaut, dans les deux `docker-compose` : seul un reverse proxy ou un tunnel tournant sur le serveur les atteint. ⚠️ Si vous accédiez au wiki directement par l'IP du serveur, ajoutez `BIND_ADDRESS=0.0.0.0` au `.env` racine.
+- Sécurité : le frontend ne partage plus de réseau Docker avec la base de données ni le stockage : seul le backend les voit. Avec `docker-compose.external.yml`, le backend rejoint la base et le stockage par les réseaux nommés dans `DATABASE_NETWORK` et `STORAGE_NETWORK` (`mariadb-network` par défaut, comme avant) ; des réseaux `--internal` dédiés l'isolent des autres conteneurs du serveur (exemple dans `docs/deployment.md`). ⚠️ Ces réseaux doivent exister avant la mise à jour. `docker-compose.yml` ne crée plus de réseau `mariadb-network` mais un réseau `backing` propre au projet.
+- Mises à jour : image Docker sur Node.js 26, `@nestjs/config` 12.0.1, `@nestjs/swagger` 12.0.3, `@nestjs/websockets` 12.2.0, `react-router` 8.5.0 et `@types/node` 26.6.5.
+
 ## 1.3.9 — 2026-10-26
 
 - Sécurité : mise à jour des dépendances signalées par `pnpm audit` — `body-parser` 2.4.0 et `multer` 2.5.0 (deux failles hautes : un corps de requête compressé ou un envoi de fichier interrompu pouvait bloquer le serveur), `fast-uri` 3.1.9 (quatre failles moyennes et faibles d'interprétation d'URL) et `undici` 6.29.1 pour les outils de développement et de test.

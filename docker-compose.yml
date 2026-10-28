@@ -1,6 +1,11 @@
 # Version complète (mysql + minio + backend + frontend) — pour un
 # serveur vierge. Si mariadb/minio existent déjà sur le serveur, voir
 # docker-compose.external.yml à la place.
+#
+# Réseaux : mysql et minio sur `backing`, frontend sur `default`, backend
+# sur les deux. Le frontend ne voit ni la base ni le stockage.
+# Ports backend/frontend publiés sur BIND_ADDRESS (127.0.0.1 par défaut,
+# voir .env.example).
 services:
   mysql:
     image: mysql:8
@@ -13,7 +18,7 @@ services:
     volumes:
       - mysql-data:/var/lib/mysql
     networks:
-      - mariadb-network
+      - backing
     healthcheck:
       test:
         [
@@ -60,7 +65,7 @@ services:
     volumes:
       - minio-data:/data
     networks:
-      - mariadb-network
+      - backing
 
   # Application containers (production deploy — see README.md). Not
   # needed for local dev, where the backend/frontend run via `pnpm run
@@ -77,14 +82,15 @@ services:
     env_file:
       - backend/.env
     ports:
-      - "3000:3000"
+      - "${BIND_ADDRESS:-127.0.0.1}:3000:3000"
     depends_on:
       mysql:
         condition: service_healthy
       minio:
         condition: service_started
     networks:
-      - mariadb-network
+      - default
+      - backing
 
   frontend:
     build:
@@ -95,14 +101,14 @@ services:
         VITE_TURNSTILE_SITE_KEY: ${VITE_TURNSTILE_SITE_KEY}
     restart: unless-stopped
     ports:
-      - "8080:80"
+      - "${BIND_ADDRESS:-127.0.0.1}:8080:80"
     depends_on:
       - backend
     networks:
-      - mariadb-network
+      - default
 
 networks:
-  mariadb-network:
+  backing:
     driver: bridge
 
 volumes:
