@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const handlers: Record<string, (reason: string) => void> = {}
 const socketMock = {
@@ -19,8 +19,13 @@ vi.mock('#lib/api-client', () => ({
 describe('realtime client', () => {
   beforeEach(() => {
     vi.resetModules()
+    vi.stubEnv('VITE_API_URL', 'http://localhost:3000/api')
     socketMock.connect.mockReset()
     refreshSessionMock.mockReset()
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
   })
 
   it('refreshes the session and reconnects when the server ends an expired session', async () => {
