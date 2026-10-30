@@ -139,6 +139,14 @@ export class PagesService {
 
     PagesService.assertSlugNotReserved(dto.slug, parent);
 
+    const visibility = dto.visibility ?? parent?.visibility ?? 'private';
+    if (
+      visibility === 'public' &&
+      !(await this.permissionsService.canCreatePublicPageUnder(user, parentId))
+    ) {
+      throw new InsufficientPagePermissionException();
+    }
+
     const existing = await this.pagesRepository.findBySlugAndParent(
       dto.slug,
       parentId,
@@ -154,7 +162,7 @@ export class PagesService {
         title: dto.title,
         content: dto.content,
         parentId,
-        visibility: dto.visibility,
+        visibility,
         createdById,
       });
     } catch (error) {
@@ -764,6 +772,12 @@ export class PagesService {
       throw new SlugAlreadyExistsException();
     }
 
+    await this.assertCanOnAll(
+      'page.move',
+      await this.collectDescendantIds(id),
+      userId,
+    );
+
     const pathMove = await this.describePathMove(page, newParentId);
 
     let moved: Page;
@@ -849,21 +863,7 @@ export class PagesService {
     }
 
     const descendantIds = cascade ? await this.collectDescendantIds(id) : [];
-    if (descendantIds.length > 0) {
-      const user = await this.usersService.findById(userId);
-      const effectiveActions =
-        await this.permissionsService.getEffectivePageActionsBulk(
-          user,
-          descendantIds,
-        );
-      for (const descendantId of descendantIds) {
-        if (
-          !(effectiveActions.get(descendantId) ?? []).includes('page.delete')
-        ) {
-          throw new InsufficientPagePermissionException();
-        }
-      }
-    }
+    await this.assertCanOnAll('page.delete', descendantIds, userId);
     await this.pagesRepository.softDeleteBatch(
       [id, ...descendantIds],
       userId,
@@ -896,6 +896,11 @@ export class PagesService {
     }
 
     await this.assertCan('page.manage_visibility', id, userId);
+    await this.assertCanOnAll(
+      'page.manage_visibility',
+      await this.collectDescendantIds(id),
+      userId,
+    );
 
     const version = await this.pagesRepository.findVersionById(
       page.currentVersionId,
@@ -995,6 +1000,24 @@ export class PagesService {
     const user = await this.usersService.findById(userId);
     if (!(await this.permissionsService.can(user, action, pageId))) {
       throw new InsufficientPagePermissionException();
+    }
+  }
+
+  private async assertCanOnAll(
+    action: PageAction,
+    pageIds: string[],
+    userId: string,
+  ): Promise<void> {
+    if (pageIds.length === 0) {
+      return;
+    }
+    const user = await this.usersService.findById(userId);
+    const effectiveActions =
+      await this.permissionsService.getEffectivePageActionsBulk(user, pageIds);
+    for (const pageId of pageIds) {
+      if (!(effectiveActions.get(pageId) ?? []).includes(action)) {
+        throw new InsufficientPagePermissionException();
+      }
     }
   }
 
@@ -1106,7 +1129,10 @@ export class PagesService {
       errors.push('content must be a string');
     }
 
-    if (!PAGE_VISIBILITIES.includes(dto.visibility)) {
+    if (
+      dto.visibility !== undefined &&
+      !PAGE_VISIBILITIES.includes(dto.visibility)
+    ) {
       errors.push(
         `visibility must be one of the following values: ${PAGE_VISIBILITIES.join(', ')}`,
       );

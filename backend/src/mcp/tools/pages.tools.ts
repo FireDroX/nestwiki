@@ -39,7 +39,12 @@ export function buildPagesTools(
         title: z.string(),
         content: z.string(),
         parentId: z.string().optional(),
-        visibility: z.enum(PAGE_VISIBILITIES),
+        visibility: z
+          .enum(PAGE_VISIBILITIES)
+          .optional()
+          .describe(
+            'Absent : celle de la page parente (private à la racine). public sous un parent privé ou à la racine exige page.manage_visibility.',
+          ),
       },
       requiredScopes: [PAGES_WRITE_SCOPE],
       handler: async (input, ctx) => {

@@ -437,7 +437,9 @@
         "purgeAllConfirmDescription_other": "Les {{count}} commentaires de {{name}} seront définitivement supprimés, ainsi que leurs éventuelles réponses. Cette action est irréversible.",
         "purgeSuccess_one": "{{count}} commentaire purgé.",
         "purgeSuccess_other": "{{count}} commentaires purgés.",
-        "purgeFailed": "Échec de la purge des commentaires."
+        "purgeFailed": "Échec de la purge des commentaires.",
+        "hiddenPage": "Page à laquelle vous n'avez pas accès",
+        "hiddenContent": "Contenu masqué : vous n'avez pas accès à cette page."
       }
     },
     "groups": {

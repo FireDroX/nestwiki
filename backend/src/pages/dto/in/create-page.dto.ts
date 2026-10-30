@@ -8,6 +8,11 @@ export class CreatePageDto {
   content: string;
   parentId?: string | null;
 
-  @ApiProperty({ enum: PAGE_VISIBILITIES })
-  visibility: PageVisibility;
+  @ApiProperty({
+    enum: PAGE_VISIBILITIES,
+    required: false,
+    description:
+      'Absent : celle de la page parente (private à la racine). public sous un parent privé ou à la racine exige page.manage_visibility.',
+  })
+  visibility?: PageVisibility;
 }

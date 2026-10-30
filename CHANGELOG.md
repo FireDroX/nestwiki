@@ -2,6 +2,15 @@
 
 All notable changes to NestWiki are documented here, newest first, one `## <version> — <date>` section per release. This file is the single source for the in-app "Notes de version" page, which groups releases by minor version (`1.0`, `0.31`…). Entries up to 0.31.10 were written in French, the project's original language.
 
+## 1.4.2 — 2026-10-30
+
+- Sécurité : la permission `user.manage` ne permet plus de prendre la main sur un compte qui a plus de droits que soi. Sans être admin, il faut détenir tous les droits du compte (permissions globales et accès aux pages, directs ou hérités de ses groupes) pour réinitialiser son mot de passe, changer son e-mail, le réactiver ou le supprimer. Changer son nom reste possible.
+- Sécurité : la liste des commentaires d'un utilisateur (administration des comptes) masque le contenu et la page des commentaires posés sur des pages que l'on ne peut pas lire. Chacun voit toujours tous ses propres commentaires.
+- Sécurité : changer la visibilité d'une page ou la déplacer demande désormais ce droit sur chacune de ses sous-pages, comme la suppression. Une sous-page privée exclue de vos droits ne peut plus devenir publique, ni passer sous une autre page, par l'intermédiaire de sa parente.
+- Sécurité : on ne peut plus modifier un commentaire supprimé, ni un commentaire posé sur une page qu'on ne peut plus lire ou dont les commentaires sont désactivés.
+- Sécurité : une exclusion qui vise une page en corbeille est maintenant prise en compte quand on accorde des droits sur une sous-arborescence. Elle ne peut plus servir à accorder plus que ce qu'on détient, en vue de la restauration de la page.
+- Une nouvelle page prend par défaut la visibilité de sa page parente (privée à la racine), dans l'éditeur comme via l'API et le serveur MCP, où `visibility` devient facultatif. ⚠️ Créer une page publique sous une page privée, ou à la racine, demande maintenant le droit de gérer la visibilité de la page parente, ou de tout le wiki pour la racine. Un import en `public` suit la même règle.
+
 ## 1.4.1 — 2026-10-30
 
 - Sécurité : après la connexion, le wiki ne redirige plus que vers une adresse du wiki lui-même. Un lien `/login?redirect=…` piégé ne peut plus exécuter de JavaScript dans le navigateur de la personne qui l'ouvre, ni l'envoyer vers un autre site. La connexion des clients OAuth (MCP) fonctionne comme avant.

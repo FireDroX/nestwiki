@@ -326,6 +326,20 @@ export class PermissionsService {
     );
   }
 
+  async canCreatePublicPageUnder(
+    user: User,
+    parentId: string | null,
+  ): Promise<boolean> {
+    if (parentId === null) {
+      return this.hasUnrestrictedPageAccess(user, 'page.manage_visibility');
+    }
+    const chains = await this.pageHierarchyRepository.findChains([parentId]);
+    if (chains.get(parentId)?.visibility === 'public') {
+      return true;
+    }
+    return this.can(user, 'page.manage_visibility', parentId);
+  }
+
   /**
    * The specific page ids `user` can read beyond public pages, or `null` if
    * unrestricted (admin, or an exclusion-free whole-wiki rule — the caller
@@ -464,11 +478,13 @@ export class PermissionsService {
       if (excludedPageIds.length === 0) {
         return true;
       }
-      const exclusionChains =
-        await this.pageHierarchyRepository.findChains(excludedPageIds);
+      const exclusionChains = await this.pageHierarchyRepository.findChains(
+        excludedPageIds,
+        { includeDeleted: true },
+      );
       const hasExclusionInsideSubtree = excludedPageIds.some((excludedId) => {
         const exclusionChain = exclusionChains.get(excludedId);
-        return exclusionChain?.chainIds.includes(pageId) ?? false;
+        return exclusionChain?.chainIds.includes(pageId) ?? true;
       });
       if (!hasExclusionInsideSubtree) {
         return true;

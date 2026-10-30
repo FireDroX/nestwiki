@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Controller, type Control, type UseFormSetValue, type UseFormWatch } from 'react-hook-form'
 import { FolderTree, Lock, Globe } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -52,6 +52,7 @@ export function PageMetadataForm({
 }: PageMetadataFormProps) {
   const { t } = useTranslation()
   const [slugTouched, setSlugTouched] = useState(false)
+  const [visibilityTouched, setVisibilityTouched] = useState(false)
   const [parentPickerOpen, setParentPickerOpen] = useState(false)
   const { tree } = usePageTree()
 
@@ -60,6 +61,7 @@ export function PageMetadataForm({
 
   function selectVisibility(next: PageVisibility) {
     setValue('visibility', next, { shouldValidate: true })
+    setVisibilityTouched(true)
     if (mode === 'edit') {
       onVisibilityChange?.(next)
     }
@@ -69,6 +71,13 @@ export function PageMetadataForm({
   const parentPath = parentId ? findPathToNode(tree, (node) => node.id === parentId) : null
   const parentLabel = parentPath ? parentPath.map((node) => node.title).join(' / ') : t('pageMetadataForm.none')
   const pathPrefix = parentPath ? `/${parentPath.map((node) => node.slug).join('/')}/` : '/'
+  const inheritedVisibility = parentPath?.at(-1)?.visibility ?? 'private'
+
+  useEffect(() => {
+    if (mode === 'create' && !visibilityTouched) {
+      setValue('visibility', inheritedVisibility)
+    }
+  }, [mode, visibilityTouched, inheritedVisibility, setValue])
 
   function selectParent(nextParentId: string | null) {
     setValue('parentId', nextParentId, { shouldValidate: true })

@@ -1,6 +1,9 @@
 import { PaginatedResponseDto } from '../../common/dto/paginated-response.dto.js';
 import { ResponseDto } from '../../common/dto/response.dto.js';
-import type { AuthorInfo } from '../services/comments.service.js';
+import type {
+  AuthorInfo,
+  UserCommentItem,
+} from '../services/comments.service.js';
 import { CommentResponseDto } from '../dto/out/comment-response.dto.js';
 import { UserCommentResponseDto } from '../dto/out/user-comment-response.dto.js';
 import { Comment } from '../entities/comment.entity.js';
@@ -52,30 +55,29 @@ export class CommentMapper {
     return new ResponseDto(CommentMapper.toTree(comments, authorNames));
   }
 
-  static toUserCommentResponseDto(
-    comment: Comment,
-    pagePath: string | null,
-  ): UserCommentResponseDto {
+  static toUserCommentResponseDto({
+    comment,
+    pagePath,
+    pageReadable,
+  }: UserCommentItem): UserCommentResponseDto {
     return {
       id: comment.id,
-      pageId: comment.pageId,
+      pageId: pageReadable ? comment.pageId : null,
       pagePath,
-      content: comment.content,
+      content: pageReadable ? comment.content : null,
       deletedAt: comment.deletedAt,
       createdAt: comment.createdAt,
     };
   }
 
   static toPaginatedUserComments(
-    items: Array<{ comment: Comment; pagePath: string | null }>,
+    items: UserCommentItem[],
     total: number,
     page: number,
     limit: number,
   ): ResponseDto<PaginatedResponseDto<UserCommentResponseDto>> {
     return new ResponseDto({
-      items: items.map(({ comment, pagePath }) =>
-        CommentMapper.toUserCommentResponseDto(comment, pagePath),
-      ),
+      items: items.map((item) => CommentMapper.toUserCommentResponseDto(item)),
       total,
       page,
       limit,
