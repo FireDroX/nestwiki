@@ -2,6 +2,13 @@
 
 All notable changes to NestWiki are documented here, newest first, one `## <version> — <date>` section per release. This file is the single source for the in-app "Notes de version" page, which groups releases by minor version (`1.0`, `0.31`…). Entries up to 0.31.10 were written in French, the project's original language.
 
+## 1.4.1 — 2026-10-30
+
+- Sécurité : après la connexion, le wiki ne redirige plus que vers une adresse du wiki lui-même. Un lien `/login?redirect=…` piégé ne peut plus exécuter de JavaScript dans le navigateur de la personne qui l'ouvre, ni l'envoyer vers un autre site. La connexion des clients OAuth (MCP) fonctionne comme avant.
+- Sécurité : les animations SVG (`<set>`, `<animate>`, `<animateMotion>`, `<animateTransform>`, `<discard>`) sont retirées du contenu des pages, ainsi que `<frame>` et `<applet>`, et une URL `javascript:` est retirée de n'importe quel attribut. Elles permettaient d'exécuter du JavaScript au clic d'un lecteur. ⚠️ Une page qui animait un SVG de cette façon s'affiche désormais sans l'animation : utiliser une animation CSS dans un bloc `<style>`.
+- Sécurité : un bloc `<style>` de page ne peut plus s'appliquer au reste de l'application grâce à une accolade échappée, une `url(…)` sans guillemets ou une parenthèse mal fermée. Le CSS est analysé comme le fait le navigateur, et un bloc mal formé est ignoré en entier.
+- Sécurité : le frontend envoie une Content-Security-Policy qui n'autorise que les scripts du wiki et de Cloudflare Turnstile, ainsi que `X-Content-Type-Options: nosniff`. ⚠️ Les sites autorisés à afficher le wiki dans une iframe se règlent avec `CSP_FRAME_ANCESTORS` dans le `.env` racine (`'self'` par défaut), et un proxy placé devant ne doit pas remplacer cet en-tête (voir la page Déploiement).
+
 ## 1.4.0 — 2026-10-30
 
 - Sécurité : une page dont le contenu contient de longues suites de backticks ne peut plus bloquer le serveur, ni à l'enregistrement, ni à chaque lecture, ni au démarrage. La recherche des blocs de code dans le Markdown se fait désormais en temps linéaire, et l'indexation des liens au démarrage n'empêche plus l'application de répondre.

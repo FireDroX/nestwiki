@@ -72,6 +72,7 @@ There are three `.env` files, each with a commented `.env.example` next to it.
 | `MYSQL_DATABASE` | Database created on first start (`nestwiki`). |
 | `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY` | Credentials of the bundled object storage. |
 | `BIND_ADDRESS` | Host address the web app (`8080`) and API (`3000`) ports are published on: `127.0.0.1` (default) or `0.0.0.0`. |
+| `CSP_FRAME_ANCESTORS` | Sites allowed to show the wiki in an iframe (`frame-ancestors` of the web app's Content-Security-Policy), `'self'` by default. Keep the outer double quotes: `"'self' https://example.org"`. |
 | `DATABASE_NETWORK`, `STORAGE_NETWORK` | `docker-compose.external.yml` only: existing Docker networks where the API reaches the database and the object storage (default `mariadb-network`). |
 | `VITE_API_URL` | Public URL of the API as seen by browsers, e.g. `https://wiki.example.com/api`. Baked into the web app at build time. |
 | `VITE_TURNSTILE_SITE_KEY` | Optional Cloudflare Turnstile site key for the sign-up and login forms. |

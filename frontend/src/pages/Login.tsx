@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '#components/ui/tabs'
 import { useAuth } from '#hooks/useAuth'
 import { extractErrorMessage } from '#lib/api-errors'
 import { createLoginSchema, createRegisterSchema, type LoginFormValues, type RegisterFormValues } from '#schemas/auth.schema'
+import { sameOriginPath } from '#utils/safe-redirect'
 
 function useLockoutCountdown() {
   const [secondsRemaining, setSecondsRemaining] = useState<number | null>(null)
@@ -191,7 +192,7 @@ export function Login() {
   const { status } = useAuth()
   const [searchParams] = useSearchParams()
   const defaultTab = searchParams.get('tab') === 'register' ? 'register' : 'login'
-  const redirectTo = searchParams.get('redirect')
+  const redirectTo = sameOriginPath(searchParams.get('redirect'))
 
   if (status === 'authenticated') {
     if (redirectTo) {

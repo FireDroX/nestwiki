@@ -79,6 +79,14 @@ docker network connect storage-nestwiki minio
 
 puis dans le `.env` racine : `DATABASE_NETWORK=db-nestwiki` et `STORAGE_NETWORK=storage-nestwiki`. Docker ne publie pas de port sur un réseau `--internal` : le frontend et le backend gardent le réseau `default` (non internal) pour leurs ports publiés et la sortie Internet (webhooks, vérification des mises à jour). Les réseaux doivent exister avant `docker compose up`, sinon compose refuse de démarrer.
 
+### Content-Security-Policy
+
+Le nginx du frontend envoie une `Content-Security-Policy` avec chaque page de l'application : scripts limités au site lui-même et à Cloudflare Turnstile (`script-src 'self' https://challenges.cloudflare.com`), aucun script inline ni URL `javascript:`, `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`, plus `X-Content-Type-Options: nosniff`. Images, médias, iframes (aperçus PDF) et connexions restent ouverts à tout hôte, parce que le stockage des médias ou l'API peuvent être servis depuis un autre domaine selon l'installation.
+
+`frame-ancestors` (sites autorisés à afficher le wiki dans une iframe) vient de `CSP_FRAME_ANCESTORS` dans le `.env` racine, `'self'` par défaut. Garder les guillemets doubles autour de la valeur pour conserver les simples : `CSP_FRAME_ANCESTORS="'self' https://addrien.fr https://*.addrien.fr"` pour l'instance de l'auteur. Un proxy placé devant (ex. une règle Cloudflare de transformation des en-têtes de réponse) ne doit pas remplacer cet en-tête : il perdrait toute la politique sauf ce qu'il réécrit.
+
+Le chemin `/api` peut être routé directement vers le backend (c'est le cas de l'instance de l'auteur) : ces réponses JSON ne portent pas cette CSP, ce qui ne change rien puisqu'elles ne sont pas affichées comme des pages.
+
 Ces trois fichiers `.env` ne sont **jamais commités** (`.gitignore`) : sur un premier `git clone` sans eux, `docker compose up` échoue (variables manquantes) — c'est attendu, pas un bug. Une fois créés à la main comme ci-dessus, tous les déploiements suivants (manuels ou automatiques via CI/CD) fonctionnent.
 
 ## CI/CD

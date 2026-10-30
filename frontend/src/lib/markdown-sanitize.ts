@@ -1,9 +1,25 @@
 import { visit, SKIP } from 'unist-util-visit'
 import type { Element, Root } from 'hast'
 
-const DENIED_TAG_NAMES = new Set(['script', 'iframe', 'object', 'embed', 'form', 'base', 'link', 'meta'])
-
-const URL_PROPERTY_NAMES = new Set(['href', 'src', 'action', 'formAction', 'cite', 'xLinkHref'])
+const DENIED_TAG_NAMES = new Set([
+  'script',
+  'iframe',
+  'frame',
+  'frameset',
+  'object',
+  'embed',
+  'applet',
+  'form',
+  'base',
+  'link',
+  'meta',
+  'set',
+  'animate',
+  'animatemotion',
+  'animatetransform',
+  'animatecolor',
+  'discard',
+])
 
 const DANGEROUS_PROTOCOLS = ['javascript:', 'vbscript:', 'data:text/html']
 
@@ -17,25 +33,25 @@ function hasDangerousProtocol(value: string): boolean {
   return DANGEROUS_PROTOCOLS.some((protocol) => normalized.startsWith(protocol))
 }
 
+function isDangerousValue(value: unknown): boolean {
+  if (typeof value === 'string') {
+    return hasDangerousProtocol(value)
+  }
+  return Array.isArray(value) && value.some((item) => typeof item === 'string' && hasDangerousProtocol(item))
+}
+
 export function rehypeHardenFullMode() {
   return (tree: Root) => {
     visit(tree, 'element', (node: Element, index, parent) => {
-      if (DENIED_TAG_NAMES.has(node.tagName) && parent && typeof index === 'number') {
+      if (DENIED_TAG_NAMES.has(node.tagName.toLowerCase()) && parent && typeof index === 'number') {
         parent.children.splice(index, 1)
         return [SKIP, index] as const
       }
 
       const properties = node.properties ?? {}
       for (const propertyName of Object.keys(properties)) {
-        if (isEventHandlerProperty(propertyName)) {
+        if (isEventHandlerProperty(propertyName) || isDangerousValue(properties[propertyName])) {
           delete properties[propertyName]
-          continue
-        }
-        if (URL_PROPERTY_NAMES.has(propertyName)) {
-          const value = properties[propertyName]
-          if (typeof value === 'string' && hasDangerousProtocol(value)) {
-            delete properties[propertyName]
-          }
         }
       }
     })
