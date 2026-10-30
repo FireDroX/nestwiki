@@ -3,6 +3,7 @@ import {
   PAGE_LINK_TARGET_MAX_LENGTH,
   RESERVED_ROOT_PAGE_SLUGS,
 } from '../../common/variables.global.js';
+import { findCodeRanges } from './markdown-code-ranges.js';
 
 export interface LinkRewriteContext {
   currentFile: string;
@@ -24,8 +25,6 @@ const LINK_TARGETS = [
 const MEDIA_PATH = /^\/api\/media\/([0-9a-f-]{36})\/raw(?:\?[^#]*)?$/i;
 const PAGE_PATH = /^\/pages(\/[^#?]*)(?:\?[^#]*)?(#.*)?$/;
 const PAGE_PATH_AND_SUFFIX = /^\/pages(\/[^#?]*)(.*)$/s;
-const CODE =
-  /^[ \t]*(`{3,}|~{3,})[^\n]*\n[\s\S]*?(?:^[ \t]*\1[^\n]*$|(?![\s\S]))|(`+)(?!`)(?:(?!\n[ \t]*\n)[\s\S])*?[^`]\2(?!`)/gm;
 
 export class MarkdownLinkRewriter {
   static rewrite(content: string, context: LinkRewriteContext): string {
@@ -144,10 +143,10 @@ export class MarkdownLinkRewriter {
   ): string {
     let result = '';
     let cursor = 0;
-    for (const code of content.matchAll(CODE)) {
-      result += transform(content.slice(cursor, code.index));
-      result += code[0];
-      cursor = code.index + code[0].length;
+    for (const code of findCodeRanges(content)) {
+      result += transform(content.slice(cursor, code.start));
+      result += content.slice(code.start, code.end);
+      cursor = code.end;
     }
     return result + transform(content.slice(cursor));
   }

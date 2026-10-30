@@ -29,6 +29,7 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiParam,
+  ApiPayloadTooLargeResponse,
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
@@ -47,7 +48,10 @@ import { ResponseDto } from '../common/dto/response.dto.js';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard.js';
 import { PermissionsGuard } from '../common/guards/permissions.guard.js';
 import type { AuthenticatedUser } from '../common/strategies/jwt.strategy.js';
-import { AVATAR_MAX_SIZE_MB } from '../common/variables.global.js';
+import {
+  AVATAR_MAX_SIZE_BYTES,
+  AVATAR_MAX_SIZE_MB,
+} from '../common/variables.global.js';
 import { PagesService } from '../pages/services/pages.service.js';
 import { CreateAccessRuleDto } from '../permissions/dto/in/create-access-rule.dto.js';
 import { SetGlobalPermissionsDto } from '../permissions/dto/in/set-global-permissions.dto.js';
@@ -189,7 +193,11 @@ export class UsersController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: AVATAR_MAX_SIZE_BYTES, files: 1 },
+    }),
+  )
   @ApiConsumes('multipart/form-data')
   @ApiOperation({ summary: 'Uploader ma photo de profil' })
   @ApiBody({
@@ -200,7 +208,11 @@ export class UsersController {
   })
   @ApiOkResponse({ description: 'Avatar mis à jour.' })
   @ApiBadRequestResponse({
-    description: `Aucun fichier fourni, type non supporté, ou fichier de plus de ${AVATAR_MAX_SIZE_MB}Mo.`,
+    description: 'Aucun fichier fourni, ou type non supporté.',
+    type: ErrorResponseDto,
+  })
+  @ApiPayloadTooLargeResponse({
+    description: `Fichier de plus de ${AVATAR_MAX_SIZE_MB} Mo.`,
     type: ErrorResponseDto,
   })
   @ApiUnauthorizedResponse({

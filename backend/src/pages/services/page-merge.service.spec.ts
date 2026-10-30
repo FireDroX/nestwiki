@@ -1,6 +1,13 @@
 import { merge } from 'node-diff3';
 import { describe, expect, it } from 'vitest';
+import { MergeTooLargeException } from '../../common/exceptions/pages/merge-too-large.exception.js';
 import { PageMergeService } from './page-merge.service.js';
+
+function elapsedMs(run: () => unknown): number {
+  const start = performance.now();
+  run();
+  return performance.now() - start;
+}
 
 describe('PageMergeService', () => {
   const service = new PageMergeService();
@@ -141,4 +148,50 @@ describe('PageMergeService', () => {
       expect(result.content).toBe(expected.result.join('\n'));
     },
   );
+
+  it('merges thousands of identical lines quickly', () => {
+    const base = Array(3000).fill('x').join('\n');
+    const mine = `top\n${base}`;
+    const theirs = `${base}\nbottom`;
+
+    expect(elapsedMs(() => service.merge(base, mine, theirs))).toBeLessThan(
+      500,
+    );
+    expect(service.merge(base, mine, theirs)).toEqual(
+      expect.objectContaining({
+        conflict: false,
+        content: `top\n${base}\nbottom`,
+      }),
+    );
+  });
+
+  it('merges a long page with many blank lines quickly', () => {
+    const lines = Array.from({ length: 20_000 }, (_, i) =>
+      i % 3 === 0 ? '' : `line ${i}`,
+    );
+    const base = lines.join('\n');
+    const mine = ['mine', ...lines].join('\n');
+    const theirs = [...lines, 'theirs'].join('\n');
+
+    expect(elapsedMs(() => service.merge(base, mine, theirs))).toBeLessThan(
+      500,
+    );
+  });
+
+  it('refuses to merge sides that rewrote too much of the page', () => {
+    const base = Array(20_000).fill('a').join('\n');
+    const mine = Array(20_000).fill('b').join('\n');
+    let thrown: unknown;
+
+    const elapsed = elapsedMs(() => {
+      try {
+        service.merge(base, mine, base);
+      } catch (error) {
+        thrown = error;
+      }
+    });
+
+    expect(thrown).toBeInstanceOf(MergeTooLargeException);
+    expect(elapsed).toBeLessThan(500);
+  });
 });

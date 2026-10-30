@@ -8,11 +8,13 @@ import { UnsupportedImportFileException } from '../../common/exceptions/imports/
 import {
   IMPORT_MAX_ARCHIVE_SIZE_MB,
   IMPORT_MAX_ARCHIVE_SIZE_BYTES,
+  IMPORT_MAX_NOTE_SIZE_BYTES,
   IMPORT_MAX_UNCOMPRESSED_SIZE_BYTES,
   IMPORT_MAX_UNCOMPRESSED_SIZE_MB,
   MAX_ATTACHMENT_SIZE_BYTES,
 } from '../../common/variables.global.js';
 import { attachmentMimeType, isMarkdownFile } from './import-file-types.js';
+import { assertImportPathLimits } from './import-path-limits.js';
 
 export interface UploadedImportFile {
   originalname: string;
@@ -60,6 +62,11 @@ export class ImportArchiveReader {
 
     const filename = ImportArchiveReader.uploadedFilename(file.originalname);
     if (isMarkdownFile(filename)) {
+      if (file.size > IMPORT_MAX_NOTE_SIZE_BYTES) {
+        throw new ImportTooLargeException(
+          `A Markdown note must not exceed ${IMPORT_MAX_NOTE_SIZE_BYTES} bytes`,
+        );
+      }
       return {
         files: [{ path: filename, data: file.buffer }],
         ignored: [],
@@ -104,6 +111,7 @@ export class ImportArchiveReader {
           content.hiddenPaths.push(path);
           continue;
         }
+        assertImportPathLimits(path);
         if (ImportArchiveReader.isSymlink(entry)) {
           content.ignored.push({ path, reason: 'symlink' });
           continue;
@@ -190,15 +198,14 @@ export class ImportArchiveReader {
     path: string,
     entry: Entry,
   ): IgnoredImportFileReason | null {
-    if (isMarkdownFile(path)) {
-      return null;
-    }
-    if (!attachmentMimeType(path)) {
+    const isNote = isMarkdownFile(path);
+    if (!isNote && !attachmentMimeType(path)) {
       return 'unsupported_type';
     }
-    return entry.uncompressedSize > MAX_ATTACHMENT_SIZE_BYTES
-      ? 'too_large'
-      : null;
+    const maxSize = isNote
+      ? IMPORT_MAX_NOTE_SIZE_BYTES
+      : MAX_ATTACHMENT_SIZE_BYTES;
+    return entry.uncompressedSize > maxSize ? 'too_large' : null;
   }
 
   private static assertUncompressedSize(size: number): void {

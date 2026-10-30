@@ -33,16 +33,18 @@ const TOKEN = new RegExp(`${TOKEN_START}([0-9]+)${TOKEN_END}`, 'g');
 const TOKEN_CHARACTERS = new RegExp(`[${TOKEN_START}${TOKEN_END}]`, 'g');
 const OBSIDIAN_COMMENT = /%%[\s\S]*?%%/g;
 const MARKDOWN_LINK_TARGETS = [
-  /(\]\()(<[^>\n]+>|[^)\s<>]+)/g,
+  /(\]\()(<[^<>\n]+>|[^)\s<>]+)/g,
   /(\b(?:src|href)\s*=\s*["'])([^"']+)/g,
-  /^( {0,3}\[(?!\^)[^\]\n]+\]:[ \t]*)(<[^>\n]+>|[^\s<>]+)/gm,
+  /^( {0,3}\[(?!\^)[^\]\n]+\]:[ \t]*)(<[^<>\n]+>|[^\s<>]+)/gm,
 ];
-const EMBED = /!\[\[([^\]\n]+?)\]\]/g;
-const WIKILINK = /(?<!!)\[\[([^\]\n]+?)\]\]/g;
+const EMBED = /!\[\[([^[\]\n]+?)\]\]/g;
+const WIKILINK = /(?<!!)\[\[([^[\]\n]+?)\]\]/g;
 const HIGHLIGHT = /==(?=\S)([^=\n]+?)(?<=\S)==/g;
 const HEADING_LINE = /^ {0,3}#{1,6}(?:\s|$)/;
 const INLINE_TAG = /(?:^|\s)#([\p{L}\p{N}_/-]+)/gu;
-const CSS = /<style\b[\s\S]*?<\/style>|\bstyle\s*=\s*("[^"]*"|'[^']*')/gi;
+const STYLE_BLOCK = /<style\b[\s\S]*?<\/style>/gi;
+const STYLE_BLOCK_END = /<\/style>/gi;
+const STYLE_ATTRIBUTE = /\bstyle\s*=\s*("[^"]*"|'[^']*')/gi;
 const EXTERNAL_URL = /^(?:[a-z][a-z0-9+.-]*:|\/|#)/i;
 const IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.gif', '.webp'];
 const IMAGE_SIZE = /^(\d+)(?:x(\d+))?$/;
@@ -179,7 +181,7 @@ export class ImportMarkdownConverter {
   }
 
   private static collectInlineTags(text: string, tags: Set<string>): void {
-    for (const line of text.replace(CSS, '').split('\n')) {
+    for (const line of ImportMarkdownConverter.withoutCss(text).split('\n')) {
       if (HEADING_LINE.test(line)) {
         continue;
       }
@@ -190,6 +192,17 @@ export class ImportMarkdownConverter {
         }
       }
     }
+  }
+
+  private static withoutCss(text: string): string {
+    let closedUpTo = 0;
+    for (const end of text.matchAll(STYLE_BLOCK_END)) {
+      closedUpTo = end.index + end[0].length;
+    }
+    const withoutBlocks =
+      text.slice(0, closedUpTo).replace(STYLE_BLOCK, '') +
+      text.slice(closedUpTo);
+    return withoutBlocks.replace(STYLE_ATTRIBUTE, '');
   }
 
   private static splitPipes(inner: string): string[] {

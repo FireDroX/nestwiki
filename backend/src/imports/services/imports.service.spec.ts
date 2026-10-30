@@ -4,6 +4,7 @@ import { ZipArchive } from 'archiver';
 import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 import { UserActivityLogService } from '../../activity/services/user-activity-log.service.js';
 import { PAGE_ACTIONS, type PageAction } from '../../common/permissions.js';
+import { ImportTooLargeException } from '../../common/exceptions/imports/import-too-large.exception.js';
 import { InsufficientPagePermissionException } from '../../common/exceptions/pages/insufficient-page-permission.exception.js';
 import { PageNotFoundException } from '../../common/exceptions/pages/page-not-found.exception.js';
 import { ValidationException } from '../../common/exceptions/validation.exception.js';
@@ -577,6 +578,28 @@ describe('ImportsService', () => {
           currentUser,
         ),
       ).rejects.toThrow(ValidationException);
+    });
+
+    it('refuses a note whose links would push the page over the content limit', async () => {
+      const folders = Array.from({ length: 30 }, (_, index) =>
+        `dossier-${index}`.padEnd(30, 'x'),
+      ).join('/');
+
+      await expect(
+        service.execute(
+          await zipFile({
+            [`${folders}/cible.md`]: '# Cible',
+            'liens.md': `# Liens\n\n${'[[cible]] '.repeat(1100)}`,
+          }),
+          {},
+          currentUser,
+        ),
+      ).rejects.toThrow(
+        new ImportTooLargeException(
+          'The page "Liens" would exceed 1000000 characters once imported',
+        ),
+      );
+      expect(write).not.toHaveBeenCalled();
     });
 
     it('rolls back: deletes uploaded objects and announces nothing when writing fails', async () => {

@@ -6,6 +6,7 @@ import type { AuthenticatedUser } from '../../common/strategies/jwt.strategy.js'
 import { CircularReferenceException } from '../../common/exceptions/pages/circular-reference.exception.js';
 import { InsufficientPagePermissionException } from '../../common/exceptions/pages/insufficient-page-permission.exception.js';
 import { PageAccessForbiddenException } from '../../common/exceptions/pages/page-access-forbidden.exception.js';
+import { PageContentTooLargeException } from '../../common/exceptions/pages/page-content-too-large.exception.js';
 import { PageHasChildrenException } from '../../common/exceptions/pages/page-has-children.exception.js';
 import { PageNotFoundException } from '../../common/exceptions/pages/page-not-found.exception.js';
 import { ParentPageNotFoundException } from '../../common/exceptions/pages/parent-page-not-found.exception.js';
@@ -16,6 +17,7 @@ import { ValidationException } from '../../common/exceptions/validation.exceptio
 import type { PageAction } from '../../common/permissions.js';
 import {
   CHANGE_SUMMARY_MAX_LENGTH,
+  PAGE_CONTENT_MAX_LENGTH,
   SLUG_MAX_LENGTH,
   RESERVED_CHILD_OF_ROOT_PAGE_SLUGS,
   RESERVED_ROOT_PAGE_SLUGS,
@@ -431,6 +433,7 @@ export class PagesService {
     }
 
     await this.assertCan('page.restore_version', pageId, authorId);
+    PagesService.assertContentSize(content);
 
     const result = await this.pagesRepository.updateWithNewVersion({
       page,
@@ -635,6 +638,7 @@ export class PagesService {
     content: string,
     userId: string,
   ): Promise<PageMergePreviewResponseDto> {
+    this.validateMergePreview(baseVersionId, content);
     const page = await this.pagesRepository.findById(pageId);
     if (!page || !page.currentVersionId) {
       throw new PageNotFoundException();
@@ -1061,7 +1065,27 @@ export class PagesService {
     }
   }
 
+  private static assertContentSize(content: unknown): void {
+    if (
+      typeof content === 'string' &&
+      content.length > PAGE_CONTENT_MAX_LENGTH
+    ) {
+      throw new PageContentTooLargeException();
+    }
+  }
+
+  private validateMergePreview(baseVersionId: unknown, content: unknown): void {
+    if (typeof baseVersionId !== 'string') {
+      throw new ValidationException('baseVersionId must be a string');
+    }
+    if (typeof content !== 'string') {
+      throw new ValidationException('content must be a string');
+    }
+    PagesService.assertContentSize(content);
+  }
+
   private validateCreatePage(dto: CreatePageDto): void {
+    PagesService.assertContentSize(dto.content);
     const errors: string[] = [];
 
     if (!dto.slug || dto.slug.length > SLUG_MAX_LENGTH) {
@@ -1120,6 +1144,7 @@ export class PagesService {
   }
 
   private validateUpdatePage(dto: UpdatePageDto): void {
+    PagesService.assertContentSize(dto.content);
     const errors: string[] = [];
 
     if (

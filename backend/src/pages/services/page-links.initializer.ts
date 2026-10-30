@@ -12,7 +12,11 @@ export class PageLinksInitializer implements OnApplicationBootstrap {
     private readonly configService: ConfigService,
   ) {}
 
-  async onApplicationBootstrap(): Promise<void> {
+  onApplicationBootstrap(): void {
+    void this.reindexStalePages();
+  }
+
+  async reindexStalePages(): Promise<void> {
     const instanceUrl = (
       this.configService.get<string>('FRONTEND_URL') ?? ''
     ).replace(/\/+$/, '');

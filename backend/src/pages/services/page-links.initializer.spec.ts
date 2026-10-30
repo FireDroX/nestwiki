@@ -52,8 +52,15 @@ describe('PageLinksInitializer', () => {
     vi.restoreAllMocks();
   });
 
+  it('lets the application start without waiting for the links to be indexed', () => {
+    dataSource.query.mockReturnValue(new Promise(() => undefined));
+
+    expect(initializer.onApplicationBootstrap()).toBeUndefined();
+    expect(dataSource.query).toHaveBeenCalledTimes(1);
+  });
+
   it('writes the links of each stale page inside a transaction', async () => {
-    await initializer.onApplicationBootstrap();
+    await initializer.reindexStalePages();
 
     expect(dataSource.transaction).toHaveBeenCalledTimes(2);
     expect(transactionQuery).toHaveBeenCalledWith(
@@ -68,7 +75,7 @@ describe('PageLinksInitializer', () => {
       .mockImplementation(() => undefined);
     dataSource.transaction.mockRejectedValueOnce(new Error('ER_DUP_ENTRY'));
 
-    await expect(initializer.onApplicationBootstrap()).resolves.toBeUndefined();
+    await expect(initializer.reindexStalePages()).resolves.toBeUndefined();
 
     expect(warn).toHaveBeenCalledWith(expect.stringContaining('page-a'));
   });
@@ -77,6 +84,6 @@ describe('PageLinksInitializer', () => {
     vi.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
     dataSource.query.mockRejectedValue(new Error('down'));
 
-    await expect(initializer.onApplicationBootstrap()).resolves.toBeUndefined();
+    await expect(initializer.reindexStalePages()).resolves.toBeUndefined();
   });
 });

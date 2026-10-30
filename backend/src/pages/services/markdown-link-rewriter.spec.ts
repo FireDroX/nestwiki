@@ -169,6 +169,12 @@ describe('MarkdownLinkRewriter', () => {
     ).toEqual([MEDIA_ID]);
   });
 
+  it('scans a long run of backticks in linear time', () => {
+    const start = performance.now();
+    MarkdownLinkRewriter.findPagePaths('`'.repeat(50_000), INSTANCE_URL);
+    expect(performance.now() - start).toBeLessThan(200);
+  });
+
   it('does not treat a lone backtick as code spanning the next paragraphs', () => {
     expect(
       rewrite("It's ` alone\n\n[Install](/pages/docs/guide/install)"),

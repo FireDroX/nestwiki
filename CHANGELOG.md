@@ -2,6 +2,15 @@
 
 All notable changes to NestWiki are documented here, newest first, one `## <version> — <date>` section per release. This file is the single source for the in-app "Notes de version" page, which groups releases by minor version (`1.0`, `0.31`…). Entries up to 0.31.10 were written in French, the project's original language.
 
+## 1.4.0 — 2026-10-30
+
+- Sécurité : une page dont le contenu contient de longues suites de backticks ne peut plus bloquer le serveur, ni à l'enregistrement, ni à chaque lecture, ni au démarrage. La recherche des blocs de code dans le Markdown se fait désormais en temps linéaire, et l'indexation des liens au démarrage n'empêche plus l'application de répondre.
+- Sécurité : le contenu d'une page est limité à 1 000 000 caractères, à la création, à la modification, à l'aperçu de fusion, à la restauration d'une version et via le serveur MCP (erreur 413). ⚠️ Une page existante plus longue reste lisible et peut toujours être renommée, mais son contenu ne peut plus être modifié qu'en le raccourcissant sous la limite.
+- Sécurité : la fusion automatique de modifications simultanées repose sur un nouvel algorithme borné. Elle reste rapide sur les longues pages et sur les lignes répétées (lignes vides comprises), et répond 413 quand les deux côtés ont trop divergé pour être fusionnés.
+- Sécurité : la comparaison de deux versions répond 422 au lieu de bloquer le serveur quand elles diffèrent trop (plus de 5 000 lignes modifiées).
+- Sécurité : l'import Markdown / Obsidian refuse les chemins de plus de 1 024 caractères ou de plus de 32 dossiers imbriqués, ignore les notes de plus de 1 000 000 octets (un `.md` envoyé seul au-delà est refusé), refuse une page qui dépasserait la limite de contenu une fois ses liens réécrits, et ne ralentit plus sur les crochets, chevrons, titres ou blocs `<style>` malformés.
+- Sécurité : la photo de profil (2 Mo) et les médias (20 Mo) trop lourds sont refusés pendant l'envoi, avant d'être entièrement chargés en mémoire (erreur 413).
+
 ## 1.3.10 — 2026-10-28
 
 - Sécurité : les ports du backend (`3000`) et du frontend (`8080`) ne sont plus publiés que sur `127.0.0.1` par défaut, dans les deux `docker-compose` : seul un reverse proxy ou un tunnel tournant sur le serveur les atteint. ⚠️ Si vous accédiez au wiki directement par l'IP du serveur, ajoutez `BIND_ADDRESS=0.0.0.0` au `.env` racine.
