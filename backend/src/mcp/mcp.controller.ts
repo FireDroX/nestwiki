@@ -16,20 +16,23 @@ import type { Response } from 'express';
 import { McpExceptionFilter } from './filter/mcp.exception.filter.js';
 import type { McpAuthenticatedRequest } from './guards/mcp-api-key.guard.js';
 import { McpOAuthGuard } from './guards/mcp-oauth.guard.js';
+import type { McpAuthContext } from './services/api-keys.service.js';
 import { McpServerService } from './services/mcp-server.service.js';
 import { resolveRequestBaseUrl } from './utils/request-base-url.util.js';
 
 const SESSION_ID_HEADER = 'mcp-session-id';
+
+interface McpSession {
+  transport: StreamableHTTPServerTransport;
+  auth: McpAuthContext;
+}
 
 @ApiExcludeController()
 @Controller('mcp')
 @UseGuards(McpOAuthGuard)
 @UseFilters(McpExceptionFilter)
 export class McpController {
-  private readonly transports = new Map<
-    string,
-    StreamableHTTPServerTransport
-  >();
+  private readonly sessions = new Map<string, McpSession>();
 
   constructor(private readonly mcpServerService: McpServerService) {}
 
@@ -39,7 +42,9 @@ export class McpController {
     @Res() res: Response,
   ): Promise<void> {
     const sessionId = McpController.getSessionId(req);
-    let transport = sessionId ? this.transports.get(sessionId) : undefined;
+    let transport = sessionId
+      ? this.findOwnedSession(sessionId, req.mcpAuth)?.transport
+      : undefined;
 
     if (!transport) {
       if (sessionId) {
@@ -55,13 +60,13 @@ export class McpController {
       transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: () => randomUUID(),
         onsessioninitialized: (id) => {
-          this.transports.set(id, transport!);
+          this.sessions.set(id, { transport: transport!, auth: req.mcpAuth });
         },
       });
 
       transport.onclose = () => {
         if (transport?.sessionId) {
-          this.transports.delete(transport.sessionId);
+          this.sessions.delete(transport.sessionId);
         }
       };
 
@@ -104,12 +109,29 @@ export class McpController {
     res: Response,
   ): StreamableHTTPServerTransport | undefined {
     const sessionId = McpController.getSessionId(req);
-    const transport = sessionId ? this.transports.get(sessionId) : undefined;
-    if (!transport) {
+    const session = sessionId
+      ? this.findOwnedSession(sessionId, req.mcpAuth)
+      : undefined;
+    if (!session) {
       res.status(400).send('Invalid or missing session ID');
       return undefined;
     }
-    return transport;
+    return session.transport;
+  }
+
+  private findOwnedSession(
+    sessionId: string,
+    auth: McpAuthContext,
+  ): McpSession | undefined {
+    const session = this.sessions.get(sessionId);
+    if (
+      !session ||
+      session.auth.apiKeyId !== auth.apiKeyId ||
+      session.auth.createdById !== auth.createdById
+    ) {
+      return undefined;
+    }
+    return session;
   }
 
   private static getSessionId(

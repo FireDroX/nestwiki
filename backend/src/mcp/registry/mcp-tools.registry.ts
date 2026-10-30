@@ -31,6 +31,7 @@ export interface McpToolDefinition {
   inputSchema: ZodRawShape;
   requiredScopes: string[];
   hideWithoutScope?: boolean;
+  destructive?: boolean;
   handler: (
     input: Record<string, unknown>,
     ctx: McpToolContext,
@@ -43,6 +44,7 @@ export function defineMcpTool<S extends ZodRawShape>(definition: {
   inputSchema: S;
   requiredScopes: string[];
   hideWithoutScope?: boolean;
+  destructive?: boolean;
   handler: (input: InferShape<S>, ctx: McpToolContext) => Promise<unknown>;
 }): McpToolDefinition {
   return definition as unknown as McpToolDefinition;

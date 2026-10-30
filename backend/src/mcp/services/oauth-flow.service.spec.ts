@@ -3,7 +3,10 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Test } from '@nestjs/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { OAuthInvalidGrantException } from '../../common/exceptions/mcp/oauth-invalid-grant.exception.js';
 import { OAuthInvalidRequestException } from '../../common/exceptions/mcp/oauth-invalid-request.exception.js';
+import { MCP_SCOPES } from '../../common/variables.global.js';
+import { UsersService } from '../../users/services/users.service.js';
 import { OAuthClient } from '../entities/oauth-client.entity.js';
 import { OAuthRefreshToken } from '../entities/oauth-refresh-token.entity.js';
 import { OAuthFlowService } from './oauth-flow.service.js';
@@ -43,6 +46,7 @@ const CODE_CHALLENGE = createHash('sha256')
 
 describe('OAuthFlowService', () => {
   let service: OAuthFlowService;
+  let usersService: { findById: ReturnType<typeof vi.fn> };
   let refreshTokenRepository: {
     create: ReturnType<typeof vi.fn>;
     findByTokenHash: ReturnType<typeof vi.fn>;
@@ -60,9 +64,19 @@ describe('OAuthFlowService', () => {
       revoke: vi.fn().mockResolvedValue(undefined),
     };
 
+    usersService = {
+      findById: vi.fn().mockResolvedValue({
+        id: 'user-1',
+        role: 'admin',
+        isActive: true,
+        passwordChangedAt: null,
+      }),
+    };
+
     const module = await Test.createTestingModule({
       providers: [
         OAuthFlowService,
+        { provide: UsersService, useValue: usersService },
         {
           provide: 'OAuthRefreshTokensRepository',
           useValue: refreshTokenRepository,
@@ -86,6 +100,7 @@ describe('OAuthFlowService', () => {
         userId: 'user-1',
         redirectUri: client.redirectUris[0],
         codeChallenge: CODE_CHALLENGE,
+        scopes: ['pages:read'],
       });
 
       const result = await service.exchangeAuthorizationCode({
@@ -98,8 +113,13 @@ describe('OAuthFlowService', () => {
       expect(result.accessToken).toEqual(expect.any(String));
       expect(result.refreshToken).toEqual(expect.any(String));
       expect(refreshTokenRepository.create).toHaveBeenCalledWith(
-        expect.objectContaining({ clientId: client.id, userId: 'user-1' }),
+        expect.objectContaining({
+          clientId: client.id,
+          userId: 'user-1',
+          scopes: ['pages:read'],
+        }),
       );
+      expect(result.scopes).toEqual(['pages:read']);
     });
 
     it('rejects a mismatched code_verifier', async () => {
@@ -109,6 +129,7 @@ describe('OAuthFlowService', () => {
         userId: 'user-1',
         redirectUri: client.redirectUris[0],
         codeChallenge: CODE_CHALLENGE,
+        scopes: ['pages:read'],
       });
 
       await expect(
@@ -128,6 +149,7 @@ describe('OAuthFlowService', () => {
         userId: 'user-1',
         redirectUri: client.redirectUris[0],
         codeChallenge: CODE_CHALLENGE,
+        scopes: ['pages:read'],
       });
 
       await service.exchangeAuthorizationCode({
@@ -155,6 +177,7 @@ describe('OAuthFlowService', () => {
         userId: 'user-1',
         redirectUri: client.redirectUris[0],
         codeChallenge: CODE_CHALLENGE,
+        scopes: ['pages:read'],
       });
 
       await expect(
@@ -181,6 +204,45 @@ describe('OAuthFlowService', () => {
 
       expect(refreshTokenRepository.revoke).toHaveBeenCalledWith(stored.id);
       expect(result.refreshToken).not.toEqual('oauth_rt_plain');
+      expect(result.scopes).toEqual(stored.scopes);
+    });
+
+    it('rejects a refresh token granted before the last password change', async () => {
+      const client = buildClient();
+      refreshTokenRepository.findByTokenHash.mockResolvedValue(
+        buildRefreshToken({
+          clientId: client.id,
+          createdAt: new Date(Date.now() - 60_000),
+        }),
+      );
+      usersService.findById.mockResolvedValue({
+        id: 'user-1',
+        role: 'admin',
+        isActive: true,
+        passwordChangedAt: new Date(),
+      });
+
+      await expect(
+        service.refresh({ client, refreshToken: 'oauth_rt_plain' }),
+      ).rejects.toBeInstanceOf(OAuthInvalidGrantException);
+      expect(refreshTokenRepository.create).not.toHaveBeenCalled();
+    });
+
+    it('rejects a refresh token of a user who is no longer an active admin', async () => {
+      const client = buildClient();
+      refreshTokenRepository.findByTokenHash.mockResolvedValue(
+        buildRefreshToken({ clientId: client.id }),
+      );
+      usersService.findById.mockResolvedValue({
+        id: 'user-1',
+        role: 'member',
+        isActive: true,
+        passwordChangedAt: null,
+      });
+
+      await expect(
+        service.refresh({ client, refreshToken: 'oauth_rt_plain' }),
+      ).rejects.toBeInstanceOf(OAuthInvalidGrantException);
     });
 
     it('rejects a revoked refresh token', async () => {
@@ -203,6 +265,24 @@ describe('OAuthFlowService', () => {
       await expect(
         service.refresh({ client, refreshToken: 'oauth_rt_plain' }),
       ).rejects.toThrow('Invalid, expired or already used grant');
+    });
+  });
+
+  describe('resolveScopes', () => {
+    it('grants every scope when the client asks for none', () => {
+      expect(OAuthFlowService.resolveScopes(undefined)).toEqual(MCP_SCOPES);
+    });
+
+    it('keeps only the requested scopes, in canonical order', () => {
+      expect(
+        OAuthFlowService.resolveScopes('search:read  pages:read pages:read'),
+      ).toEqual(['pages:read', 'search:read']);
+    });
+
+    it('rejects an unknown scope', () => {
+      expect(() => OAuthFlowService.resolveScopes('pages:read admin')).toThrow(
+        OAuthInvalidRequestException,
+      );
     });
   });
 

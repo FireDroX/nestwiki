@@ -12,4 +12,5 @@ export interface OAuthClientRepository {
   findAll(): Promise<OAuthClient[]>;
   findById(id: string): Promise<OAuthClient | null>;
   findByClientId(clientId: string): Promise<OAuthClient | null>;
+  deleteWithoutTokensCreatedBefore(cutoff: Date): Promise<void>;
 }

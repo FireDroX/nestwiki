@@ -2,6 +2,18 @@
 
 All notable changes to NestWiki are documented here, newest first, one `## <version> — <date>` section per release. This file is the single source for the in-app "Notes de version" page, which groups releases by minor version (`1.0`, `0.31`…). Entries up to 0.31.10 were written in French, the project's original language.
 
+## 1.4.3 — 2026-10-31
+
+- Sécurité : un jeton d'accès OAuth donné à un assistant MCP n'est plus accepté comme session sur le reste de l'API. Il ne sert plus qu'au serveur MCP.
+- Sécurité : le compte est revérifié à chaque requête. Un utilisateur désactivé, supprimé ou rétrogradé perd ses droits immédiatement, au lieu de les garder jusqu'à 15 minutes. Changer son mot de passe ou le faire réinitialiser déconnecte aussitôt les autres sessions et les assistants connectés en OAuth, mais l'appareil qui change le mot de passe reste connecté. La mise à jour peut demander un rafraîchissement silencieux de la session, sans reconnexion.
+- Sécurité : la limitation de débit de la connexion, de l'inscription et du rafraîchissement de session ne se contourne plus en ajoutant un faux en-tête `X-Forwarded-For`, et Turnstile reçoit la vraie IP du visiteur. ⚠️ Si un tunnel ou un autre reverse proxy est placé devant le nginx du frontend (et pas directement devant le backend), ajoutez `TRUST_PROXY_HOPS=2` à `backend/.env`, sinon tous les visiteurs partagent la même limite.
+- Sécurité : une fois un verrouillage de compte expiré, le compteur d'échecs repart de zéro. Un inconnu ne peut plus maintenir un compte verrouillé avec une seule mauvaise tentative tous les quarts d'heure.
+- Sécurité : la mise à jour en temps réel d'une page s'arrête pour qui a perdu le droit de la lire, et la connexion temps réel se renouvelle avec la session au lieu de rester valable indéfiniment.
+- Sécurité : une session MCP ne peut plus être reprise avec une autre clé API ou un autre compte que celui qui l'a ouverte.
+- Sécurité : l'écran d'autorisation OAuth affiche le nom enregistré du client, l'adresse à laquelle le code sera envoyé et un avertissement « client non vérifié », au lieu d'un nom pris dans le lien. Il propose aussi un accès en lecture seule. Les scopes demandés par le client sont respectés, et le renouvellement de l'accès s'arrête si l'admin qui l'a accordé est rétrogradé ou désactivé.
+- Sécurité : l'enregistrement automatique des clients OAuth est borné : 10 adresses de redirection au plus, en `https` ou en `http` local uniquement, un nom de 255 caractères au plus, et 5 enregistrements par minute. Les clients jamais utilisés sont supprimés après 24 h.
+- Serveur MCP : les outils indiquent s'ils sont en lecture seule ou destructifs (`readOnlyHint`, `destructiveHint`), et les instructions du serveur rappellent que le contenu renvoyé est écrit par les utilisateurs et ne doit pas être suivi comme une consigne.
+
 ## 1.4.2 — 2026-10-30
 
 - Sécurité : la permission `user.manage` ne permet plus de prendre la main sur un compte qui a plus de droits que soi. Sans être admin, il faut détenir tous les droits du compte (permissions globales et accès aux pages, directs ou hérités de ses groupes) pour réinitialiser son mot de passe, changer son e-mail, le réactiver ou le supprimer. Changer son nom reste possible.
