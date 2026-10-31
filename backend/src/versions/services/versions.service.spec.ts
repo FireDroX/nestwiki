@@ -1,5 +1,6 @@
 import { Test } from '@nestjs/testing';
 import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
+import { VersionDiffTooLargeException } from '../../common/exceptions/pages/version-diff-too-large.exception.js';
 import { VersionNotFoundException } from '../../common/exceptions/pages/version-not-found.exception.js';
 import { ValidationException } from '../../common/exceptions/validation.exception.js';
 import { PageVersion } from '../../pages/entities/page-version.entity.js';
@@ -112,6 +113,23 @@ describe('VersionsService', () => {
         true,
       );
       expect(diff.changes.some((change) => change.type === 'added')).toBe(true);
+    });
+
+    it('refuses quickly to diff versions that share almost nothing', async () => {
+      versionsRepository.findByIdAndPageId.mockImplementation((id: string) =>
+        Promise.resolve(
+          buildVersion({
+            id,
+            content: (id === fromId ? 'a\n' : 'b\n').repeat(20_000),
+          }),
+        ),
+      );
+      const start = performance.now();
+
+      await expect(
+        service.computeDiff('page-1', fromId, toId),
+      ).rejects.toBeInstanceOf(VersionDiffTooLargeException);
+      expect(performance.now() - start).toBeLessThan(500);
     });
 
     it('throws ValidationException when fromId and toId are identical', async () => {

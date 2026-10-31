@@ -26,6 +26,7 @@ import {
   type ImportLinkTarget,
   type ImportResolvedTarget,
 } from './import-markdown.converter.js';
+import { assertImportPathLimits } from './import-path-limits.js';
 
 export const IMPORT_FORMATS = ['nestwiki', 'obsidian', 'markdown'] as const;
 export type ImportFormat = (typeof IMPORT_FORMATS)[number];
@@ -81,7 +82,7 @@ interface ResolvableEntry {
 const FOLDER_NOTE_NAMES = ['index', 'readme'];
 const FRONTMATTER = /^---[ \t]*\n([\s\S]*?)\n---[ \t]*(?:\n|$)/;
 const LEADING_BLANK_LINES = /^(?:[ \t]*\n)+/;
-const FIRST_HEADING = /^# +(.+?)(?:\s+#+)?\s*$/m;
+const FIRST_HEADING = /^# +(.*)$/m;
 const OBSIDIAN_CONFIG_FOLDER = '.obsidian';
 const utf8 = new TextDecoder('utf-8');
 
@@ -91,6 +92,7 @@ export class ImportTreeBuilder {
     const mediaFiles = new Map<string, ImportSourceFile>();
     const ignoredFiles: IgnoredImportFile[] = [...archive.ignored];
     for (const file of archive.files) {
+      assertImportPathLimits(file.path);
       const mimeType = attachmentMimeType(file.path);
       if (isMarkdownFile(file.path)) {
         notes.set(file.path, file);
@@ -114,11 +116,7 @@ export class ImportTreeBuilder {
     const standaloneNotes = [...notes.keys()].filter(
       (path) => !consumedNotes.has(path),
     );
-    if (folders.length + standaloneNotes.length > IMPORT_MAX_PAGES) {
-      throw new ImportTooLargeException(
-        `The archive must not contain more than ${IMPORT_MAX_PAGES} pages`,
-      );
-    }
+    ImportTreeBuilder.assertPageCount(folders.length + standaloneNotes.length);
 
     const parsedNotes = new Map(
       [...notes.values()].map((file) => [
@@ -228,25 +226,36 @@ export class ImportTreeBuilder {
     };
   }
 
+  private static assertPageCount(pageCount: number): void {
+    if (pageCount > IMPORT_MAX_PAGES) {
+      throw new ImportTooLargeException(
+        `The archive must not contain more than ${IMPORT_MAX_PAGES} pages`,
+      );
+    }
+  }
+
   private static assignFolderNotes(
     notePaths: string[],
   ): Map<string, string | null> {
+    ImportTreeBuilder.assertPageCount(notePaths.length);
     const notesByLowerPath = new Map(
       notePaths.map((path) => [path.toLowerCase(), path]),
     );
-    const folders = new Set<string>();
+    const depthByFolder = new Map<string, number>();
     for (const path of notePaths) {
       let folder = posix.dirname(path);
-      while (folder !== '.') {
-        folders.add(folder);
+      while (folder !== '.' && !depthByFolder.has(folder)) {
+        depthByFolder.set(folder, folder.split('/').length);
         folder = posix.dirname(folder);
       }
+      ImportTreeBuilder.assertPageCount(depthByFolder.size);
     }
 
     const consumed = new Set<string>();
     const folderNotes = new Map<string, string | null>();
-    const byDepth = [...folders].sort(
-      (a, b) => a.split('/').length - b.split('/').length || a.localeCompare(b),
+    const byDepth = [...depthByFolder.keys()].sort(
+      (a, b) =>
+        depthByFolder.get(a)! - depthByFolder.get(b)! || a.localeCompare(b),
     );
     for (const folder of byDepth) {
       const name = posix.basename(folder);
@@ -328,10 +337,24 @@ export class ImportTreeBuilder {
   private static firstHeading(markdown: string): string | null {
     let heading: string | null = null;
     MarkdownLinkRewriter.mapOutsideCode(markdown, (text) => {
-      heading ??= FIRST_HEADING.exec(text)?.[1].trim() ?? null;
+      const line = heading === null ? FIRST_HEADING.exec(text)?.[1] : undefined;
+      if (line !== undefined) {
+        heading = ImportTreeBuilder.headingText(line);
+      }
       return text;
     });
     return heading;
+  }
+
+  private static headingText(line: string): string {
+    const text = line.trimEnd();
+    let end = text.length;
+    while (end > 0 && text[end - 1] === '#') {
+      end -= 1;
+    }
+    const hasClosingHashes =
+      end > 0 && end < text.length && /\s/.test(text[end - 1]);
+    return (hasClosingHashes ? text.slice(0, end) : text).trim();
   }
 
   private static withTitleHeading(body: string, title: string): string {

@@ -99,9 +99,6 @@ importers:
       mysql2:
         specifier: ^3.24.2
         version: 3.24.2(@types/node@26.6.5)
-      node-diff3:
-        specifier: ^3.2.1
-        version: 3.2.1
       passport:
         specifier: ^0.7.0
         version: 0.7.0
@@ -181,6 +178,9 @@ importers:
       globals:
         specifier: ^17.11.0
         version: 17.11.0
+      node-diff3:
+        specifier: ^3.2.1
+        version: 3.2.1
       prettier:
         specifier: ^3.4.2
         version: 3.9.6

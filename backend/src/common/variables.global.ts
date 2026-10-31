@@ -41,6 +41,11 @@ export const RESERVED_CHILD_OF_ROOT_PAGE_SLUGS: readonly string[] = [
 export const PAGE_LINK_TARGET_MAX_LENGTH = 700;
 export const TITLE_MAX_LENGTH = 255;
 export const CHANGE_SUMMARY_MAX_LENGTH = 255;
+export const PAGE_CONTENT_MAX_LENGTH = 1_000_000;
+export const MERGE_MAX_EDIT_LENGTH = 2000;
+export const MERGE_DIFF_TIMEOUT_MS = 150;
+export const VERSION_DIFF_MAX_EDIT_LENGTH = 5000;
+export const VERSION_DIFF_TIMEOUT_MS = 300;
 export const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const MAX_ATTACHMENT_SIZE_MB = 20;
@@ -132,6 +137,9 @@ export const IMPORT_MAX_UNCOMPRESSED_SIZE_MB = 500;
 export const IMPORT_MAX_UNCOMPRESSED_SIZE_BYTES =
   IMPORT_MAX_UNCOMPRESSED_SIZE_MB * 1024 * 1024;
 export const IMPORT_MAX_PAGES = 1000;
+export const IMPORT_MAX_NOTE_SIZE_BYTES = PAGE_CONTENT_MAX_LENGTH;
+export const IMPORT_MAX_PATH_LENGTH = 1024;
+export const IMPORT_MAX_PATH_DEPTH = 32;
 export const ATTACHMENT_MIME_TYPES_BY_EXTENSION: Record<string, string> = {
   png: 'image/png',
   jpg: 'image/jpeg',

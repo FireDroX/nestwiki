@@ -5,6 +5,7 @@ import { UserActivityLogService } from '../../activity/services/user-activity-lo
 import { CircularReferenceException } from '../../common/exceptions/pages/circular-reference.exception.js';
 import { InsufficientPagePermissionException } from '../../common/exceptions/pages/insufficient-page-permission.exception.js';
 import { PageAccessForbiddenException } from '../../common/exceptions/pages/page-access-forbidden.exception.js';
+import { PageContentTooLargeException } from '../../common/exceptions/pages/page-content-too-large.exception.js';
 import { PageHasChildrenException } from '../../common/exceptions/pages/page-has-children.exception.js';
 import { PageNotFoundException } from '../../common/exceptions/pages/page-not-found.exception.js';
 import { ParentPageNotFoundException } from '../../common/exceptions/pages/parent-page-not-found.exception.js';
@@ -13,6 +14,7 @@ import { SlugAlreadyExistsException } from '../../common/exceptions/pages/slug-a
 import { VersionNotFoundException } from '../../common/exceptions/pages/version-not-found.exception.js';
 import { ValidationException } from '../../common/exceptions/validation.exception.js';
 import type { AuthenticatedUser } from '../../common/strategies/jwt.strategy.js';
+import { PAGE_CONTENT_MAX_LENGTH } from '../../common/variables.global.js';
 import { ChangeVisibilityDto } from '../dto/in/change-visibility.dto.js';
 import { CreatePageDto } from '../dto/in/create-page.dto.js';
 import { MovePageDto } from '../dto/in/move-page.dto.js';
@@ -1268,6 +1270,89 @@ describe('PagesService', () => {
       await service.createPage(dto, 'user-1');
 
       expect(eventEmitter.emit).toHaveBeenCalledWith(PAGE_TREE_CHANGED_EVENT);
+    });
+  });
+
+  describe('page content size', () => {
+    const tooLarge = 'x'.repeat(PAGE_CONTENT_MAX_LENGTH + 1);
+
+    beforeEach(() => {
+      pagesRepository.findById.mockResolvedValue(buildPage());
+      pagesRepository.findVersionById.mockResolvedValue(buildVersion());
+    });
+
+    it('accepts a content at the limit', async () => {
+      pagesRepository.findBySlugAndParent.mockResolvedValue(null);
+      pagesRepository.createWithFirstVersion.mockResolvedValue({
+        page: buildPage(),
+        version: buildVersion(),
+      });
+
+      await service.createPage(
+        {
+          slug: 'big',
+          title: 'Big',
+          content: 'x'.repeat(PAGE_CONTENT_MAX_LENGTH),
+          visibility: 'public',
+        },
+        'user-1',
+      );
+
+      expect(pagesRepository.createWithFirstVersion).toHaveBeenCalled();
+    });
+
+    it('refuses a larger content on creation, update, merge preview and restore', async () => {
+      await expect(
+        service.createPage(
+          {
+            slug: 'big',
+            title: 'Big',
+            content: tooLarge,
+            visibility: 'public',
+          },
+          'user-1',
+        ),
+      ).rejects.toBeInstanceOf(PageContentTooLargeException);
+      await expect(
+        service.updatePage('page-1', { content: tooLarge }, 'user-1'),
+      ).rejects.toBeInstanceOf(PageContentTooLargeException);
+      await expect(
+        service.mergePreview('page-1', 'version-1', tooLarge, 'user-1'),
+      ).rejects.toBeInstanceOf(PageContentTooLargeException);
+      await expect(
+        service.createNewVersionFromContent('page-1', tooLarge, 'user-1', null),
+      ).rejects.toBeInstanceOf(PageContentTooLargeException);
+      expect(pagesRepository.createWithFirstVersion).not.toHaveBeenCalled();
+      expect(pagesRepository.updateWithNewVersion).not.toHaveBeenCalled();
+      expect(pageMergeService.merge).not.toHaveBeenCalled();
+    });
+
+    it('still renames a page whose existing content is over the limit', async () => {
+      const page = buildPage();
+      pagesRepository.findVersionById.mockResolvedValue(
+        buildVersion({ content: tooLarge }),
+      );
+      pagesRepository.updateWithNewVersion.mockResolvedValue({
+        page,
+        version: buildVersion({ id: 'version-2', content: tooLarge }),
+      });
+
+      await service.updatePage('page-1', { title: 'Renamed' }, 'user-1');
+
+      expect(pagesRepository.updateWithNewVersion).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'Renamed', content: tooLarge }),
+      );
+    });
+
+    it('rejects a merge preview without a text content', async () => {
+      await expect(
+        service.mergePreview(
+          'page-1',
+          'version-1',
+          42 as unknown as string,
+          'user-1',
+        ),
+      ).rejects.toBeInstanceOf(ValidationException);
     });
   });
 
