@@ -22,13 +22,24 @@ export interface FindLibraryResult {
   total: number;
 }
 
+export interface ReferencingPage {
+  id: string;
+  title: string;
+  inTrash: boolean;
+}
+
 export interface AttachmentsRepository {
   create(input: CreateAttachmentInput): Promise<Attachment>;
   findAllByPageId(pageId: string): Promise<Attachment[]>;
   findById(id: string): Promise<Attachment | null>;
+  findByIds(ids: string[]): Promise<Attachment[]>;
   findLibrary(params: FindLibraryParams): Promise<FindLibraryResult>;
-  findPagesReferencing(
-    minioKey: string,
-  ): Promise<{ id: string; title: string; inTrash: boolean }[]>;
+  findPagesReferencing(attachment: Attachment): Promise<ReferencingPage[]>;
+  assignUnattachedToPage(
+    ids: string[],
+    pageId: string,
+    uploadedById: string,
+  ): Promise<void>;
+  assignToPage(id: string, pageId: string): Promise<void>;
   delete(id: string): Promise<void>;
 }

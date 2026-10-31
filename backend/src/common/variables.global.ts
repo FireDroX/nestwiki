@@ -52,6 +52,8 @@ export const VERSION_DIFF_MAX_EDIT_LENGTH = 5000;
 export const VERSION_DIFF_TIMEOUT_MS = 300;
 export const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export const MEDIA_RAW_URL_PATTERN =
+  /\/media\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/raw/gi;
 export const MAX_ATTACHMENT_SIZE_MB = 20;
 export const MAX_ATTACHMENT_SIZE_BYTES = MAX_ATTACHMENT_SIZE_MB * 1024 * 1024;
 export const ALLOWED_ATTACHMENT_MIME_TYPES = [

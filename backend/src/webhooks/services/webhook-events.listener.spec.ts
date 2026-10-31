@@ -49,7 +49,7 @@ describe('WebhookEventsListener', () => {
   it.each([
     [
       'page.created',
-      () => listener.onPageCreated(new PageCreatedEvent('guide', 'user-1')),
+      () => listener.onPageCreated(new PageCreatedEvent('guide', 'user-1', '')),
       {},
     ],
     [
@@ -162,7 +162,7 @@ describe('WebhookEventsListener', () => {
   it('does not even look the page up when no webhook listens to the event', async () => {
     hasSubscribers.mockResolvedValue(false);
 
-    await listener.onPageCreated(new PageCreatedEvent('guide', 'user-1'));
+    await listener.onPageCreated(new PageCreatedEvent('guide', 'user-1', ''));
     await listener.onPageVersionCreated(
       new PageVersionCreatedEvent(
         'guide',
@@ -184,7 +184,7 @@ describe('WebhookEventsListener', () => {
   it('skips a page that no longer exists', async () => {
     describePage.mockResolvedValue(null);
 
-    await listener.onPageCreated(new PageCreatedEvent('gone', 'user-1'));
+    await listener.onPageCreated(new PageCreatedEvent('gone', 'user-1', ''));
 
     expect(publish).not.toHaveBeenCalled();
   });
@@ -194,7 +194,7 @@ describe('WebhookEventsListener', () => {
     publish.mockRejectedValue(new Error('database down'));
 
     await expect(
-      listener.onPageCreated(new PageCreatedEvent('guide', 'user-1')),
+      listener.onPageCreated(new PageCreatedEvent('guide', 'user-1', '')),
     ).resolves.toBeUndefined();
   });
 });

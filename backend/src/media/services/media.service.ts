@@ -20,6 +20,7 @@ import {
   MAX_ATTACHMENT_SIZE_BYTES,
   MAX_LIMIT,
   MEDIA_PRESIGNED_URL_EXPIRY_SECONDS,
+  MEDIA_RAW_URL_PATTERN,
   UUID_REGEX,
 } from '../../common/variables.global.js';
 import { PagesService } from '../../pages/services/pages.service.js';
@@ -210,9 +211,7 @@ export class MediaService {
       throw new AttachmentNotFoundException();
     }
 
-    if (attachment.pageId) {
-      await this.pagesService.getByIdOrFail(attachment.pageId, currentUser);
-    }
+    await this.assertReadable(attachment, currentUser);
 
     const url = await this.storageService.getPresignedUrl(
       this.bucket,
@@ -231,14 +230,11 @@ export class MediaService {
     if (!attachment) {
       return null;
     }
-    if (attachment.pageId) {
-      const readable = await this.pagesService
-        .getByIdOrFail(attachment.pageId, currentUser)
-        .then(() => true)
-        .catch(() => false);
-      if (!readable) {
-        return null;
-      }
+    const readable = await this.assertReadable(attachment, currentUser)
+      .then(() => true)
+      .catch(() => false);
+    if (!readable) {
+      return null;
     }
     return {
       filename: attachment.filename,
@@ -254,7 +250,10 @@ export class MediaService {
     };
   }
 
-  async deleteAttachment(id: string, deletedById: string): Promise<void> {
+  async deleteAttachment(
+    id: string,
+    currentUser: AuthenticatedUser,
+  ): Promise<void> {
     if (!UUID_REGEX.test(id)) {
       throw new ValidationException('id must be a UUID');
     }
@@ -265,11 +264,16 @@ export class MediaService {
     }
 
     const referencingPages =
-      await this.attachmentsRepository.findPagesReferencing(
-        attachment.minioKey,
-      );
+      await this.attachmentsRepository.findPagesReferencing(attachment);
     if (referencingPages.length > 0) {
-      throw new AttachmentInUseException(referencingPages);
+      const readablePages = await this.filterReadablePages(
+        referencingPages,
+        currentUser,
+      );
+      throw new AttachmentInUseException(
+        readablePages,
+        referencingPages.length - readablePages.length,
+      );
     }
 
     try {
@@ -280,12 +284,91 @@ export class MediaService {
 
     await this.attachmentsRepository.delete(attachment.id);
     void this.userActivityLogService.record({
-      userId: deletedById,
+      userId: currentUser.id,
       action: 'media.deleted',
       targetType: 'attachment',
       targetId: id,
       metadata: { filename: attachment.filename },
     });
+  }
+
+  async attachUploadsReferencedBy(
+    pageId: string,
+    content: string,
+    authorId: string,
+  ): Promise<void> {
+    const ids = [
+      ...new Set(
+        [...content.matchAll(MEDIA_RAW_URL_PATTERN)].map((match) =>
+          match[1].toLowerCase(),
+        ),
+      ),
+    ];
+    await this.attachmentsRepository.assignUnattachedToPage(
+      ids,
+      pageId,
+      authorId,
+    );
+  }
+
+  async releaseDetachedAttachments(ids: string[]): Promise<void> {
+    const attachments = await this.attachmentsRepository.findByIds(ids);
+    for (const attachment of attachments.filter((item) => !item.pageId)) {
+      const [referencingPage] =
+        await this.attachmentsRepository.findPagesReferencing(attachment);
+      if (referencingPage) {
+        await this.attachmentsRepository.assignToPage(
+          attachment.id,
+          referencingPage.id,
+        );
+      } else {
+        await this.deleteUnreferenced(attachment);
+      }
+    }
+  }
+
+  private async deleteUnreferenced(attachment: Attachment): Promise<void> {
+    try {
+      await this.storageService.delete(this.bucket, attachment.minioKey);
+    } catch (error) {
+      this.logger.warn(
+        `Purge kept media ${attachment.id}: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      return;
+    }
+    await this.attachmentsRepository.delete(attachment.id);
+  }
+
+  private async assertReadable(
+    attachment: Attachment,
+    currentUser?: AuthenticatedUser,
+  ): Promise<void> {
+    if (attachment.pageId) {
+      await this.pagesService.getByIdOrFail(attachment.pageId, currentUser);
+      return;
+    }
+    const isUploaderOrAdmin =
+      currentUser !== undefined &&
+      (currentUser.role === 'admin' ||
+        currentUser.id === attachment.uploadedById);
+    if (!isUploaderOrAdmin) {
+      throw new AttachmentNotFoundException();
+    }
+  }
+
+  private async filterReadablePages<T extends { id: string }>(
+    pages: T[],
+    currentUser: AuthenticatedUser,
+  ): Promise<T[]> {
+    const user = await this.usersService
+      .findById(currentUser.id)
+      .catch(() => undefined);
+    const readable = await Promise.all(
+      pages.map((page) =>
+        this.permissionsService.can(user, 'page.read', page.id),
+      ),
+    );
+    return pages.filter((_page, index) => readable[index]);
   }
 
   private validateUpload(file: UploadedMediaFile, dto: UploadMediaDto): void {

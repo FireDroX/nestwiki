@@ -8,5 +8,5 @@ export interface PageTrashRepository {
   findPaths(pageIds: string[]): Promise<Map<string, string>>;
   restoreBatch(rootId: string): Promise<void>;
   findTrashedSubtreeIds(rootId: string): Promise<string[]>;
-  purge(pageIds: string[]): Promise<void>;
+  purge(pageIds: string[]): Promise<string[]>;
 }

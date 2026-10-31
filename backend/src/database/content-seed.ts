@@ -764,7 +764,7 @@ Quiconque détient \`page.delete\` sur une page voit un bouton **Supprimer** dan
 Une page supprimée n'est pas effacée : elle part dans la **corbeille** (menu utilisateur → Corbeille), qui liste les pages que vous avez le droit de supprimer, avec leur ancien chemin, qui les a supprimées et quand.
 
 - **Restaurer** remet la page à sa place, avec les sous-pages supprimées en même temps qu'elle. Si sa page parente est elle-même dans la corbeille, restaurez d'abord la parente. Si une autre page a pris son adresse entre-temps, renommez ou déplacez celle-ci avant de restaurer.
-- **Supprimer définitivement** est réservé aux admins : la page, son historique et ses commentaires sont effacés. Les images qu'elle utilisait restent dans la médiathèque.
+- **Supprimer définitivement** est réservé aux admins : la page, son historique et ses commentaires sont effacés, ainsi que les médias téléversés sur elle. Un média qu'une autre page affiche encore est conservé et rattaché à cette page.
 - L'adresse d'une page en corbeille est libre : on peut créer une nouvelle page au même endroit.
 - Une image utilisée par une page de la corbeille ne peut pas être supprimée de la médiathèque, pour que la restauration ne casse pas la page.
 

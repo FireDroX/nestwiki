@@ -1,12 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, In, IsNull, Repository } from 'typeorm';
 import { Attachment } from '../entities/attachment.entity.js';
 import {
   AttachmentsRepository,
   CreateAttachmentInput,
   FindLibraryParams,
   FindLibraryResult,
+  ReferencingPage,
 } from './attachment.repository.js';
 
 interface AttachmentRow {
@@ -23,6 +24,9 @@ interface AttachmentRow {
 interface CountRow {
   total: string;
 }
+
+const LEGACY_KEY_UUID =
+  /^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i;
 
 @Injectable()
 export class TypeormAttachmentsRepository implements AttachmentsRepository {
@@ -105,14 +109,20 @@ export class TypeormAttachmentsRepository implements AttachmentsRepository {
     };
   }
 
+  findByIds(ids: string[]): Promise<Attachment[]> {
+    if (ids.length === 0) {
+      return Promise.resolve([]);
+    }
+    return this.repository.find({ where: { id: In(ids) } });
+  }
+
   async findPagesReferencing(
-    minioKey: string,
-  ): Promise<{ id: string; title: string; inTrash: boolean }[]> {
-    const lastSegment = minioKey.split('/').pop() ?? minioKey;
-    const uuidMatch = lastSegment.match(
-      /^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i,
-    );
-    const needle = uuidMatch ? uuidMatch[1] : minioKey;
+    attachment: Attachment,
+  ): Promise<ReferencingPage[]> {
+    const needles = [
+      `%/media/${attachment.id}/raw%`,
+      ...TypeormAttachmentsRepository.legacyKeyNeedles(attachment.minioKey),
+    ];
 
     const rows = await this.dataSource.query<
       { id: string; title: string; inTrash: number | string }[]
@@ -120,8 +130,9 @@ export class TypeormAttachmentsRepository implements AttachmentsRepository {
       `SELECT p.id AS id, pv.title AS title, (p.deleted_at IS NOT NULL) AS inTrash
        FROM pages p
        INNER JOIN page_versions pv ON pv.id = p.current_version_id
-       WHERE pv.content LIKE ?`,
-      [`%${needle}%`],
+       WHERE ${needles.map(() => 'pv.content LIKE ?').join(' OR ')}
+       ORDER BY (p.deleted_at IS NOT NULL), p.created_at, p.id`,
+      needles,
     );
     return rows.map((row) => ({
       id: row.id,
@@ -130,8 +141,32 @@ export class TypeormAttachmentsRepository implements AttachmentsRepository {
     }));
   }
 
+  async assignUnattachedToPage(
+    ids: string[],
+    pageId: string,
+    uploadedById: string,
+  ): Promise<void> {
+    if (ids.length === 0) {
+      return;
+    }
+    await this.repository.update(
+      { id: In(ids), pageId: IsNull(), uploadedById },
+      { pageId },
+    );
+  }
+
+  async assignToPage(id: string, pageId: string): Promise<void> {
+    await this.repository.update(id, { pageId });
+  }
+
   async delete(id: string): Promise<void> {
     await this.repository.delete(id);
+  }
+
+  private static legacyKeyNeedles(minioKey: string): string[] {
+    const lastSegment = minioKey.split('/').pop() ?? minioKey;
+    const uuid = LEGACY_KEY_UUID.exec(lastSegment);
+    return uuid ? [`%${uuid[1]}%`] : [];
   }
 
   private static toAttachment(row: AttachmentRow): Attachment {

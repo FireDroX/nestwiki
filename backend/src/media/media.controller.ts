@@ -247,6 +247,6 @@ export class MediaController {
     @Param('id') id: string,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<void> {
-    await this.mediaService.deleteAttachment(id, user.id);
+    await this.mediaService.deleteAttachment(id, user);
   }
 }

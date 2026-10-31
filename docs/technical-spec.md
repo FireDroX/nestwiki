@@ -351,7 +351,7 @@ Toutes les routes `/admin/users` sont accessibles aux administrateurs ou à quic
 | GET     | /pages/:id/export?scope=page\|subtree | selon visibilité | Export Markdown brut : `scope=page` (défaut) → `<slug>.md` ; `scope=subtree` → `<slug>.zip` (un `.md` par page, sous-pages dans `<slug>/`, médias lisibles dans `_media/<id>-<fichier>`). En-tête YAML `title`, `tags`, `updatedAt`, `source` ; liens entre pages exportées et vers les médias réécrits en chemins relatifs, autres liens du wiki en URL absolue (`FRONTEND_URL`). Limité à 10 requêtes/min par client (comme `subtree-content`) ; 413 au-delà de 500 pages ou 200 médias ; médias lus un par un pendant l'envoi de l'archive |
 | GET     | /pages/trash       | connecté         | Pages en corbeille sur lesquelles l'appelant a `page.delete` (racines de suppression : titre, ancien chemin, auteur, date, nombre de sous-pages) |
 | POST    | /pages/:id/restore | `page.delete` sur la page | Restaurer une racine de suppression et son lot ; 409 si le parent est en corbeille ou si le slug a été repris |
-| DELETE  | /pages/:id/purge   | admin            | Supprimer définitivement une page de la corbeille et toutes ses sous-pages supprimées (versions, commentaires, suivis) ; les médias restent dans la médiathèque |
+| DELETE  | /pages/:id/purge   | admin            | Supprimer définitivement une page de la corbeille et toutes ses sous-pages supprimées (versions, commentaires, suivis). Ensuite, chaque média de ces pages encore référencé par une autre page lui est rattaché, les autres sont supprimés (objet et ligne) |
 | PATCH   | /pages/:id/visibility | `page.manage_visibility` sur la page et chacune de ses sous-pages | Changer la visibilité (cascade aux enfants) |
 
 ### Groupes et permissions
@@ -393,8 +393,8 @@ Voir aussi `/pages/*path` et `/pages/tree`, qui exposent respectivement `permiss
 | ------- | -------------- | ---------------- | ---------------------------------------------------------------------- |
 | POST    | /media/upload  | `media.upload`   | Upload vers Minio ; 413 au-delà de 20 Mo, refusé pendant la réception |
 | POST    | /media         | selon visibilité | Corps `{ pageId }` : médias d'une page. Corps sans `pageId` : médiathèque globale, filtrable (search/type) et paginée (page/limit), authentifié |
-| GET     | /media/:id/url | selon visibilité | URL présignée                                                         |
-| DELETE  | /media/:id     | `media.delete`   | Supprimer (409 si le média est encore référencé ailleurs)             |
+| GET     | /media/:id/url | selon visibilité | URL présignée. Média sans page (téléversé hors d'une page) : son auteur et les admins seulement, 404 sinon (idem `/media/:id/raw` et l'export) |
+| DELETE  | /media/:id     | `media.delete`   | Supprimer. 409 si la version courante d'une page, corbeille comprise, contient `/media/<id>/raw` (ou l'UUID de la clé objet pour les anciennes URLs présignées) ; le message ne nomme que les pages lisibles par l'appelant et compte les autres |
 
 ### Import
 
