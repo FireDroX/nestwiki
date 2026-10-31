@@ -6,6 +6,7 @@ import { CommentDeleteForbiddenException } from '../../common/exceptions/comment
 import { CommentEditForbiddenException } from '../../common/exceptions/comments/comment-edit-forbidden.exception.js';
 import { CommentNotFoundException } from '../../common/exceptions/comments/comment-not-found.exception.js';
 import { ReplyNestingException } from '../../common/exceptions/comments/reply-nesting.exception.js';
+import { CommentsDisabledException } from '../../common/exceptions/pages/comments-disabled.exception.js';
 import { ValidationException } from '../../common/exceptions/validation.exception.js';
 import type { AuthenticatedUser } from '../../common/strategies/jwt.strategy.js';
 import {
@@ -35,8 +36,14 @@ export interface AuthorInfo {
   hasAvatar: boolean;
 }
 
+export interface UserCommentItem {
+  comment: Comment;
+  pagePath: string | null;
+  pageReadable: boolean;
+}
+
 export interface UserCommentsPage {
-  items: Array<{ comment: Comment; pagePath: string | null }>;
+  items: UserCommentItem[];
   total: number;
   page: number;
   limit: number;
@@ -109,8 +116,18 @@ export class CommentsService {
     currentUser: AuthenticatedUser,
   ): Promise<{ comment: Comment; authorNames: Map<string, AuthorInfo> }> {
     const comment = await this.getByIdOrFail(id);
+    if (comment.deletedAt) {
+      throw new CommentNotFoundException();
+    }
     if (comment.authorId !== currentUser.id) {
       throw new CommentEditForbiddenException();
+    }
+    const page = await this.pagesService.getByIdOrFail(
+      comment.pageId,
+      currentUser,
+    );
+    if (!page.commentsEnabled) {
+      throw new CommentsDisabledException();
     }
     this.validateContent(dto.content);
     const updated = await this.commentsRepository.updateContent(
@@ -175,14 +192,47 @@ export class CommentsService {
       excludeDeleted,
     );
 
+    const readablePageIds = await this.resolveReadablePageIds(
+      items,
+      userId,
+      admin,
+    );
     const withPagePath = await Promise.all(
-      items.map(async (comment) => ({
-        comment,
-        pagePath: await this.resolvePagePath(comment.pageId, admin),
-      })),
+      items.map(async (comment) => {
+        const pageReadable = readablePageIds.has(comment.pageId);
+        return {
+          comment,
+          pagePath: pageReadable
+            ? await this.resolvePagePath(comment.pageId, admin)
+            : null,
+          pageReadable,
+        };
+      }),
     );
 
     return { items: withPagePath, total, page, limit };
+  }
+
+  private async resolveReadablePageIds(
+    comments: Comment[],
+    authorId: string,
+    actor: AuthenticatedUser,
+  ): Promise<Set<string>> {
+    const pageIds = [...new Set(comments.map((comment) => comment.pageId))];
+    if (actor.role === 'admin' || actor.id === authorId) {
+      return new Set(pageIds);
+    }
+    const actorEntity = await this.usersService.findById(actor.id);
+    const actionsByPage =
+      await this.permissionsService.getEffectivePageActionsBulk(
+        actorEntity,
+        pageIds,
+      );
+    return new Set(
+      pageIds.filter((pageId) =>
+        actionsByPage.get(pageId)?.includes('page.read'),
+      ),
+    );
   }
 
   countByAuthorId(authorId: string): Promise<number> {

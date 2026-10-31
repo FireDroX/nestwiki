@@ -5,7 +5,10 @@ import { User } from '../../users/entities/user.entity.js';
 import { PageAccessRule } from '../entities/page-access-rule.entity.js';
 import type { GroupsRepository } from '../persistence/groups.repository.js';
 import type { PageAccessRulesRepository } from '../persistence/page-access-rules.repository.js';
-import type { PageHierarchyRepository } from '../persistence/page-hierarchy.repository.js';
+import type {
+  PageChain,
+  PageHierarchyRepository,
+} from '../persistence/page-hierarchy.repository.js';
 import type { SubjectPermissionsRepository } from '../persistence/subject-permissions.repository.js';
 import { PermissionsService } from './permissions.service.js';
 
@@ -1489,6 +1492,176 @@ describe('PermissionsService', () => {
           member,
           'parent',
           'page.edit',
+        ),
+      ).toBe(true);
+    });
+    it('returns false when the exclusion is a trashed page inside the subtree', async () => {
+      const member = buildUser();
+      pageHierarchyRepository.findChains.mockImplementation(
+        (ids: string[], options?: { includeDeleted?: boolean }) => {
+          if (ids.includes('trashed')) {
+            return Promise.resolve(
+              options?.includeDeleted
+                ? new Map<string, PageChain>([
+                    [
+                      'trashed',
+                      {
+                        pageId: 'trashed',
+                        visibility: 'private' as const,
+                        chainIds: ['trashed', 'parent'],
+                      },
+                    ],
+                  ])
+                : new Map<string, PageChain>(),
+            );
+          }
+          return Promise.resolve(
+            new Map([
+              [
+                'parent',
+                {
+                  pageId: 'parent',
+                  visibility: 'private' as const,
+                  chainIds: ['parent'],
+                },
+              ],
+            ]),
+          );
+        },
+      );
+      pageAccessRulesRepository.findByUserId.mockResolvedValue([
+        buildRule({
+          id: 'rule-1',
+          userId: member.id,
+          pageId: 'parent',
+          appliesTo: 'subtree',
+          actions: ['page.edit'],
+        }),
+      ]);
+      pageAccessRulesRepository.findExclusionsForRules.mockResolvedValue(
+        new Map([['rule-1', ['trashed']]]),
+      );
+
+      expect(
+        await service.hasUnrestrictedActionOnSubtree(
+          member,
+          'parent',
+          'page.edit',
+        ),
+      ).toBe(false);
+      expect(pageHierarchyRepository.findChains).toHaveBeenCalledWith(
+        ['trashed'],
+        { includeDeleted: true },
+      );
+    });
+
+    it('fails closed when the chain of an exclusion cannot be resolved', async () => {
+      const member = buildUser();
+      pageHierarchyRepository.findChains.mockImplementation((ids: string[]) =>
+        Promise.resolve(
+          ids.includes('parent')
+            ? new Map<string, PageChain>([
+                [
+                  'parent',
+                  {
+                    pageId: 'parent',
+                    visibility: 'private' as const,
+                    chainIds: ['parent'],
+                  },
+                ],
+              ])
+            : new Map<string, PageChain>(),
+        ),
+      );
+      pageAccessRulesRepository.findByUserId.mockResolvedValue([
+        buildRule({
+          id: 'rule-1',
+          userId: member.id,
+          pageId: 'parent',
+          appliesTo: 'subtree',
+          actions: ['page.edit'],
+        }),
+      ]);
+      pageAccessRulesRepository.findExclusionsForRules.mockResolvedValue(
+        new Map([['rule-1', ['gone']]]),
+      );
+
+      expect(
+        await service.hasUnrestrictedActionOnSubtree(
+          member,
+          'parent',
+          'page.edit',
+        ),
+      ).toBe(false);
+    });
+  });
+
+  describe('canCreatePublicPageUnder', () => {
+    function chainOf(visibility: 'public' | 'private') {
+      pageHierarchyRepository.findChains.mockResolvedValue(
+        new Map([
+          ['parent', { pageId: 'parent', visibility, chainIds: ['parent'] }],
+        ]),
+      );
+    }
+
+    it('allows anyone under a public parent', async () => {
+      chainOf('public');
+
+      expect(
+        await service.canCreatePublicPageUnder(buildUser(), 'parent'),
+      ).toBe(true);
+    });
+
+    it('requires page.manage_visibility under a private parent', async () => {
+      chainOf('private');
+      const member = buildUser();
+
+      expect(await service.canCreatePublicPageUnder(member, 'parent')).toBe(
+        false,
+      );
+
+      pageAccessRulesRepository.findByUserId.mockResolvedValue([
+        buildRule({
+          userId: member.id,
+          pageId: 'parent',
+          appliesTo: 'page',
+          actions: ['page.read', 'page.manage_visibility'],
+        }),
+      ]);
+      expect(await service.canCreatePublicPageUnder(member, 'parent')).toBe(
+        true,
+      );
+    });
+
+    it('requires an unrestricted page.manage_visibility at the root', async () => {
+      const member = buildUser();
+      expect(await service.canCreatePublicPageUnder(member, null)).toBe(false);
+
+      pageAccessRulesRepository.findByUserId.mockResolvedValue([
+        buildRule({
+          userId: member.id,
+          pageId: null,
+          appliesTo: 'subtree',
+          actions: ['page.manage_visibility'],
+        }),
+      ]);
+      expect(await service.canCreatePublicPageUnder(member, null)).toBe(true);
+    });
+
+    it('always allows an admin', async () => {
+      chainOf('private');
+
+      expect(
+        await service.canCreatePublicPageUnder(
+          buildUser({ role: 'admin' }),
+          'parent',
+        ),
+      ).toBe(true);
+      expect(
+        await service.canCreatePublicPageUnder(
+          buildUser({ role: 'admin' }),
+          null,
         ),
       ).toBe(true);
     });

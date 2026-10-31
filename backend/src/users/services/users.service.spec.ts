@@ -720,6 +720,109 @@ describe('UsersService', () => {
     });
   });
 
+  describe('taking over a more privileged member', () => {
+    const actor = buildActor({ id: 'actor-1', role: 'member' });
+    const target = buildUser({ id: 'user-2', email: 'target@example.com' });
+
+    beforeEach(() => {
+      userRepository.findById.mockImplementation((id) =>
+        Promise.resolve(
+          id === 'actor-1'
+            ? buildUser({ id: 'actor-1', role: 'member' })
+            : target,
+        ),
+      );
+      subjectPermissionsRepository.findForUser.mockResolvedValue([
+        'comment.moderate',
+      ]);
+      pageAccessRulesRepository.findByUserId.mockResolvedValue([
+        {
+          id: 'rule-1',
+          userId: 'user-2',
+          groupId: null,
+          pageId: null,
+          appliesTo: 'subtree',
+          actions: ['page.read', 'page.edit'],
+          grantedById: 'admin-1',
+          createdAt: new Date(),
+        },
+      ]);
+      permissionsService.hasGlobal.mockImplementation((_user, permission) =>
+        Promise.resolve(permission === 'user.manage'),
+      );
+      permissionsService.hasUnrestrictedPageAccess.mockResolvedValue(false);
+    });
+
+    it('rejects resetPassword without writing the password', async () => {
+      await expect(
+        service.resetPassword(actor, 'user-2'),
+      ).rejects.toBeInstanceOf(InsufficientPermissionException);
+      expect(userRepository.updatePassword).not.toHaveBeenCalled();
+    });
+
+    it('rejects an email change without writing it', async () => {
+      await expect(
+        service.adminUpdate(actor, 'user-2', { email: 'attacker@example.com' }),
+      ).rejects.toBeInstanceOf(InsufficientPermissionException);
+      expect(userRepository.adminUpdate).not.toHaveBeenCalled();
+    });
+
+    it('still allows a display name change', async () => {
+      userRepository.adminUpdate.mockResolvedValue(target);
+
+      await service.adminUpdate(actor, 'user-2', { displayName: 'Renamed' });
+
+      expect(userRepository.adminUpdate).toHaveBeenCalled();
+    });
+
+    it('rejects re-enabling the account without writing the status', async () => {
+      await expect(
+        service.setStatus(actor, 'user-2', true),
+      ).rejects.toBeInstanceOf(InsufficientPermissionException);
+      expect(userRepository.updateStatus).not.toHaveBeenCalled();
+    });
+
+    it('rejects deleting the account', async () => {
+      await expect(service.deleteUser(actor, 'user-2')).rejects.toBeInstanceOf(
+        InsufficientPermissionException,
+      );
+      expect(userRepository.delete).not.toHaveBeenCalled();
+    });
+
+    it('checks the rights the target gets from its groups', async () => {
+      subjectPermissionsRepository.findForUser.mockResolvedValue([]);
+      pageAccessRulesRepository.findByUserId.mockResolvedValue([]);
+      groupsRepository.findGroupIdsForUser.mockResolvedValue(['group-1']);
+      subjectPermissionsRepository.findForGroups.mockResolvedValue([
+        'media.delete',
+      ]);
+
+      await expect(
+        service.resetPassword(actor, 'user-2'),
+      ).rejects.toBeInstanceOf(InsufficientPermissionException);
+      expect(subjectPermissionsRepository.findForGroups).toHaveBeenCalledWith([
+        'group-1',
+      ]);
+    });
+
+    it('allows the reset when the actor holds every right of the target', async () => {
+      permissionsService.hasGlobal.mockResolvedValue(true);
+      permissionsService.hasUnrestrictedPageAccess.mockResolvedValue(true);
+
+      await expect(service.resetPassword(actor, 'user-2')).resolves.toEqual(
+        expect.any(String),
+      );
+      expect(userRepository.updatePassword).toHaveBeenCalled();
+    });
+
+    it('lets an admin act whatever the target holds', async () => {
+      await expect(
+        service.resetPassword(buildActor(), 'user-2'),
+      ).resolves.toEqual(expect.any(String));
+      expect(permissionsService.hasGlobal).not.toHaveBeenCalled();
+    });
+  });
+
   describe('unlock', () => {
     it('resets failed login attempts and records an audit entry', async () => {
       userRepository.findById.mockResolvedValue(buildUser());

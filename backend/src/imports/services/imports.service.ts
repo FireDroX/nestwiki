@@ -136,6 +136,12 @@ export class ImportsService {
     const outcomeByKey = new Map(
       outcomes.map((outcome) => [outcome.planned.node.key, outcome]),
     );
+    if (visibility === 'public') {
+      await this.assertCanPublishUnder(
+        ImportsService.existingParentsOfCreatedPages(plan, outcomes),
+        user,
+      );
+    }
 
     const media = plan.canUploadMedia
       ? ImportsService.mediaOwners(plan.tree.media, written)
@@ -320,6 +326,44 @@ export class ImportsService {
     ) {
       throw new InsufficientPagePermissionException();
     }
+  }
+
+  private async assertCanPublishUnder(
+    parentIds: (string | null)[],
+    user: User,
+  ): Promise<void> {
+    for (const parentId of parentIds) {
+      if (
+        !(await this.permissionsService.canCreatePublicPageUnder(
+          user,
+          parentId,
+        ))
+      ) {
+        throw new InsufficientPagePermissionException();
+      }
+    }
+  }
+
+  private static existingParentsOfCreatedPages(
+    plan: ImportPlan,
+    outcomes: ImportPageOutcome[],
+  ): (string | null)[] {
+    const outcomeByKey = new Map(
+      outcomes.map((outcome) => [outcome.planned.node.key, outcome]),
+    );
+    const parentIds = new Set<string | null>();
+    for (const outcome of outcomes) {
+      if (outcome.action !== 'create') {
+        continue;
+      }
+      const parentKey = outcome.planned.node.parentKey;
+      const parent = parentKey ? outcomeByKey.get(parentKey)! : null;
+      if (parent?.action === 'create') {
+        continue;
+      }
+      parentIds.add(parent ? parent.pageId : plan.destination.pageId);
+    }
+    return [...parentIds];
   }
 
   private async existingPageActions(

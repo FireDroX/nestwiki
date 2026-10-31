@@ -437,7 +437,9 @@
         "purgeAllConfirmDescription_other": "All {{count}} comments from {{name}} will be permanently deleted, along with any replies. This cannot be undone.",
         "purgeSuccess_one": "{{count}} comment purged.",
         "purgeSuccess_other": "{{count}} comments purged.",
-        "purgeFailed": "Failed to purge comments."
+        "purgeFailed": "Failed to purge comments.",
+        "hiddenPage": "Page you cannot access",
+        "hiddenContent": "Content hidden: you cannot access this page."
       }
     },
     "groups": {

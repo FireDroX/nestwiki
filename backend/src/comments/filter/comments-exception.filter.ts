@@ -28,10 +28,13 @@ export class CommentsExceptionFilter implements ExceptionFilter {
     switch (exception.name) {
       case 'CommentNotFoundException':
       case 'UserNotFoundException':
+      case 'PageNotFoundException':
         return { statusCode: HttpStatus.NOT_FOUND, error: exception.message };
       case 'CommentDeleteForbiddenException':
       case 'CommentEditForbiddenException':
       case 'InsufficientPermissionException':
+      case 'PageAccessForbiddenException':
+      case 'CommentsDisabledException':
         return { statusCode: HttpStatus.FORBIDDEN, error: exception.message };
       case 'ValidationException':
         return { statusCode: HttpStatus.BAD_REQUEST, error: exception.message };

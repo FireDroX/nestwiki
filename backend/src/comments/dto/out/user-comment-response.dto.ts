@@ -1,8 +1,8 @@
 export interface UserCommentResponseDto {
   id: string;
-  pageId: string;
+  pageId: string | null;
   pagePath: string | null;
-  content: string;
+  content: string | null;
   deletedAt: Date | null;
   createdAt: Date;
 }

@@ -140,11 +140,18 @@ export function UserCommentsPanel({ user }: UserCommentsPanelProps) {
                 />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-xs text-muted-foreground">
-                    {comment.pagePath ?? comment.pageId} · {formatDateTime(comment.createdAt)}
+                    {comment.pagePath ?? comment.pageId ?? t('admin.users.comments.hiddenPage')} ·{' '}
+                    {formatDateTime(comment.createdAt)}
                   </p>
-                  <p className="truncate text-sm">
-                    {comment.deletedAt ? t('comments.deletedPlaceholder') : comment.content}
-                  </p>
+                  {comment.content === null ? (
+                    <p className="truncate text-sm italic text-muted-foreground">
+                      {t('admin.users.comments.hiddenContent')}
+                    </p>
+                  ) : (
+                    <p className="truncate text-sm">
+                      {comment.deletedAt ? t('comments.deletedPlaceholder') : comment.content}
+                    </p>
+                  )}
                 </div>
               </div>
             ))}

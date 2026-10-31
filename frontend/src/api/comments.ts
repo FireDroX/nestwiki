@@ -45,9 +45,9 @@ export async function deleteComment(commentId: string): Promise<void> {
 
 export interface AdminUserComment {
   id: string
-  pageId: string
+  pageId: string | null
   pagePath: string | null
-  content: string
+  content: string | null
   deletedAt: string | null
   createdAt: string
 }

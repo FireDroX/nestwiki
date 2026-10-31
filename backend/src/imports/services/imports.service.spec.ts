@@ -80,6 +80,7 @@ describe('ImportsService', () => {
   let service: ImportsService;
   let can: Mock;
   let hasGlobal: Mock;
+  let canCreatePublicPageUnder: Mock;
   let getByIdOrFail: Mock;
   let write: Mock;
   let storeImportedFile: Mock;
@@ -91,6 +92,7 @@ describe('ImportsService', () => {
   beforeEach(async () => {
     can = vi.fn().mockResolvedValue(true);
     hasGlobal = vi.fn().mockResolvedValue(true);
+    canCreatePublicPageUnder = vi.fn().mockResolvedValue(true);
     getByIdOrFail = vi.fn().mockResolvedValue(page(DOCS_ID, 'docs', null));
     write = vi.fn().mockResolvedValue(undefined);
     let uploads = 0;
@@ -122,6 +124,7 @@ describe('ImportsService', () => {
           useValue: {
             can,
             hasGlobal,
+            canCreatePublicPageUnder,
             getEffectivePageActionsBulk: (target: User, pageIds: string[]) =>
               effectiveActions(can, target, pageIds),
           },
@@ -561,6 +564,32 @@ describe('ImportsService', () => {
       );
 
       expect(writtenInput().createdPages[0].visibility).toBe('public');
+      expect(canCreatePublicPageUnder).toHaveBeenCalledWith(user, null);
+    });
+
+    it('refuses public pages under a parent the user cannot publish under', async () => {
+      canCreatePublicPageUnder.mockResolvedValue(false);
+
+      await expect(
+        service.execute(
+          markdownFile('note.md', '# Note'),
+          { parentId: DOCS_ID, visibility: 'public' },
+          currentUser,
+        ),
+      ).rejects.toThrow(InsufficientPagePermissionException);
+      expect(canCreatePublicPageUnder).toHaveBeenCalledWith(user, DOCS_ID);
+      expect(write).not.toHaveBeenCalled();
+      expect(storeImportedFile).not.toHaveBeenCalled();
+    });
+
+    it('does not check the publication right for private pages', async () => {
+      await service.execute(
+        markdownFile('note.md', '# Note'),
+        { parentId: DOCS_ID },
+        currentUser,
+      );
+
+      expect(canCreatePublicPageUnder).not.toHaveBeenCalled();
     });
 
     it('rejects invalid options', async () => {

@@ -734,7 +734,7 @@ NestWiki n'a que deux rôles globaux : **admin** (accès à tout, sans exception
 
 Deux familles de droits existent :
 
-- **Permissions globales** — valables sur tout le wiki, indépendamment d'une page précise : \`user.manage\` (gérer les comptes, groupes et leurs accès), \`page.create_root\` (créer une page à la racine), \`tag.create\`/\`tag.delete\`, \`media.upload\`/\`media.delete\`, \`comment.moderate\`.
+- **Permissions globales** — valables sur tout le wiki, indépendamment d'une page précise : \`user.manage\` (gérer les comptes, groupes et leurs accès), \`page.create_root\` (créer une page à la racine), \`tag.create\`/\`tag.delete\`, \`media.upload\`/\`media.delete\`, \`comment.moderate\` (supprimer définitivement le commentaire de quelqu'un d'autre, avec ses réponses).
 - **Permissions par page** — accordées sur une page précise, avec une portée : *cette page uniquement* ou *cette page et toutes ses sous-pages* (avec possibilité d'exclure certaines sous-pages de la couverture). Actions possibles : lire, modifier, créer des sous-pages, supprimer, déplacer, gérer la visibilité, gérer les tags, restaurer une version, et gérer les permissions de la page elle-même.
 
 ## 2. Les groupes (\`/admin/groups\`)
@@ -769,6 +769,12 @@ Une page supprimée n'est pas effacée : elle part dans la **corbeille** (menu u
 ## 6. La règle anti-escalade
 
 Quelle que soit l'interface utilisée, une règle simple s'applique partout : **vous ne pouvez jamais accorder à quelqu'un d'autre plus de droits que vous n'en avez vous-même** — ni en lui donnant un accès direct, ni en l'ajoutant à un groupe qui en détient davantage que vous. Toute tentative renvoie une erreur plutôt que de silencieusement échouer ou de réduire la demande.
+
+La même règle protège les comptes et les sous-pages :
+
+- avec \`user.manage\` sans être admin, vous ne pouvez réinitialiser le mot de passe, changer l'e-mail, réactiver ou supprimer un compte que si vous détenez tous ses droits (directs et hérités de ses groupes) ; ses commentaires sur des pages que vous ne pouvez pas lire apparaissent masqués ;
+- déplacer une page ou changer sa visibilité demande ce droit sur chacune de ses sous-pages, comme la suppression ;
+- une nouvelle page prend la visibilité de sa page parente si vous n'en choisissez pas ; la rendre publique sous une page privée demande de pouvoir gérer la visibilité de cette page parente.
 
 Toutes ces actions sont tracées dans le [journal d'audit](/admin/audit-log).`,
       },
