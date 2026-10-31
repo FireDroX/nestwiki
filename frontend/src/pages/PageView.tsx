@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { deletePage } from '#api/pages'
 import { Button } from '#components/ui/button'
 import { MarkdownRenderer } from '#components/MarkdownRenderer'
+import { Mascot } from '#components/Mascot'
 import { Skeleton } from '#components/ui/skeleton'
 import { PageBreadcrumb } from '#components/layout/PageBreadcrumb'
 import { CommentThread } from '#components/PageView/CommentThread'
@@ -75,6 +76,7 @@ function PageStatusMessage({ title, description }: PageStatusMessageProps) {
   const { t } = useTranslation()
   return (
     <div className={cn(PAGE_PADDING, 'flex max-w-3xl flex-col items-start gap-4')}>
+      <Mascot className="h-21" />
       <h1 className="text-2xl font-semibold">{title}</h1>
       <p className="text-muted-foreground">{description}</p>
       <Button asChild>

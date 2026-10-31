@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 import { Button } from '#components/ui/button'
+import { Mascot } from '#components/Mascot'
 import { FollowedPagesCard } from '#components/Home/FollowedPagesCard'
 import { PopularPagesCard } from '#components/Home/PopularPagesCard'
 import { StatsGrid } from '#components/Home/StatsGrid'
@@ -35,10 +36,15 @@ function VisitorHome() {
 
   return (
     <main className={cn(PAGE_PADDING, 'flex flex-col gap-6')}>
-      <div className="flex flex-col gap-3">
-        <p className="text-sm font-semibold text-primary uppercase">{t('home.visitor.eyebrow')}</p>
-        <h1 className="font-heading text-3xl font-bold">{t('common.appName')}</h1>
-        <p className="max-w-2xl text-muted-foreground">{t('home.visitor.description')}</p>
+      <div className="flex items-center justify-between gap-8">
+        <div className="flex flex-col gap-3">
+          <p className="text-sm font-semibold text-primary uppercase">{t('home.visitor.eyebrow')}</p>
+          <h1 className="font-heading text-3xl font-bold">{t('common.appName')}</h1>
+          <p className="max-w-2xl text-muted-foreground">{t('home.visitor.description')}</p>
+        </div>
+        <div className="hidden shrink-0 sm:block">
+          <Mascot className="h-22" />
+        </div>
       </div>
 
       {loadError ? (

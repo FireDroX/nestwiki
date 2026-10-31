@@ -1,6 +1,11 @@
 <p align="center">
-  <img src="frontend/public/nestwiki-logo.svg" alt="NestWiki" width="280">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="frontend/public/nestwiki-mascot-dark.png">
+    <img src="frontend/public/nestwiki-mascot-light.png" alt="The NestWiki robin in its nest, on the logo" width="200">
+  </picture>
 </p>
+
+<h1 align="center">NestWiki</h1>
 
 <p align="center">
   A self-hosted, collaborative wiki for teams — page tree, full version history, granular permissions, and an MCP server so AI assistants can read and write your knowledge base.

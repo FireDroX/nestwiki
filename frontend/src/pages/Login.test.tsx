@@ -38,6 +38,12 @@ function renderLogin(overrides: Partial<AuthContextValue> = {}, path = '/login')
 }
 
 describe('Login', () => {
+  it('links the mascot back to the home page', () => {
+    renderLogin()
+
+    expect(screen.getByRole('link', { name: "Retour à l'accueil" })).toHaveAttribute('href', '/')
+  })
+
   it('calls login() with the entered credentials on a valid submission', async () => {
     const user = userEvent.setup()
     const auth = renderLogin()
