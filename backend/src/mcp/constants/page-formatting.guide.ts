@@ -49,8 +49,8 @@ Les diagrammes ne peuvent pas contenir de liens ni de JavaScript (mode strict). 
 
 ## HTML et CSS
 - Le HTML brut est accepté, y compris des balises personnalisées et \`<details><summary>…</summary>…</details>\` pour une section repliable. Laisser une ligne vide entre une balise HTML et du Markdown pour que ce dernier soit interprété.
-- Retirés à l'affichage : \`<script>\`, \`<iframe>\`, \`<object>\`, \`<embed>\`, \`<form>\`, \`<base>\`, \`<link>\`, \`<meta>\`, tout attribut \`on*\` et les URLs \`javascript:\`.
-- Un bloc \`<style>\` ne s'applique qu'au contenu de la page (scopé automatiquement) ; \`@import\` est retiré. Utiliser les variables du thème pour rester lisible en clair comme en sombre : \`var(--primary)\`, \`var(--primary-foreground)\`, \`var(--background)\`, \`var(--foreground)\`, \`var(--card)\`, \`var(--muted)\`, \`var(--muted-foreground)\`, \`var(--border)\`, \`var(--destructive)\`, \`var(--radius)\`.
+- Retirés à l'affichage : \`<script>\`, \`<iframe>\`, \`<frame>\`, \`<object>\`, \`<embed>\`, \`<applet>\`, \`<form>\`, \`<base>\`, \`<link>\`, \`<meta>\`, les animations SVG (\`<set>\`, \`<animate>\`, \`<animateMotion>\`, \`<animateTransform>\`, \`<discard>\` : animer en CSS à la place), tout attribut \`on*\` et tout attribut dont la valeur est une URL \`javascript:\`.
+- Un bloc \`<style>\` ne s'applique qu'au contenu de la page (scopé automatiquement) ; \`@import\` est retiré, et un bloc mal formé (accolade, parenthèse ou crochet non refermé, chaîne ou commentaire non terminé) est ignoré en entier. Utiliser les variables du thème pour rester lisible en clair comme en sombre : \`var(--primary)\`, \`var(--primary-foreground)\`, \`var(--background)\`, \`var(--foreground)\`, \`var(--card)\`, \`var(--muted)\`, \`var(--muted-foreground)\`, \`var(--border)\`, \`var(--destructive)\`, \`var(--radius)\`.
 
 ## Commentaires
 Les commentaires (non accessibles via le MCP) n'acceptent que le Markdown GFM et les encadrés : pas de HTML libre, de CSS, de LaTeX ni de Mermaid.`;

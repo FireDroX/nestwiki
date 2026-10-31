@@ -423,6 +423,8 @@ docker compose up -d --build
 
 Les ports \`3000\` et \`8080\` sont publiés sur \`BIND_ADDRESS\` (\`127.0.0.1\` par défaut) : seul un reverse proxy ou un tunnel tournant sur le serveur les atteint. \`BIND_ADDRESS=0.0.0.0\` dans le \`.env\` racine pour les exposer sur toutes les interfaces.
 
+Le frontend envoie une Content-Security-Policy (scripts du site et de Cloudflare Turnstile uniquement). Pour afficher le wiki dans une iframe sur un autre site, lister les sites autorisés dans \`CSP_FRAME_ANCESTORS\` du \`.env\` racine, guillemets doubles compris : \`CSP_FRAME_ANCESTORS="'self' https://example.org"\` (\`'self'\` par défaut). Un proxy placé devant ne doit pas remplacer cet en-tête.
+
 **Version allégée (mariadb/minio déjà existants) :**
 
 \`\`\`bash
@@ -939,18 +941,27 @@ Les cinq types disponibles :
 
 <span class="mode-badge pages-only">Pages uniquement</span>
 
-N'importe quelle balise HTML peut être écrite directement dans le contenu, y compris des balises custom inconnues (ex. pour styliser un composant maison). Seules ces balises sont retirées, ainsi que tout attribut \`on*\` (\`onclick\`, etc.) et les URLs \`javascript:\` :
+N'importe quelle balise HTML peut être écrite directement dans le contenu, y compris des balises custom inconnues (ex. pour styliser un composant maison). Seules ces balises sont retirées, ainsi que tout attribut \`on*\` (\`onclick\`, etc.) et tout attribut dont la valeur est une URL \`javascript:\` :
 
 <div class="deny-list">
 <code>&lt;script&gt;</code>
 <code>&lt;iframe&gt;</code>
+<code>&lt;frame&gt;</code>
 <code>&lt;object&gt;</code>
 <code>&lt;embed&gt;</code>
+<code>&lt;applet&gt;</code>
 <code>&lt;form&gt;</code>
 <code>&lt;base&gt;</code>
 <code>&lt;link&gt;</code>
 <code>&lt;meta&gt;</code>
+<code>&lt;set&gt;</code>
+<code>&lt;animate&gt;</code>
+<code>&lt;animateMotion&gt;</code>
+<code>&lt;animateTransform&gt;</code>
+<code>&lt;discard&gt;</code>
 </div>
+
+Les dessins SVG restent possibles, mais sans animation SVG (\`<set>\`, \`<animate>\`…) : utiliser des animations CSS dans un bloc \`<style>\` à la place.
 
 <div class="markup-example">
 <div>
@@ -976,7 +987,7 @@ N'importe quelle balise HTML peut être écrite directement dans le contenu, y c
 
 <span class="mode-badge pages-only">Pages uniquement</span>
 
-Un bloc \`<style>\` écrit dans le contenu s'applique — mais uniquement au contenu de **cette page**. Techniquement, le CSS est automatiquement enveloppé dans la règle native [\`@scope\`](https://developer.mozilla.org/fr/docs/Web/CSS/@scope), pour qu'un sélecteur générique comme \`p { color: red }\` ne puisse jamais affecter la sidebar, la barre du haut, ou une autre page.
+Un bloc \`<style>\` écrit dans le contenu s'applique — mais uniquement au contenu de **cette page**. Techniquement, le CSS est automatiquement enveloppé dans la règle native [\`@scope\`](https://developer.mozilla.org/fr/docs/Web/CSS/@scope), pour qu'un sélecteur générique comme \`p { color: red }\` ne puisse jamais affecter la sidebar, la barre du haut, ou une autre page. Un bloc mal formé (accolade, parenthèse ou crochet non refermé, chaîne ou commentaire non terminé) est ignoré en entier.
 
 <div class="markup-example">
 <div>

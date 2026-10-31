@@ -33,6 +33,10 @@ ARG VITE_TURNSTILE_SITE_KEY=
 RUN pnpm --filter frontend run build
 
 FROM nginx:alpine AS runtime
-COPY frontend/nginx.conf /etc/nginx/conf.d/default.conf
+# Rendered at startup by the image's envsubst step, limited to CSP_*
+# variables so nginx's own $variables are left untouched.
+ENV NGINX_ENVSUBST_FILTER=^CSP_ \
+    CSP_FRAME_ANCESTORS="'self'"
+COPY frontend/nginx.conf /etc/nginx/templates/default.conf.template
 COPY --from=build /app/frontend/dist /usr/share/nginx/html
 EXPOSE 80

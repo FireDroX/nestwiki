@@ -19,6 +19,24 @@ describe('rehypeHardenFullMode', () => {
     expect(node.properties.className).toEqual(['foo'])
   })
 
+  it('removes SVG animation tags whatever their case, and dangerous values of any property', () => {
+    const element = (tagName: string, properties: Element['properties'] = {}): Element => ({
+      type: 'element',
+      tagName,
+      properties,
+      children: [],
+    })
+    const link = element('a', { xLinkHref: 'javascript:alert(1)', title: 'ok', dataUrl: [' javascript:x'] })
+    link.children = [element('set', { to: 'javascript:alert(1)' }), element('animateMotion'), element('text')]
+    const tree: Root = { type: 'root', children: [link] }
+
+    rehypeHardenFullMode()(tree)
+
+    const [node] = tree.children as Element[]
+    expect(node.properties).toEqual({ title: 'ok' })
+    expect((node.children as Element[]).map((child) => child.tagName)).toEqual(['text'])
+  })
+
   it('removes a denylisted nested tag while keeping the parent and its other children', () => {
     const iframe: Element = {
       type: 'element',

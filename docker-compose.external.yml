@@ -49,6 +49,8 @@ services:
   frontend:
     image: ghcr.io/firedrox/nestwiki-frontend:latest
     restart: unless-stopped
+    environment:
+      CSP_FRAME_ANCESTORS: ${CSP_FRAME_ANCESTORS:-'self'}
     ports:
       - "${BIND_ADDRESS:-127.0.0.1}:8080:80"
     depends_on:

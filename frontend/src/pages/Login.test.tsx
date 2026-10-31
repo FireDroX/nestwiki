@@ -1,5 +1,5 @@
-import { describe, expect, it, vi } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { AuthContext, type AuthContextValue } from '#hooks/useAuth'
@@ -15,7 +15,7 @@ vi.mock('#components/Turnstile', () => ({
   },
 }))
 
-function renderLogin(overrides: Partial<AuthContextValue> = {}) {
+function renderLogin(overrides: Partial<AuthContextValue> = {}, path = '/login') {
   const auth: AuthContextValue = {
     user: null,
     status: 'unauthenticated',
@@ -27,7 +27,7 @@ function renderLogin(overrides: Partial<AuthContextValue> = {}) {
   }
 
   render(
-    <MemoryRouter initialEntries={['/login']}>
+    <MemoryRouter initialEntries={[path]}>
       <AuthContext.Provider value={auth}>
         <Login />
       </AuthContext.Provider>
@@ -71,5 +71,58 @@ describe('Login', () => {
 
     expect(await screen.findByText('Email ou mot de passe incorrect')).toBeInTheDocument()
     expect(auth.login).toHaveBeenCalledTimes(1)
+  })
+
+  describe('redirect after login', () => {
+    const assign = vi.fn()
+
+    beforeEach(() => {
+      vi.stubGlobal('location', { ...window.location, origin: window.location.origin, assign })
+    })
+
+    afterEach(() => {
+      assign.mockReset()
+      vi.unstubAllGlobals()
+    })
+
+    function loginPath(redirect: string): string {
+      return `/login?redirect=${encodeURIComponent(redirect)}`
+    }
+
+    async function submit(user: ReturnType<typeof userEvent.setup>) {
+      await user.type(screen.getByLabelText('Adresse e-mail'), 'alice@example.com')
+      await user.type(screen.getByLabelText('Mot de passe'), 'whatever-it-takes')
+      await user.click(screen.getByRole('button', { name: 'Se connecter' }))
+    }
+
+    it.each(['javascript:alert(1)', 'https://evil.example/'])(
+      'never follows %s, before or after logging in',
+      async (redirect) => {
+        renderLogin({ status: 'authenticated' }, loginPath(redirect))
+        expect(assign).not.toHaveBeenCalled()
+        cleanup()
+
+        const user = userEvent.setup()
+        const auth = renderLogin({}, loginPath(redirect))
+        await submit(user)
+
+        await waitFor(() => expect(auth.login).toHaveBeenCalled())
+        expect(assign).not.toHaveBeenCalled()
+      },
+    )
+
+    it('follows a same-origin destination such as the OAuth consent page', async () => {
+      const path = loginPath(`${window.location.origin}/oauth/consent?client_id=c1&state=s`)
+      renderLogin({ status: 'authenticated' }, path)
+      expect(assign).toHaveBeenCalledWith('/oauth/consent?client_id=c1&state=s')
+      assign.mockReset()
+      cleanup()
+
+      const user = userEvent.setup()
+      renderLogin({}, path)
+      await submit(user)
+
+      await waitFor(() => expect(assign).toHaveBeenCalledWith('/oauth/consent?client_id=c1&state=s'))
+    })
   })
 })
