@@ -5,7 +5,10 @@ import { User } from '../../users/entities/user.entity.js';
 import { PageAccessRule } from '../entities/page-access-rule.entity.js';
 import type { GroupsRepository } from '../persistence/groups.repository.js';
 import type { PageAccessRulesRepository } from '../persistence/page-access-rules.repository.js';
-import type { PageHierarchyRepository } from '../persistence/page-hierarchy.repository.js';
+import type {
+  PageChain,
+  PageHierarchyRepository,
+} from '../persistence/page-hierarchy.repository.js';
 import type { SubjectPermissionsRepository } from '../persistence/subject-permissions.repository.js';
 import { PermissionsService } from './permissions.service.js';
 
@@ -150,9 +153,9 @@ describe('PermissionsService', () => {
       expect(groupsRepository.findGroupIdsForUser).not.toHaveBeenCalled();
     });
 
-    it('returns true for an inactive admin (literal rule order: admin check before isActive check)', async () => {
+    it('returns false for an inactive admin: the account status is checked first', async () => {
       const inactiveAdmin = buildUser({ role: 'admin', isActive: false });
-      expect(await service.hasGlobal(inactiveAdmin, 'user.manage')).toBe(true);
+      expect(await service.hasGlobal(inactiveAdmin, 'user.manage')).toBe(false);
     });
 
     it('returns false for an inactive non-admin user even if they hold the permission directly', async () => {
@@ -286,12 +289,12 @@ describe('PermissionsService', () => {
       expect(await service.can(admin, 'page.delete', 'p1')).toBe(true);
     });
 
-    it('grants everything to an inactive admin (literal rule order)', async () => {
+    it('grants nothing on a private page to an inactive admin', async () => {
       const inactiveAdmin = buildUser({ role: 'admin', isActive: false });
       pageHierarchyRepository.findChains.mockResolvedValue(
         chainFor('p1', 'private', ['p1']),
       );
-      expect(await service.can(inactiveAdmin, 'page.delete', 'p1')).toBe(true);
+      expect(await service.can(inactiveAdmin, 'page.delete', 'p1')).toBe(false);
     });
 
     it('grants an action via a direct user rule scoped to exactly this page', async () => {
@@ -631,7 +634,7 @@ describe('PermissionsService', () => {
       ).toEqual(['page.read']);
     });
 
-    it('returns every action for an inactive admin', async () => {
+    it('returns no action on a private page for an inactive admin', async () => {
       const inactiveAdmin = buildUser({ role: 'admin', isActive: false });
       pageHierarchyRepository.findChains.mockResolvedValue(
         new Map([
@@ -639,7 +642,7 @@ describe('PermissionsService', () => {
         ]),
       );
       const result = await service.getEffectivePageActions(inactiveAdmin, 'p1');
-      expect(result.length).toBe(9);
+      expect(result).toEqual([]);
     });
   });
 
@@ -1489,6 +1492,176 @@ describe('PermissionsService', () => {
           member,
           'parent',
           'page.edit',
+        ),
+      ).toBe(true);
+    });
+    it('returns false when the exclusion is a trashed page inside the subtree', async () => {
+      const member = buildUser();
+      pageHierarchyRepository.findChains.mockImplementation(
+        (ids: string[], options?: { includeDeleted?: boolean }) => {
+          if (ids.includes('trashed')) {
+            return Promise.resolve(
+              options?.includeDeleted
+                ? new Map<string, PageChain>([
+                    [
+                      'trashed',
+                      {
+                        pageId: 'trashed',
+                        visibility: 'private' as const,
+                        chainIds: ['trashed', 'parent'],
+                      },
+                    ],
+                  ])
+                : new Map<string, PageChain>(),
+            );
+          }
+          return Promise.resolve(
+            new Map([
+              [
+                'parent',
+                {
+                  pageId: 'parent',
+                  visibility: 'private' as const,
+                  chainIds: ['parent'],
+                },
+              ],
+            ]),
+          );
+        },
+      );
+      pageAccessRulesRepository.findByUserId.mockResolvedValue([
+        buildRule({
+          id: 'rule-1',
+          userId: member.id,
+          pageId: 'parent',
+          appliesTo: 'subtree',
+          actions: ['page.edit'],
+        }),
+      ]);
+      pageAccessRulesRepository.findExclusionsForRules.mockResolvedValue(
+        new Map([['rule-1', ['trashed']]]),
+      );
+
+      expect(
+        await service.hasUnrestrictedActionOnSubtree(
+          member,
+          'parent',
+          'page.edit',
+        ),
+      ).toBe(false);
+      expect(pageHierarchyRepository.findChains).toHaveBeenCalledWith(
+        ['trashed'],
+        { includeDeleted: true },
+      );
+    });
+
+    it('fails closed when the chain of an exclusion cannot be resolved', async () => {
+      const member = buildUser();
+      pageHierarchyRepository.findChains.mockImplementation((ids: string[]) =>
+        Promise.resolve(
+          ids.includes('parent')
+            ? new Map<string, PageChain>([
+                [
+                  'parent',
+                  {
+                    pageId: 'parent',
+                    visibility: 'private' as const,
+                    chainIds: ['parent'],
+                  },
+                ],
+              ])
+            : new Map<string, PageChain>(),
+        ),
+      );
+      pageAccessRulesRepository.findByUserId.mockResolvedValue([
+        buildRule({
+          id: 'rule-1',
+          userId: member.id,
+          pageId: 'parent',
+          appliesTo: 'subtree',
+          actions: ['page.edit'],
+        }),
+      ]);
+      pageAccessRulesRepository.findExclusionsForRules.mockResolvedValue(
+        new Map([['rule-1', ['gone']]]),
+      );
+
+      expect(
+        await service.hasUnrestrictedActionOnSubtree(
+          member,
+          'parent',
+          'page.edit',
+        ),
+      ).toBe(false);
+    });
+  });
+
+  describe('canCreatePublicPageUnder', () => {
+    function chainOf(visibility: 'public' | 'private') {
+      pageHierarchyRepository.findChains.mockResolvedValue(
+        new Map([
+          ['parent', { pageId: 'parent', visibility, chainIds: ['parent'] }],
+        ]),
+      );
+    }
+
+    it('allows anyone under a public parent', async () => {
+      chainOf('public');
+
+      expect(
+        await service.canCreatePublicPageUnder(buildUser(), 'parent'),
+      ).toBe(true);
+    });
+
+    it('requires page.manage_visibility under a private parent', async () => {
+      chainOf('private');
+      const member = buildUser();
+
+      expect(await service.canCreatePublicPageUnder(member, 'parent')).toBe(
+        false,
+      );
+
+      pageAccessRulesRepository.findByUserId.mockResolvedValue([
+        buildRule({
+          userId: member.id,
+          pageId: 'parent',
+          appliesTo: 'page',
+          actions: ['page.read', 'page.manage_visibility'],
+        }),
+      ]);
+      expect(await service.canCreatePublicPageUnder(member, 'parent')).toBe(
+        true,
+      );
+    });
+
+    it('requires an unrestricted page.manage_visibility at the root', async () => {
+      const member = buildUser();
+      expect(await service.canCreatePublicPageUnder(member, null)).toBe(false);
+
+      pageAccessRulesRepository.findByUserId.mockResolvedValue([
+        buildRule({
+          userId: member.id,
+          pageId: null,
+          appliesTo: 'subtree',
+          actions: ['page.manage_visibility'],
+        }),
+      ]);
+      expect(await service.canCreatePublicPageUnder(member, null)).toBe(true);
+    });
+
+    it('always allows an admin', async () => {
+      chainOf('private');
+
+      expect(
+        await service.canCreatePublicPageUnder(
+          buildUser({ role: 'admin' }),
+          'parent',
+        ),
+      ).toBe(true);
+      expect(
+        await service.canCreatePublicPageUnder(
+          buildUser({ role: 'admin' }),
+          null,
         ),
       ).toBe(true);
     });

@@ -421,7 +421,11 @@ cp frontend/.env.example frontend/.env
 docker compose up -d --build
 \`\`\`
 
-Les ports \`3000\` et \`8080\` sont publiés sur \`BIND_ADDRESS\` (\`127.0.0.1\` par défaut) : seul un reverse proxy ou un tunnel tournant sur le serveur les atteint. \`BIND_ADDRESS=0.0.0.0\` dans le \`.env\` racine pour les exposer sur toutes les interfaces.
+Les ports \`3000\` et \`8080\` sont publiés sur \`BIND_ADDRESS\` (\`127.0.0.1\` par défaut) : seul un reverse proxy ou un tunnel tournant sur le serveur les atteint. \`BIND_ADDRESS=0.0.0.0\` dans le \`.env\` racine pour les exposer sur toutes les interfaces. Les ports de MySQL (\`3306\`) et du stockage (\`9000\`) suivent \`BACKING_BIND_ADDRESS\`, \`127.0.0.1\` par défaut lui aussi : ne le changer que si une autre machine doit les joindre directement. La console web du stockage (\`9001\`) est désactivée sauf avec \`RUSTFS_CONSOLE_ENABLE=true\`.
+
+Le frontend envoie une Content-Security-Policy (scripts du site et de Cloudflare Turnstile uniquement). Pour afficher le wiki dans une iframe sur un autre site, lister les sites autorisés dans \`CSP_FRAME_ANCESTORS\` du \`.env\` racine, guillemets doubles compris : \`CSP_FRAME_ANCESTORS="'self' https://example.org"\` (\`'self'\` par défaut). Un proxy placé devant ne doit pas remplacer cet en-tête.
+
+La limitation de débit et Turnstile identifient le visiteur par la dernière entrée de \`X-Forwarded-For\`, celle qu'ajoute le proxy devant le backend. Si un tunnel ou un autre reverse proxy est placé devant le nginx du frontend, mettre \`TRUST_PROXY_HOPS=2\` dans \`backend/.env\`, sinon tous les visiteurs partagent la même limite.
 
 **Version allégée (mariadb/minio déjà existants) :**
 
@@ -444,8 +448,8 @@ Si Minio n'existe pas encore et que vous voulez le lancer à part (sans compose)
 \`\`\`bash
 docker run -d --name minio --network mariadb-network --restart unless-stopped \\
   -e MINIO_ROOT_USER=<clé-accès> -e MINIO_ROOT_PASSWORD=<clé-secrète> \\
-  -p 9000:9000 -p 9001:9001 -v minio-data:/data \\
-  minio/minio server /data --console-address ":9001"
+  -p 127.0.0.1:9000:9000 -v minio-data:/data \\
+  minio/minio server /data
 \`\`\`
 
 <div class="callout">
@@ -467,23 +471,27 @@ Le backend construit les URLs absolues de la carte (\`og:url\`, boutons) à part
 ## CI/CD
 
 - \`.github/workflows/ci.yml\` — lint, tests (backend + frontend) et build des deux images Docker, en parallèle, sur chaque PR et chaque push vers \`main\` ; l'image backend est démarrée contre une vraie base pour vérifier migrations et seeds. Sur \`main\`, les images testées sont poussées sur GHCR puis taguées \`latest\`. Voir la page [Notes de version](/pages/documentation/notes-de-version) pour le détail des jobs.
-- \`.github/workflows/deploy.yml\` — se déclenche uniquement quand \`ci.yml\` vient de réussir sur \`main\` (\`workflow_run\`, jamais sur une PR) : se connecte en SSH au serveur via un tunnel Cloudflare, puis \`git pull && docker compose up -d --build\`.
+- \`.github/workflows/deploy.yml\` — se déclenche uniquement quand \`ci.yml\` vient de réussir pour un push sur \`main\` de ce dépôt (\`workflow_run\`, jamais pour une PR, même venue d'un fork) : se connecte en SSH au serveur via un tunnel Cloudflare en vérifiant sa clé d'hôte, avance le clone sur le commit testé, puis \`docker compose pull && up -d\` avec les images de cette version.
 
-Le déploiement passe par un tunnel Cloudflare (\`cloudflared\`) plutôt que d'exposer SSH publiquement — sans application Access devant (pas de service token à gérer). À configurer une fois, côté [Cloudflare Zero Trust](https://one.dash.cloudflare.com/) :
+Le déploiement passe par un tunnel Cloudflare (\`cloudflared\`) plutôt que d'exposer SSH publiquement, et ce hostname est protégé par une application Cloudflare Access : le runner s'y authentifie avec un service token, faute de pouvoir faire la connexion dans un navigateur. À configurer une fois, côté [Cloudflare Zero Trust](https://one.dash.cloudflare.com/) :
 
 1. **Tunnel** — créer un tunnel \`cloudflared\` sur le serveur, avec une route publique (Public Hostname) vers \`ssh://localhost:22\`.
-2. **Clé SSH** — générer une paire de clés dédiée au déploiement (\`ssh-keygen -t ed25519 -C "nestwiki-deploy"\`, sans passphrase) et ajouter la clé **publique** à \`~/.ssh/authorized_keys\` de l'utilisateur de déploiement sur le serveur.
+2. **Access** — créer une application Access (type self-hosted) sur ce hostname, un service token (Access → Service Auth), et une règle de l'application en action **Service Auth** qui autorise ce token.
+3. **Clé SSH** — générer une paire de clés dédiée au déploiement (\`ssh-keygen -t ed25519 -C "nestwiki-deploy"\`, sans passphrase) et ajouter la clé **publique** à \`~/.ssh/authorized_keys\` de l'utilisateur de déploiement sur le serveur.
 
 Puis, secrets du dépôt GitHub (Settings → Secrets and variables → Actions) :
 
 | Secret | Contenu |
 | --- | --- |
-| \`DEPLOY_SSH_PRIVATE_KEY\` | Clé **privée** générée à l'étape 2 |
+| \`CF_ACCESS_CLIENT_ID\` | Client ID du service token Access (étape 2) |
+| \`CF_ACCESS_CLIENT_SECRET\` | Client Secret du service token Access (étape 2) |
+| \`DEPLOY_SSH_PRIVATE_KEY\` | Clé **privée** générée à l'étape 3 |
 | \`DEPLOY_SSH_HOSTNAME\` | Hostname public du tunnel (étape 1) |
+| \`DEPLOY_SSH_HOST_KEY\` | Clé d'hôte publique du serveur (contenu de \`/etc/ssh/ssh_host_ed25519_key.pub\`) |
 | \`DEPLOY_SSH_USER\` | Utilisateur SSH sur le serveur |
 | \`DEPLOY_PATH\` | Chemin absolu du clone git sur le serveur (ex. \`/opt/nestwiki\`) |
 
-Si une application Access protège un jour ce hostname (service token), \`deploy.yml\` sait déjà où l'ajouter : \`TUNNEL_SERVICE_TOKEN_ID\`/\`TUNNEL_SERVICE_TOKEN_SECRET\` en env du job \`deploy\`, lus automatiquement par \`cloudflared access ssh\`.
+\`deploy.yml\` passe les deux secrets Access à \`cloudflared access ssh\` (le \`ProxyCommand\` SSH) par les variables \`TUNNEL_SERVICE_TOKEN_ID\`/\`TUNNEL_SERVICE_TOKEN_SECRET\` du job \`deploy\`. Sans application Access devant le hostname, ces deux secrets peuvent rester vides.
 
 \`deploy.yml\` ne configure ni ne modifie la protection de branche \`main\` (statut check requis pour bloquer un merge sur test cassé) — c'est un réglage du dépôt GitHub (Settings → Branches), pas quelque chose qu'un fichier de workflow puisse exprimer.`,
           },
@@ -732,7 +740,7 @@ NestWiki n'a que deux rôles globaux : **admin** (accès à tout, sans exception
 
 Deux familles de droits existent :
 
-- **Permissions globales** — valables sur tout le wiki, indépendamment d'une page précise : \`user.manage\` (gérer les comptes, groupes et leurs accès), \`page.create_root\` (créer une page à la racine), \`tag.create\`/\`tag.delete\`, \`media.upload\`/\`media.delete\`, \`comment.moderate\`.
+- **Permissions globales** — valables sur tout le wiki, indépendamment d'une page précise : \`user.manage\` (gérer les comptes, groupes et leurs accès), \`page.create_root\` (créer une page à la racine), \`tag.create\`/\`tag.delete\`, \`media.upload\`/\`media.delete\`, \`comment.moderate\` (supprimer définitivement le commentaire de quelqu'un d'autre, avec ses réponses).
 - **Permissions par page** — accordées sur une page précise, avec une portée : *cette page uniquement* ou *cette page et toutes ses sous-pages* (avec possibilité d'exclure certaines sous-pages de la couverture). Actions possibles : lire, modifier, créer des sous-pages, supprimer, déplacer, gérer la visibilité, gérer les tags, restaurer une version, et gérer les permissions de la page elle-même.
 
 ## 2. Les groupes (\`/admin/groups\`)
@@ -760,13 +768,19 @@ Quiconque détient \`page.delete\` sur une page voit un bouton **Supprimer** dan
 Une page supprimée n'est pas effacée : elle part dans la **corbeille** (menu utilisateur → Corbeille), qui liste les pages que vous avez le droit de supprimer, avec leur ancien chemin, qui les a supprimées et quand.
 
 - **Restaurer** remet la page à sa place, avec les sous-pages supprimées en même temps qu'elle. Si sa page parente est elle-même dans la corbeille, restaurez d'abord la parente. Si une autre page a pris son adresse entre-temps, renommez ou déplacez celle-ci avant de restaurer.
-- **Supprimer définitivement** est réservé aux admins : la page, son historique et ses commentaires sont effacés. Les images qu'elle utilisait restent dans la médiathèque.
+- **Supprimer définitivement** est réservé aux admins : la page, son historique et ses commentaires sont effacés, ainsi que les médias téléversés sur elle. Un média qu'une autre page affiche encore est conservé et rattaché à cette page.
 - L'adresse d'une page en corbeille est libre : on peut créer une nouvelle page au même endroit.
 - Une image utilisée par une page de la corbeille ne peut pas être supprimée de la médiathèque, pour que la restauration ne casse pas la page.
 
 ## 6. La règle anti-escalade
 
 Quelle que soit l'interface utilisée, une règle simple s'applique partout : **vous ne pouvez jamais accorder à quelqu'un d'autre plus de droits que vous n'en avez vous-même** — ni en lui donnant un accès direct, ni en l'ajoutant à un groupe qui en détient davantage que vous. Toute tentative renvoie une erreur plutôt que de silencieusement échouer ou de réduire la demande.
+
+La même règle protège les comptes et les sous-pages :
+
+- avec \`user.manage\` sans être admin, vous ne pouvez réinitialiser le mot de passe, changer l'e-mail, réactiver ou supprimer un compte que si vous détenez tous ses droits (directs et hérités de ses groupes) ; ses commentaires sur des pages que vous ne pouvez pas lire apparaissent masqués ;
+- déplacer une page ou changer sa visibilité demande ce droit sur chacune de ses sous-pages, comme la suppression ;
+- une nouvelle page prend la visibilité de sa page parente si vous n'en choisissez pas ; la rendre publique sous une page privée demande de pouvoir gérer la visibilité de cette page parente.
 
 Toutes ces actions sont tracées dans le [journal d'audit](/admin/audit-log).`,
       },
@@ -939,18 +953,27 @@ Les cinq types disponibles :
 
 <span class="mode-badge pages-only">Pages uniquement</span>
 
-N'importe quelle balise HTML peut être écrite directement dans le contenu, y compris des balises custom inconnues (ex. pour styliser un composant maison). Seules ces balises sont retirées, ainsi que tout attribut \`on*\` (\`onclick\`, etc.) et les URLs \`javascript:\` :
+N'importe quelle balise HTML peut être écrite directement dans le contenu, y compris des balises custom inconnues (ex. pour styliser un composant maison). Seules ces balises sont retirées, ainsi que tout attribut \`on*\` (\`onclick\`, etc.) et tout attribut dont la valeur est une URL \`javascript:\` :
 
 <div class="deny-list">
 <code>&lt;script&gt;</code>
 <code>&lt;iframe&gt;</code>
+<code>&lt;frame&gt;</code>
 <code>&lt;object&gt;</code>
 <code>&lt;embed&gt;</code>
+<code>&lt;applet&gt;</code>
 <code>&lt;form&gt;</code>
 <code>&lt;base&gt;</code>
 <code>&lt;link&gt;</code>
 <code>&lt;meta&gt;</code>
+<code>&lt;set&gt;</code>
+<code>&lt;animate&gt;</code>
+<code>&lt;animateMotion&gt;</code>
+<code>&lt;animateTransform&gt;</code>
+<code>&lt;discard&gt;</code>
 </div>
+
+Les dessins SVG restent possibles, mais sans animation SVG (\`<set>\`, \`<animate>\`…) : utiliser des animations CSS dans un bloc \`<style>\` à la place.
 
 <div class="markup-example">
 <div>
@@ -976,7 +999,7 @@ N'importe quelle balise HTML peut être écrite directement dans le contenu, y c
 
 <span class="mode-badge pages-only">Pages uniquement</span>
 
-Un bloc \`<style>\` écrit dans le contenu s'applique — mais uniquement au contenu de **cette page**. Techniquement, le CSS est automatiquement enveloppé dans la règle native [\`@scope\`](https://developer.mozilla.org/fr/docs/Web/CSS/@scope), pour qu'un sélecteur générique comme \`p { color: red }\` ne puisse jamais affecter la sidebar, la barre du haut, ou une autre page.
+Un bloc \`<style>\` écrit dans le contenu s'applique — mais uniquement au contenu de **cette page**. Techniquement, le CSS est automatiquement enveloppé dans la règle native [\`@scope\`](https://developer.mozilla.org/fr/docs/Web/CSS/@scope), pour qu'un sélecteur générique comme \`p { color: red }\` ne puisse jamais affecter la sidebar, la barre du haut, ou une autre page. Un bloc mal formé (accolade, parenthèse ou crochet non refermé, chaîne ou commentaire non terminé) est ignoré en entier.
 
 <div class="markup-example">
 <div>

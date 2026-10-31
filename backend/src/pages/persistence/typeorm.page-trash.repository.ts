@@ -98,12 +98,16 @@ export class TypeormPageTrashRepository implements PageTrashRepository {
     return rows.map((row) => row.id);
   }
 
-  async purge(pageIds: string[]): Promise<void> {
+  async purge(pageIds: string[]): Promise<string[]> {
     if (pageIds.length === 0) {
-      return;
+      return [];
     }
     const placeholders = pageIds.map(() => '?').join(', ');
-    await this.dataSource.transaction(async (manager) => {
+    return this.dataSource.transaction(async (manager) => {
+      const attachments: { id: string }[] = await manager.query(
+        `SELECT id FROM attachments WHERE page_id IN (${placeholders}) FOR UPDATE`,
+        pageIds,
+      );
       await manager.query(
         `UPDATE attachments SET page_id = NULL WHERE page_id IN (${placeholders})`,
         pageIds,
@@ -124,6 +128,7 @@ export class TypeormPageTrashRepository implements PageTrashRepository {
         `DELETE FROM pages WHERE id IN (${placeholders})`,
         pageIds,
       );
+      return attachments.map((attachment) => attachment.id);
     });
   }
 }

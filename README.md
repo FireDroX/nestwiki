@@ -1,6 +1,11 @@
 <p align="center">
-  <img src="frontend/public/nestwiki-logo.svg" alt="NestWiki" width="280">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="frontend/public/nestwiki-mascot-dark.png">
+    <img src="frontend/public/nestwiki-mascot-light.png" alt="The NestWiki robin in its nest, on the logo" width="200">
+  </picture>
 </p>
+
+<h1 align="center">NestWiki</h1>
 
 <p align="center">
   A self-hosted, collaborative wiki for teams — page tree, full version history, granular permissions, and an MCP server so AI assistants can read and write your knowledge base.
@@ -58,7 +63,7 @@ For this all-in-one setup, `backend/.env` must point at the Compose services: `D
 docker compose up -d --build
 ```
 
-Open <http://localhost:8080> and sign in with the `ADMIN_EMAIL` / `ADMIN_PASSWORD` you configured. The ports are published on `127.0.0.1` only: on a remote server, put a reverse proxy or tunnel in front of them, or set `BIND_ADDRESS=0.0.0.0`. On first start the backend applies the database migrations, creates that admin account, and seeds the built-in documentation and release notes.
+Open <http://localhost:8080> and sign in with the `ADMIN_EMAIL` / `ADMIN_PASSWORD` you configured. Every port (web app, API, MySQL, object storage) is published on `127.0.0.1` only: on a remote server, put a reverse proxy or tunnel in front of the web app and API, or set `BIND_ADDRESS=0.0.0.0`. Set `BACKING_BIND_ADDRESS` only if another machine must reach MySQL or the object storage directly. On first start the backend applies the database migrations, creates that admin account, and seeds the built-in documentation and release notes.
 
 ## Configuration
 
@@ -72,6 +77,10 @@ There are three `.env` files, each with a commented `.env.example` next to it.
 | `MYSQL_DATABASE` | Database created on first start (`nestwiki`). |
 | `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY` | Credentials of the bundled object storage. |
 | `BIND_ADDRESS` | Host address the web app (`8080`) and API (`3000`) ports are published on: `127.0.0.1` (default) or `0.0.0.0`. |
+| `BACKING_BIND_ADDRESS` | `docker-compose.yml` only: host address the MySQL (`3306`) and object storage (`9000`, console `9001`) ports are published on, `127.0.0.1` by default. |
+| `RUSTFS_CONSOLE_ENABLE` | `docker-compose.yml` only: `true` turns on the object storage web console (port `9001`), off by default. |
+| `NESTWIKI_TAG`, `BACKEND_MEM_LIMIT` | `docker-compose.external.yml` only: image tag to run (`latest` by default, set to the deployed version by the deploy workflow) and memory limit of the API container (`1g` by default). |
+| `CSP_FRAME_ANCESTORS` | Sites allowed to show the wiki in an iframe (`frame-ancestors` of the web app's Content-Security-Policy), `'self'` by default. Keep the outer double quotes: `"'self' https://example.org"`. |
 | `DATABASE_NETWORK`, `STORAGE_NETWORK` | `docker-compose.external.yml` only: existing Docker networks where the API reaches the database and the object storage (default `mariadb-network`). |
 | `VITE_API_URL` | Public URL of the API as seen by browsers, e.g. `https://wiki.example.com/api`. Baked into the web app at build time. |
 | `VITE_TURNSTILE_SITE_KEY` | Optional Cloudflare Turnstile site key for the sign-up and login forms. |

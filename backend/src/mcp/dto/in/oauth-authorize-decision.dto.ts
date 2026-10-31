@@ -4,5 +4,6 @@ export class OAuthAuthorizeDecisionDto {
   codeChallenge: string;
   codeChallengeMethod: string;
   state?: string;
+  scope?: string;
   decision: 'allow' | 'deny';
 }

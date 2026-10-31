@@ -5,7 +5,12 @@ import { OAuthInvalidRequestException } from '../../common/exceptions/mcp/oauth-
 import { OAuthRefreshTokenNotFoundException } from '../../common/exceptions/mcp/oauth-refresh-token-not-found.exception.js';
 import {
   OAUTH_CLIENT_ID_PREFIX,
+  OAUTH_CLIENT_NAME_MAX_LENGTH,
   OAUTH_CLIENT_SECRET_PREFIX,
+  OAUTH_LOOPBACK_HOSTS,
+  OAUTH_MAX_REDIRECT_URIS,
+  OAUTH_REDIRECT_URI_MAX_LENGTH,
+  OAUTH_UNUSED_CLIENT_RETENTION_HOURS,
 } from '../../common/variables.global.js';
 import { UsersService } from '../../users/services/users.service.js';
 import { RegisterOAuthClientDto } from '../dto/in/register-oauth-client.dto.js';
@@ -28,16 +33,33 @@ export class OAuthClientsService {
     dto: RegisterOAuthClientDto,
   ): Promise<{ entity: OAuthClient; plainSecret: string }> {
     this.validateRedirectUris(dto.redirect_uris);
+    const name = OAuthClientsService.parseClientName(dto.client_name);
+
+    await this.clientRepository.deleteWithoutTokensCreatedBefore(
+      new Date(Date.now() - OAUTH_UNUSED_CLIENT_RETENTION_HOURS * 3_600_000),
+    );
 
     const plainSecret = OAuthClientsService.generateSecret();
     const entity = await this.clientRepository.create({
       clientId: OAuthClientsService.generateClientId(),
       clientSecretHash: OAuthClientsService.hash(plainSecret),
       redirectUris: dto.redirect_uris,
-      name: dto.client_name?.trim() || 'MCP client',
+      name,
     });
 
     return { entity, plainSecret };
+  }
+
+  private static parseClientName(raw: unknown): string {
+    if (raw === undefined || raw === null) {
+      return 'MCP client';
+    }
+    if (typeof raw !== 'string' || raw.length > OAUTH_CLIENT_NAME_MAX_LENGTH) {
+      throw new OAuthInvalidRequestException(
+        `client_name must be a string of at most ${OAUTH_CLIENT_NAME_MAX_LENGTH} characters`,
+      );
+    }
+    return raw.trim() || 'MCP client';
   }
 
   listClients(): Promise<OAuthClient[]> {
@@ -107,18 +129,23 @@ export class OAuthClientsService {
   }
 
   private validateRedirectUris(redirectUris: unknown): void {
-    if (!Array.isArray(redirectUris) || redirectUris.length === 0) {
+    if (
+      !Array.isArray(redirectUris) ||
+      redirectUris.length === 0 ||
+      redirectUris.length > OAUTH_MAX_REDIRECT_URIS
+    ) {
       throw new OAuthInvalidRequestException(
-        'redirect_uris must be a non-empty array',
+        `redirect_uris must be a non-empty array of at most ${OAUTH_MAX_REDIRECT_URIS} URIs`,
       );
     }
     for (const uri of redirectUris) {
       if (
         typeof uri !== 'string' ||
+        uri.length > OAUTH_REDIRECT_URI_MAX_LENGTH ||
         !OAuthClientsService.isValidRedirectUri(uri)
       ) {
         throw new OAuthInvalidRequestException(
-          `Invalid redirect_uri: ${String(uri)}`,
+          `Invalid redirect_uri: ${String(uri).slice(0, 100)}`,
         );
       }
     }
@@ -127,7 +154,13 @@ export class OAuthClientsService {
   private static isValidRedirectUri(uri: string): boolean {
     try {
       const parsed = new URL(uri);
-      return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+      if (parsed.protocol === 'https:') {
+        return true;
+      }
+      return (
+        parsed.protocol === 'http:' &&
+        OAUTH_LOOPBACK_HOSTS.includes(parsed.hostname)
+      );
     } catch {
       return false;
     }

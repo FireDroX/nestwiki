@@ -2,7 +2,10 @@ import { ArgumentsHost, ForbiddenException } from '@nestjs/common';
 import { ThrottlerException } from '@nestjs/throttler';
 import type { Response } from 'express';
 import { describe, expect, it, vi } from 'vitest';
+import { MergeTooLargeException } from '../../common/exceptions/pages/merge-too-large.exception.js';
+import { PageContentTooLargeException } from '../../common/exceptions/pages/page-content-too-large.exception.js';
 import { PageNotFoundException } from '../../common/exceptions/pages/page-not-found.exception.js';
+import { VersionDiffTooLargeException } from '../../common/exceptions/pages/version-diff-too-large.exception.js';
 import { PageNotInTrashException } from '../../common/exceptions/pages/page-not-in-trash.exception.js';
 import { ParentInTrashException } from '../../common/exceptions/pages/parent-in-trash.exception.js';
 import { PagesExceptionFilter } from './pages-exception.filter.js';
@@ -39,6 +42,18 @@ describe('PagesExceptionFilter', () => {
     expect(catchWith(new ParentInTrashException()).status).toHaveBeenCalledWith(
       409,
     );
+  });
+
+  it('maps the size limits of contents, merges and diffs', () => {
+    expect(
+      catchWith(new PageContentTooLargeException()).status,
+    ).toHaveBeenCalledWith(413);
+    expect(catchWith(new MergeTooLargeException()).status).toHaveBeenCalledWith(
+      413,
+    );
+    expect(
+      catchWith(new VersionDiffTooLargeException()).status,
+    ).toHaveBeenCalledWith(422);
   });
 
   it('lets a throttler 429 through instead of answering 500', () => {

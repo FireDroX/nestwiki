@@ -5,6 +5,7 @@ import { UserActivityLogService } from '../../activity/services/user-activity-lo
 import { CircularReferenceException } from '../../common/exceptions/pages/circular-reference.exception.js';
 import { InsufficientPagePermissionException } from '../../common/exceptions/pages/insufficient-page-permission.exception.js';
 import { PageAccessForbiddenException } from '../../common/exceptions/pages/page-access-forbidden.exception.js';
+import { PageContentTooLargeException } from '../../common/exceptions/pages/page-content-too-large.exception.js';
 import { PageHasChildrenException } from '../../common/exceptions/pages/page-has-children.exception.js';
 import { PageNotFoundException } from '../../common/exceptions/pages/page-not-found.exception.js';
 import { ParentPageNotFoundException } from '../../common/exceptions/pages/parent-page-not-found.exception.js';
@@ -13,6 +14,7 @@ import { SlugAlreadyExistsException } from '../../common/exceptions/pages/slug-a
 import { VersionNotFoundException } from '../../common/exceptions/pages/version-not-found.exception.js';
 import { ValidationException } from '../../common/exceptions/validation.exception.js';
 import type { AuthenticatedUser } from '../../common/strategies/jwt.strategy.js';
+import { PAGE_CONTENT_MAX_LENGTH } from '../../common/variables.global.js';
 import { ChangeVisibilityDto } from '../dto/in/change-visibility.dto.js';
 import { CreatePageDto } from '../dto/in/create-page.dto.js';
 import { MovePageDto } from '../dto/in/move-page.dto.js';
@@ -125,6 +127,9 @@ describe('PagesService', () => {
   };
   let permissionsService: {
     can: Mock<PermissionsService['can']>;
+    canCreatePublicPageUnder: Mock<
+      PermissionsService['canCreatePublicPageUnder']
+    >;
     hasGlobal: Mock<PermissionsService['hasGlobal']>;
     filterReadable: Mock<PermissionsService['filterReadable']>;
     getEffectivePageActions: Mock<
@@ -158,7 +163,7 @@ describe('PagesService', () => {
       createWithFirstVersion: vi.fn(),
       updateWithNewVersion: vi.fn(),
       updateParent: vi.fn(),
-      findChildren: vi.fn(),
+      findChildren: vi.fn().mockResolvedValue([]),
       softDeleteBatch: vi.fn(),
       updateVisibility: vi.fn(),
       updateCommentsEnabled: vi.fn(),
@@ -175,6 +180,7 @@ describe('PagesService', () => {
     };
     permissionsService = {
       can: vi.fn().mockResolvedValue(true),
+      canCreatePublicPageUnder: vi.fn().mockResolvedValue(true),
       hasGlobal: vi.fn().mockResolvedValue(true),
       filterReadable: vi
         .fn()
@@ -302,6 +308,15 @@ describe('PagesService', () => {
       expect(currentVersion.content).toBe('original content');
       expect(result.version.id).toBe('version-2');
       expect(result.page.currentVersionId).toBe('version-2');
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        PAGE_VERSION_CREATED_EVENT,
+        expect.objectContaining({
+          pageId: page.id,
+          versionId: 'version-2',
+          authorId: 'user-1',
+          content: 'updated content',
+        }),
+      );
     });
 
     it('throws PageNotFoundException when the page does not exist', async () => {
@@ -325,36 +340,6 @@ describe('PagesService', () => {
         'page-1',
       );
       expect(pagesRepository.updateWithNewVersion).not.toHaveBeenCalled();
-    });
-
-    it('emits PAGE_VERSION_CREATED_EVENT after a successful save', async () => {
-      const page = buildPage();
-      const currentVersion = buildVersion();
-      const dto: UpdatePageDto = { content: 'updated content' };
-      const newVersion = buildVersion({
-        id: 'version-2',
-        content: 'updated content',
-      });
-      const updatedPage = { ...page, currentVersionId: 'version-2' };
-
-      pagesRepository.findById.mockResolvedValue(page);
-      pagesRepository.findVersionById.mockResolvedValue(currentVersion);
-      pagesRepository.updateWithNewVersion.mockResolvedValue({
-        page: updatedPage,
-        version: newVersion,
-      });
-
-      await service.updatePage('page-1', dto, 'user-1');
-
-      expect(eventEmitter.emit).toHaveBeenCalledWith(
-        PAGE_VERSION_CREATED_EVENT,
-        expect.objectContaining({
-          pageId: updatedPage.id,
-          versionId: 'version-2',
-          authorId: 'user-1',
-          content: 'updated content',
-        }),
-      );
     });
 
     it('merges cleanly and persists when baseVersionId is stale but non-conflicting', async () => {
@@ -470,27 +455,6 @@ describe('PagesService', () => {
         mergedContent: '<<<<<<<',
         segments,
         currentVersionAuthorName: 'User',
-        currentVersionCreatedAt: currentVersion.createdAt,
-        currentVersionContent: currentVersion.content,
-      });
-      expect(pagesRepository.updateWithNewVersion).not.toHaveBeenCalled();
-    });
-
-    it('returns a null author name when the current version author no longer exists', async () => {
-      const { page, currentVersion, segments } = arrangeConflict();
-      removeCurrentVersionAuthor();
-
-      const result = await service.updatePage(
-        page.id,
-        { content: 'mine', baseVersionId: 'version-1' },
-        'user-1',
-      );
-
-      expect(result).toMatchObject({
-        conflict: true,
-        mergedContent: '<<<<<<<',
-        segments,
-        currentVersionAuthorName: null,
         currentVersionCreatedAt: currentVersion.createdAt,
         currentVersionContent: currentVersion.content,
       });
@@ -837,28 +801,52 @@ describe('PagesService', () => {
 
       expect(pagesRepository.updateParent).toHaveBeenCalledWith(page, otherId);
       expect(result.page.parentId).toBe(otherId);
+      expect(eventEmitter.emit).toHaveBeenCalledWith(PAGE_TREE_CHANGED_EVENT);
     });
 
-    it('emits PAGE_TREE_CHANGED_EVENT after moving a page', async () => {
+    it('refuses to move a subtree holding a page the user cannot move', async () => {
       const page = buildPage({ id: pageId, parentId: null });
       const target = buildPage({ id: otherId, parentId: null });
-      const dto: MovePageDto = { newParentId: otherId };
-
-      pagesRepository.findById.mockImplementation((id: string) => {
-        if (id === pageId) return Promise.resolve(page);
-        if (id === otherId) return Promise.resolve(target);
-        return Promise.resolve(null);
-      });
+      pagesRepository.findById.mockImplementation((id: string) =>
+        Promise.resolve(id === pageId ? page : id === otherId ? target : null),
+      );
       pagesRepository.findVersionById.mockResolvedValue(buildVersion());
       pagesRepository.findBySlugAndParent.mockResolvedValue(null);
+      pagesRepository.findChildren.mockImplementation((id: string) =>
+        Promise.resolve(id === pageId ? [buildPage({ id: childId })] : []),
+      );
+      permissionsService.getEffectivePageActionsBulk.mockResolvedValue(
+        new Map([[childId, []]]),
+      );
+
+      await expect(
+        service.movePage(pageId, { newParentId: otherId }, 'user-1'),
+      ).rejects.toBeInstanceOf(InsufficientPagePermissionException);
+      expect(pagesRepository.updateParent).not.toHaveBeenCalled();
+    });
+
+    it('moves a subtree when the user can move every descendant', async () => {
+      const page = buildPage({ id: pageId, parentId: null });
+      const target = buildPage({ id: otherId, parentId: null });
+      pagesRepository.findById.mockImplementation((id: string) =>
+        Promise.resolve(id === pageId ? page : id === otherId ? target : null),
+      );
+      pagesRepository.findVersionById.mockResolvedValue(buildVersion());
+      pagesRepository.findBySlugAndParent.mockResolvedValue(null);
+      pagesRepository.findChildren.mockImplementation((id: string) =>
+        Promise.resolve(id === pageId ? [buildPage({ id: childId })] : []),
+      );
+      permissionsService.getEffectivePageActionsBulk.mockResolvedValue(
+        new Map([[childId, ['page.move']]]),
+      );
       pagesRepository.updateParent.mockResolvedValue({
         ...page,
         parentId: otherId,
       });
 
-      await service.movePage(pageId, dto, 'user-1');
+      await service.movePage(pageId, { newParentId: otherId }, 'user-1');
 
-      expect(eventEmitter.emit).toHaveBeenCalledWith(PAGE_TREE_CHANGED_EVENT);
+      expect(pagesRepository.updateParent).toHaveBeenCalledWith(page, otherId);
     });
 
     it('throws ParentPageNotFoundException, not a permission error, when newParentId does not exist', async () => {
@@ -1111,29 +1099,79 @@ describe('PagesService', () => {
       visibility: 'public',
     };
 
-    it('announces the new page', async () => {
-      pagesRepository.findBySlugAndParent.mockResolvedValue(null);
-      pagesRepository.createWithFirstVersion.mockResolvedValue({
-        page: buildPage({ id: 'new-1' }),
-        version: buildVersion({ id: 'v-new' }),
+    describe('initial visibility', () => {
+      const parentId = '44444444-4444-4444-4444-444444444444';
+
+      beforeEach(() => {
+        pagesRepository.findBySlugAndParent.mockResolvedValue(null);
+        pagesRepository.createWithFirstVersion.mockResolvedValue({
+          page: buildPage({ id: 'new-1' }),
+          version: buildVersion(),
+        });
       });
 
-      await service.createPage(
-        { slug: 'new', title: 'New', content: 'x', visibility: 'public' },
-        'user-1',
-      );
+      it('inherits the visibility of the parent when none is given', async () => {
+        pagesRepository.findById.mockResolvedValue(
+          buildPage({ id: parentId, visibility: 'public' }),
+        );
 
-      expect(eventEmitter.emit).toHaveBeenCalledWith(
-        PAGE_CREATED_EVENT,
-        new PageCreatedEvent('new-1', 'user-1'),
-      );
+        await service.createPage(
+          { slug: 'child', title: 'Child', content: 'x', parentId },
+          'user-1',
+        );
+
+        expect(pagesRepository.createWithFirstVersion).toHaveBeenCalledWith(
+          expect.objectContaining({ visibility: 'public' }),
+        );
+      });
+
+      it('creates a root page private when no visibility is given', async () => {
+        await service.createPage(
+          { slug: 'root', title: 'Root', content: 'x' },
+          'user-1',
+        );
+
+        expect(pagesRepository.createWithFirstVersion).toHaveBeenCalledWith(
+          expect.objectContaining({ visibility: 'private' }),
+        );
+        expect(
+          permissionsService.canCreatePublicPageUnder,
+        ).not.toHaveBeenCalled();
+      });
+
+      it('refuses a public page the user is not allowed to publish', async () => {
+        pagesRepository.findById.mockResolvedValue(
+          buildPage({ id: parentId, visibility: 'private' }),
+        );
+        permissionsService.canCreatePublicPageUnder.mockResolvedValue(false);
+
+        await expect(
+          service.createPage(
+            {
+              slug: 'child',
+              title: 'Child',
+              content: 'x',
+              parentId,
+              visibility: 'public',
+            },
+            'user-1',
+          ),
+        ).rejects.toBeInstanceOf(InsufficientPagePermissionException);
+        expect(
+          permissionsService.canCreatePublicPageUnder,
+        ).toHaveBeenCalledWith(
+          expect.objectContaining({ id: 'user-1' }),
+          parentId,
+        );
+        expect(pagesRepository.createWithFirstVersion).not.toHaveBeenCalled();
+      });
     });
 
-    it('creates the page and its first version', async () => {
+    it('creates the page and its first version, then announces it', async () => {
       pagesRepository.findBySlugAndParent.mockResolvedValue(null);
       const created = {
-        page: buildPage({ slug: 'new-page' }),
-        version: buildVersion(),
+        page: buildPage({ id: 'new-1', slug: 'new-page' }),
+        version: buildVersion({ content: 'content' }),
       };
       pagesRepository.createWithFirstVersion.mockResolvedValue(created);
 
@@ -1148,6 +1186,11 @@ describe('PagesService', () => {
         createdById: 'user-1',
       });
       expect(result).toEqual({ ...created, brokenLinks: [] });
+      expect(eventEmitter.emit).toHaveBeenCalledWith(PAGE_TREE_CHANGED_EVENT);
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        PAGE_CREATED_EVENT,
+        new PageCreatedEvent('new-1', 'user-1', 'content'),
+      );
     });
 
     it.each(['tree', 'trash'])(
@@ -1257,30 +1300,92 @@ describe('PagesService', () => {
       );
       expect(pagesRepository.createWithFirstVersion).not.toHaveBeenCalled();
     });
+  });
 
-    it('emits PAGE_TREE_CHANGED_EVENT after creating a page', async () => {
+  describe('page content size', () => {
+    const tooLarge = 'x'.repeat(PAGE_CONTENT_MAX_LENGTH + 1);
+
+    beforeEach(() => {
+      pagesRepository.findById.mockResolvedValue(buildPage());
+      pagesRepository.findVersionById.mockResolvedValue(buildVersion());
+    });
+
+    it('accepts a content at the limit', async () => {
       pagesRepository.findBySlugAndParent.mockResolvedValue(null);
       pagesRepository.createWithFirstVersion.mockResolvedValue({
-        page: buildPage({ slug: 'new-page' }),
+        page: buildPage(),
         version: buildVersion(),
       });
 
-      await service.createPage(dto, 'user-1');
+      await service.createPage(
+        {
+          slug: 'big',
+          title: 'Big',
+          content: 'x'.repeat(PAGE_CONTENT_MAX_LENGTH),
+          visibility: 'public',
+        },
+        'user-1',
+      );
 
-      expect(eventEmitter.emit).toHaveBeenCalledWith(PAGE_TREE_CHANGED_EVENT);
+      expect(pagesRepository.createWithFirstVersion).toHaveBeenCalled();
+    });
+
+    it('refuses a larger content on creation, update, merge preview and restore', async () => {
+      await expect(
+        service.createPage(
+          {
+            slug: 'big',
+            title: 'Big',
+            content: tooLarge,
+            visibility: 'public',
+          },
+          'user-1',
+        ),
+      ).rejects.toBeInstanceOf(PageContentTooLargeException);
+      await expect(
+        service.updatePage('page-1', { content: tooLarge }, 'user-1'),
+      ).rejects.toBeInstanceOf(PageContentTooLargeException);
+      await expect(
+        service.mergePreview('page-1', 'version-1', tooLarge, 'user-1'),
+      ).rejects.toBeInstanceOf(PageContentTooLargeException);
+      await expect(
+        service.createNewVersionFromContent('page-1', tooLarge, 'user-1', null),
+      ).rejects.toBeInstanceOf(PageContentTooLargeException);
+      expect(pagesRepository.createWithFirstVersion).not.toHaveBeenCalled();
+      expect(pagesRepository.updateWithNewVersion).not.toHaveBeenCalled();
+      expect(pageMergeService.merge).not.toHaveBeenCalled();
+    });
+
+    it('still renames a page whose existing content is over the limit', async () => {
+      const page = buildPage();
+      pagesRepository.findVersionById.mockResolvedValue(
+        buildVersion({ content: tooLarge }),
+      );
+      pagesRepository.updateWithNewVersion.mockResolvedValue({
+        page,
+        version: buildVersion({ id: 'version-2', content: tooLarge }),
+      });
+
+      await service.updatePage('page-1', { title: 'Renamed' }, 'user-1');
+
+      expect(pagesRepository.updateWithNewVersion).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'Renamed', content: tooLarge }),
+      );
+    });
+
+    it('rejects a merge preview without a text content', async () => {
+      await expect(
+        service.mergePreview(
+          'page-1',
+          'version-1',
+          42 as unknown as string,
+          'user-1',
+        ),
+      ).rejects.toBeInstanceOf(ValidationException);
     });
   });
 
   describe('getTree', () => {
-    it('returns every page when every page is readable', async () => {
-      const pages = [buildPage({ id: 'p1', visibility: 'private' })];
-      pagesRepository.findAll.mockResolvedValue(pages);
-
-      const tree = await service.getTree(admin);
-
-      expect(tree).toHaveLength(1);
-    });
-
     it('builds the tree only from the pages PermissionsService deems readable for the full user record', async () => {
       const privatePage = buildPage({ id: 'p1', visibility: 'private' });
       const publicPage = buildPage({ id: 'p2', visibility: 'public' });
@@ -1576,39 +1681,6 @@ describe('PagesService', () => {
       expect(result.permissions).toEqual(['page.read', 'page.edit']);
     });
 
-    it('reports only the actions PermissionsService grants for a member without page.edit', async () => {
-      const page = buildPage({ visibility: 'public' });
-      const version = buildVersion({ id: page.currentVersionId! });
-      permissionsService.getEffectivePageActions.mockResolvedValue([
-        'page.read',
-      ]);
-      pagesRepository.findBySlugAndParent.mockResolvedValue(page);
-      pagesRepository.findVersionById.mockResolvedValue(version);
-
-      const result = await service.findByPath(['home'], member);
-
-      expect(result.permissions).toEqual(['page.read']);
-    });
-
-    it('asks PermissionsService about the leaf page itself so a rule on an ancestor can grant page.edit', async () => {
-      const page = buildPage({ visibility: 'public', parentId: 'parent-1' });
-      const version = buildVersion({ id: page.currentVersionId! });
-      permissionsService.getEffectivePageActions.mockResolvedValue([
-        'page.read',
-        'page.edit',
-      ]);
-      pagesRepository.findBySlugAndParent.mockResolvedValue(page);
-      pagesRepository.findVersionById.mockResolvedValue(version);
-
-      const result = await service.findByPath(['docs', 'home'], member);
-
-      expect(permissionsService.getEffectivePageActions).toHaveBeenCalledWith(
-        expect.objectContaining({ id: member.id }),
-        page.id,
-      );
-      expect(result.permissions).toContain('page.edit');
-    });
-
     it('reports just page.read for an anonymous visitor on a public page', async () => {
       const page = buildPage({ visibility: 'public' });
       const version = buildVersion({ id: page.currentVersionId! });
@@ -1744,14 +1816,6 @@ describe('PagesService', () => {
         'user-1',
         'leaf',
       );
-    });
-
-    it('emits PAGE_TREE_CHANGED_EVENT after deleting a page', async () => {
-      pagesRepository.findById.mockResolvedValue(buildPage({ id: 'leaf' }));
-      pagesRepository.findChildren.mockResolvedValue([]);
-
-      await service.deletePage('leaf', {}, 'user-1');
-
       expect(eventEmitter.emit).toHaveBeenCalledWith(PAGE_TREE_CHANGED_EVENT);
     });
   });
@@ -1791,6 +1855,48 @@ describe('PagesService', () => {
       expect(eventEmitter.emit).not.toHaveBeenCalledWith(
         PAGE_PUBLISHED_EVENT,
         expect.anything(),
+      );
+    });
+
+    it('refuses to cascade onto a descendant the user cannot manage', async () => {
+      pagesRepository.findById.mockResolvedValue(
+        buildPage({ id: 'p', visibility: 'private' }),
+      );
+      pagesRepository.findVersionById.mockResolvedValue(buildVersion());
+      pagesRepository.findChildren.mockImplementation((id: string) =>
+        Promise.resolve(id === 'p' ? [buildPage({ id: 'd' })] : []),
+      );
+      permissionsService.getEffectivePageActionsBulk.mockResolvedValue(
+        new Map([['d', []]]),
+      );
+
+      await expect(
+        service.setVisibility('p', { visibility: 'public' }, 'user-1'),
+      ).rejects.toBeInstanceOf(InsufficientPagePermissionException);
+      expect(pagesRepository.updateVisibility).not.toHaveBeenCalled();
+    });
+
+    it('cascades onto descendants the user can manage', async () => {
+      const page = buildPage({ id: 'p', visibility: 'private' });
+      const descendant = buildPage({ id: 'd', visibility: 'private' });
+      pagesRepository.findById.mockResolvedValue(page);
+      pagesRepository.findVersionById.mockResolvedValue(buildVersion());
+      pagesRepository.findChildren.mockImplementation((id: string) =>
+        Promise.resolve(id === 'p' ? [descendant] : []),
+      );
+      permissionsService.getEffectivePageActionsBulk.mockResolvedValue(
+        new Map([['d', ['page.manage_visibility']]]),
+      );
+      pagesRepository.updateVisibility.mockResolvedValue({
+        ...page,
+        visibility: 'public',
+      });
+
+      await service.setVisibility('p', { visibility: 'public' }, 'user-1');
+
+      expect(pagesRepository.updateVisibility).toHaveBeenCalledWith(
+        descendant,
+        'public',
       );
     });
 

@@ -28,15 +28,17 @@
 # serveur vierge sans mariadb/minio, voir docker-compose.yml (usage
 # manuel, non branché sur ce workflow).
 #
-# Images pré-construites par .github/workflows/ci.yml (job
-# build-and-push-images, poussé sur GHCR à chaque push sur main) —
+# Images pré-construites par .github/workflows/ci.yml (job `image`,
+# poussé sur GHCR à chaque push sur main), au tag NESTWIKI_TAG (`latest`
+# par défaut ; deploy.yml y met la version du commit déployé) —
 # pas de `build:` ici, le serveur ne rebuild jamais depuis les
 # sources. Nom d'image en minuscules : GHCR l'exige, alors que
 # github.repository (FireDroX/nestwiki) ne l'est pas.
 services:
   backend:
-    image: ghcr.io/firedrox/nestwiki-backend:latest
+    image: ghcr.io/firedrox/nestwiki-backend:${NESTWIKI_TAG:-latest}
     restart: unless-stopped
+    mem_limit: ${BACKEND_MEM_LIMIT:-1g}
     env_file:
       - backend/.env
     ports:
@@ -47,8 +49,10 @@ services:
       - storage
 
   frontend:
-    image: ghcr.io/firedrox/nestwiki-frontend:latest
+    image: ghcr.io/firedrox/nestwiki-frontend:${NESTWIKI_TAG:-latest}
     restart: unless-stopped
+    environment:
+      CSP_FRAME_ANCESTORS: ${CSP_FRAME_ANCESTORS:-'self'}
     ports:
       - "${BIND_ADDRESS:-127.0.0.1}:8080:80"
     depends_on:

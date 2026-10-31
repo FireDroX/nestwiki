@@ -4,8 +4,9 @@
 #
 # Réseaux : mysql et minio sur `backing`, frontend sur `default`, backend
 # sur les deux. Le frontend ne voit ni la base ni le stockage.
-# Ports backend/frontend publiés sur BIND_ADDRESS (127.0.0.1 par défaut,
-# voir .env.example).
+# Ports backend/frontend publiés sur BIND_ADDRESS, ports mysql/minio sur
+# BACKING_BIND_ADDRESS (127.0.0.1 par défaut tous les deux, voir
+# .env.example).
 services:
   mysql:
     image: mysql:8
@@ -14,7 +15,7 @@ services:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: ${MYSQL_DATABASE}
     ports:
-      - "3306:3306"
+      - "${BACKING_BIND_ADDRESS:-127.0.0.1}:3306:3306"
     volumes:
       - mysql-data:/var/lib/mysql
     networks:
@@ -58,10 +59,10 @@ services:
       RUSTFS_SECRET_KEY: ${MINIO_SECRET_KEY}
       RUSTFS_ADDRESS: ":9000"
       RUSTFS_CONSOLE_ADDRESS: ":9001"
-      RUSTFS_CONSOLE_ENABLE: "true"
+      RUSTFS_CONSOLE_ENABLE: ${RUSTFS_CONSOLE_ENABLE:-false}
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "${BACKING_BIND_ADDRESS:-127.0.0.1}:9000:9000"
+      - "${BACKING_BIND_ADDRESS:-127.0.0.1}:9001:9001"
     volumes:
       - minio-data:/data
     networks:
@@ -100,6 +101,8 @@ services:
         VITE_API_URL: ${VITE_API_URL}
         VITE_TURNSTILE_SITE_KEY: ${VITE_TURNSTILE_SITE_KEY}
     restart: unless-stopped
+    environment:
+      CSP_FRAME_ANCESTORS: ${CSP_FRAME_ANCESTORS:-'self'}
     ports:
       - "${BIND_ADDRESS:-127.0.0.1}:8080:80"
     depends_on:

@@ -167,13 +167,11 @@ export class PermissionsService {
     if (!user) {
       return false;
     }
-    // Literal ticket order: admin bypass (rule 1) is checked before the
-    // isActive gate (rule 2) — an inactive admin still has full access.
-    if (user.role === 'admin') {
-      return true;
-    }
     if (!user.isActive) {
       return false;
+    }
+    if (user.role === 'admin') {
+      return true;
     }
     const context = await this.loadUserContext(user);
     return context.globalPermissions.has(permission);
@@ -185,11 +183,11 @@ export class PermissionsService {
     if (!user) {
       return [];
     }
-    if (user.role === 'admin') {
-      return [...GLOBAL_PERMISSIONS];
-    }
     if (!user.isActive) {
       return [];
+    }
+    if (user.role === 'admin') {
+      return [...GLOBAL_PERMISSIONS];
     }
     const context = await this.loadUserContext(user);
     return [...context.globalPermissions];
@@ -211,11 +209,11 @@ export class PermissionsService {
     if (!user) {
       return false;
     }
-    if (user.role === 'admin') {
-      return true;
-    }
     if (!user.isActive) {
       return false;
+    }
+    if (user.role === 'admin') {
+      return true;
     }
     const context = await this.loadUserContext(user);
     return actionsFromRules(context.rules, chain).has(action);
@@ -237,11 +235,11 @@ export class PermissionsService {
     if (!user) {
       return [...actions];
     }
-    if (user.role === 'admin') {
-      return [...PAGE_ACTIONS];
-    }
     if (!user.isActive) {
       return [...actions];
+    }
+    if (user.role === 'admin') {
+      return [...PAGE_ACTIONS];
     }
     const context = await this.loadUserContext(user);
     for (const action of actionsFromRules(context.rules, chain)) {
@@ -264,7 +262,7 @@ export class PermissionsService {
       pageIds,
       options,
     );
-    const isAdmin = user?.role === 'admin';
+    const isAdmin = user?.role === 'admin' && user.isActive;
     const context =
       user && user.isActive && !isAdmin
         ? await this.loadUserContext(user)
@@ -310,11 +308,11 @@ export class PermissionsService {
     if (!user) {
       return false;
     }
-    if (user.role === 'admin') {
-      return true;
-    }
     if (!user.isActive) {
       return false;
+    }
+    if (user.role === 'admin') {
+      return true;
     }
     const context = await this.loadUserContext(user);
     return context.rules.some(
@@ -324,6 +322,20 @@ export class PermissionsService {
         rule.actions.includes(action) &&
         excludedPageIds.length === 0,
     );
+  }
+
+  async canCreatePublicPageUnder(
+    user: User,
+    parentId: string | null,
+  ): Promise<boolean> {
+    if (parentId === null) {
+      return this.hasUnrestrictedPageAccess(user, 'page.manage_visibility');
+    }
+    const chains = await this.pageHierarchyRepository.findChains([parentId]);
+    if (chains.get(parentId)?.visibility === 'public') {
+      return true;
+    }
+    return this.can(user, 'page.manage_visibility', parentId);
   }
 
   /**
@@ -338,11 +350,11 @@ export class PermissionsService {
     if (!user) {
       return [];
     }
-    if (user.role === 'admin') {
-      return null;
-    }
     if (!user.isActive) {
       return [];
+    }
+    if (user.role === 'admin') {
+      return null;
     }
 
     const context = await this.loadUserContext(user);
@@ -439,11 +451,11 @@ export class PermissionsService {
     if (!user) {
       return false;
     }
-    if (user.role === 'admin') {
-      return true;
-    }
     if (!user.isActive) {
       return false;
+    }
+    if (user.role === 'admin') {
+      return true;
     }
 
     const chains = await this.pageHierarchyRepository.findChains([pageId]);
@@ -464,11 +476,13 @@ export class PermissionsService {
       if (excludedPageIds.length === 0) {
         return true;
       }
-      const exclusionChains =
-        await this.pageHierarchyRepository.findChains(excludedPageIds);
+      const exclusionChains = await this.pageHierarchyRepository.findChains(
+        excludedPageIds,
+        { includeDeleted: true },
+      );
       const hasExclusionInsideSubtree = excludedPageIds.some((excludedId) => {
         const exclusionChain = exclusionChains.get(excludedId);
-        return exclusionChain?.chainIds.includes(pageId) ?? false;
+        return exclusionChain?.chainIds.includes(pageId) ?? true;
       });
       if (!hasExclusionInsideSubtree) {
         return true;
@@ -481,7 +495,7 @@ export class PermissionsService {
     if (pages.length === 0) {
       return [];
     }
-    if (user?.role === 'admin') {
+    if (user?.role === 'admin' && user.isActive) {
       return pages;
     }
 
@@ -517,7 +531,7 @@ export class PermissionsService {
       return { granted: false, sources: [] };
     }
 
-    if (user?.role === 'admin') {
+    if (user?.role === 'admin' && user.isActive) {
       return {
         granted: true,
         sources: [

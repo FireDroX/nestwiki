@@ -13,6 +13,7 @@ vi.mock('../../common/variables.global.js', async (importOriginal) => ({
   IMPORT_MAX_ARCHIVE_SIZE_BYTES: 64 * 1024,
   IMPORT_MAX_UNCOMPRESSED_SIZE_BYTES: 32 * 1024,
   MAX_ATTACHMENT_SIZE_BYTES: 4 * 1024,
+  IMPORT_MAX_NOTE_SIZE_BYTES: 24 * 1024,
 }));
 
 async function buildZip(
@@ -173,6 +174,41 @@ describe('ImportArchiveReader', () => {
     await expect(
       ImportArchiveReader.read(upload('vault.zip', zip)),
     ).rejects.toThrow(InvalidImportArchiveException);
+  });
+
+  it('skips a note larger than the note limit without decompressing it', async () => {
+    const zip = await buildZip({
+      'big.md': Buffer.alloc(28 * 1024, 'n'),
+      'small.md': '# Small',
+    });
+
+    const content = await ImportArchiveReader.read(upload('vault.zip', zip));
+
+    expect(content.files.map((file) => file.path)).toEqual(['small.md']);
+    expect(content.ignored).toEqual([{ path: 'big.md', reason: 'too_large' }]);
+  });
+
+  it('rejects a single note larger than the note limit', async () => {
+    await expect(
+      ImportArchiveReader.read(upload('big.md', Buffer.alloc(28 * 1024, 'n'))),
+    ).rejects.toThrow(ImportTooLargeException);
+  });
+
+  it('rejects an entry nested deeper than the limit, but not a hidden one', async () => {
+    const deep = `${'a/'.repeat(40)}x.md`;
+
+    await expect(
+      ImportArchiveReader.read(
+        upload('vault.zip', await buildZip({ [deep]: '# X' })),
+      ),
+    ).rejects.toThrow(ImportTooLargeException);
+    const hidden = await ImportArchiveReader.read(
+      upload(
+        'vault.zip',
+        await buildZip({ [`.git/${deep}`]: 'x', 'note.md': '# Note' }),
+      ),
+    );
+    expect(hidden.files.map((file) => file.path)).toEqual(['note.md']);
   });
 
   it('rejects a file larger than the upload limit', async () => {

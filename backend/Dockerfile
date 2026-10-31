@@ -49,5 +49,6 @@ COPY backend/package.json ./backend/package.json
 COPY CHANGELOG.md ./CHANGELOG.md
 
 WORKDIR /app/backend
+USER node
 EXPOSE 3000
 ENTRYPOINT ["./entrypoint.sh"]

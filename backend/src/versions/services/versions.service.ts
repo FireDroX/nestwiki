@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { Change, diffLines } from 'diff';
 import { PaginatedResponseDto } from '../../common/dto/paginated-response.dto.js';
+import { VersionDiffTooLargeException } from '../../common/exceptions/pages/version-diff-too-large.exception.js';
 import { VersionNotFoundException } from '../../common/exceptions/pages/version-not-found.exception.js';
 import { ValidationException } from '../../common/exceptions/validation.exception.js';
 import {
@@ -10,6 +11,8 @@ import {
   MAX_LIMIT,
   TITLE_MAX_LENGTH,
   UUID_REGEX,
+  VERSION_DIFF_MAX_EDIT_LENGTH,
+  VERSION_DIFF_TIMEOUT_MS,
 } from '../../common/variables.global.js';
 import { PageVersion } from '../../pages/entities/page-version.entity.js';
 import { UsersService } from '../../users/services/users.service.js';
@@ -101,12 +104,17 @@ export class VersionsService {
       throw new VersionNotFoundException();
     }
 
-    const changes = diffLines(fromVersion.content, toVersion.content).map(
-      (change) => ({
-        type: VersionsService.resolveChangeType(change),
-        value: change.value,
-      }),
-    );
+    const lineChanges = diffLines(fromVersion.content, toVersion.content, {
+      maxEditLength: VERSION_DIFF_MAX_EDIT_LENGTH,
+      timeout: VERSION_DIFF_TIMEOUT_MS,
+    });
+    if (!lineChanges) {
+      throw new VersionDiffTooLargeException();
+    }
+    const changes = lineChanges.map((change) => ({
+      type: VersionsService.resolveChangeType(change),
+      value: change.value,
+    }));
 
     return { from: fromId!, to: toId!, changes };
   }

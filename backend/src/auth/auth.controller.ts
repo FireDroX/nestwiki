@@ -36,6 +36,7 @@ import { ChangePasswordDto } from './dto/in/change-password.dto.js';
 import { LoginDto } from './dto/in/login.dto.js';
 import { RegisterDto } from './dto/in/register.dto.js';
 import { UserResponseDto } from './dto/out/user-response.dto.js';
+import { resolveClientIp } from '../common/client-ip.js';
 import { AuthExceptionFilter } from './filter/auth-exception.filter.js';
 import { UserMapper } from './mapper/user.mapper.js';
 import { AuthService, type TokenPair } from './services/auth.service.js';
@@ -74,7 +75,7 @@ export class AuthController {
   ): Promise<ResponseDto<UserResponseDto>> {
     const { user, tokens } = await this.authService.register(
       dto,
-      AuthController.resolveClientIp(req),
+      resolveClientIp(req),
     );
     this.setAuthCookies(res, tokens);
     return UserMapper.toRegisterResponse(user);
@@ -99,10 +100,7 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ): Promise<ResponseDto<null>> {
-    const tokens = await this.authService.login(
-      dto,
-      AuthController.resolveClientIp(req),
-    );
+    const tokens = await this.authService.login(dto, resolveClientIp(req));
     this.setAuthCookies(res, tokens);
     return new ResponseDto(null);
   }
@@ -154,7 +152,10 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Changer mon mot de passe' })
   @ApiBody({ type: ChangePasswordDto })
-  @ApiOkResponse({ description: 'Mot de passe mis à jour.' })
+  @ApiOkResponse({
+    description:
+      'Mot de passe mis à jour ; nouveaux tokens déposés en cookies, les autres sessions sont déconnectées.',
+  })
   @ApiBadRequestResponse({
     description: 'Nouveau mot de passe trop faible ou compromis.',
     type: ErrorResponseDto,
@@ -166,8 +167,10 @@ export class AuthController {
   async changePassword(
     @CurrentUser() user: AuthenticatedUser,
     @Body() dto: ChangePasswordDto,
+    @Res({ passthrough: true }) res: Response,
   ): Promise<ResponseDto<null>> {
-    await this.authService.changePassword(user.id, dto);
+    const tokens = await this.authService.changePassword(user.id, dto);
+    this.setAuthCookies(res, tokens);
     return new ResponseDto(null);
   }
 
@@ -195,17 +198,16 @@ export class AuthController {
     res.cookie(name, value, {
       httpOnly: true,
       sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
+      secure: AuthController.isServedOverHttps(),
       path: '/',
       maxAge,
     });
   }
 
-  private static resolveClientIp(req: Request): string | undefined {
-    const forwardedFor = req.headers['x-forwarded-for'];
-    if (typeof forwardedFor === 'string' && forwardedFor.length > 0) {
-      return forwardedFor.split(',')[0].trim();
-    }
-    return req.ip;
+  private static isServedOverHttps(): boolean {
+    return (
+      process.env.FRONTEND_URL?.trim().toLowerCase().startsWith('https://') ??
+      false
+    );
   }
 }

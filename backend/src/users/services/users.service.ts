@@ -34,7 +34,10 @@ import type { SubjectPermissionsRepository } from '../../permissions/persistence
 import { assertActorCanGrantGroupMembership } from '../../permissions/services/group-grant.util.js';
 import { PermissionsService } from '../../permissions/services/permissions.service.js';
 import type { StorageService } from '../../storage/services/storage.service.js';
-import { assertActorIsAdminToActOnAdmin } from './admin-target.util.js';
+import {
+  assertActorCoversTarget,
+  assertActorIsAdminToActOnAdmin,
+} from './admin-target.util.js';
 import { AdminUpdateUserDto } from '../dto/in/admin-update-user.dto.js';
 import { CreateAdminUserDto } from '../dto/in/create-admin-user.dto.js';
 import { CreateUserDto } from '../dto/in/create-user.dto.js';
@@ -196,6 +199,7 @@ export class UsersService {
     UsersService.assertNotSelf(admin.id, id);
     const user = await this.findById(id);
     assertActorIsAdminToActOnAdmin(admin, user);
+    await this.assertActorCoversTarget(admin, user);
     await this.assertNotRemovingLastActiveAdmin(user);
 
     await this.userRepository.delete(id);
@@ -357,6 +361,9 @@ export class UsersService {
       if (existing && existing.id !== id) {
         throw new EmailAlreadyExistsException();
       }
+      if (dto.email !== target.email) {
+        await this.assertActorCoversTarget(actor, target);
+      }
     }
     if (dto.role !== undefined) {
       this.validateRole(dto.role);
@@ -398,7 +405,9 @@ export class UsersService {
     }
     const target = await this.findById(id);
     assertActorIsAdminToActOnAdmin(actor, target);
-    if (!isActive) {
+    if (isActive) {
+      await this.assertActorCoversTarget(actor, target);
+    } else {
       UsersService.assertNotSelf(actor.id, id);
       await this.assertNotRemovingLastActiveAdmin(target);
     }
@@ -417,6 +426,7 @@ export class UsersService {
   async resetPassword(actor: AuthenticatedUser, id: string): Promise<string> {
     const target = await this.findById(id);
     assertActorIsAdminToActOnAdmin(actor, target);
+    await this.assertActorCoversTarget(actor, target);
     const temporaryPassword = UsersService.generateTemporaryPassword();
     const passwordHash = await bcrypt.hash(temporaryPassword, SALT_ROUNDS);
     await this.userRepository.updatePassword(id, passwordHash);
@@ -489,6 +499,26 @@ export class UsersService {
     if (found.length !== new Set(groupIds).size) {
       throw new GroupNotFoundException();
     }
+  }
+
+  private async assertActorCoversTarget(
+    actor: AuthenticatedUser,
+    target: User,
+  ): Promise<void> {
+    if (actor.role === 'admin') {
+      return;
+    }
+    const actorEntity = await this.findById(actor.id);
+    await assertActorCoversTarget(
+      {
+        permissionsService: this.permissionsService,
+        groupsRepository: this.groupsRepository,
+        subjectPermissionsRepository: this.subjectPermissionsRepository,
+        pageAccessRulesRepository: this.pageAccessRulesRepository,
+      },
+      actorEntity,
+      target,
+    );
   }
 
   private async assertNotRemovingLastActiveAdmin(target: User): Promise<void> {

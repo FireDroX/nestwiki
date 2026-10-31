@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { UserActivityLogService } from '../../activity/services/user-activity-log.service.js';
+import { ImportTooLargeException } from '../../common/exceptions/imports/import-too-large.exception.js';
 import { InsufficientPagePermissionException } from '../../common/exceptions/pages/insufficient-page-permission.exception.js';
 import { ValidationException } from '../../common/exceptions/validation.exception.js';
 import type { PageAction } from '../../common/permissions.js';
@@ -9,6 +10,7 @@ import { toComparableName } from '../../common/slug.js';
 import type { AuthenticatedUser } from '../../common/strategies/jwt.strategy.js';
 import {
   DEFAULT_TAG_COLOR,
+  PAGE_CONTENT_MAX_LENGTH,
   UUID_REGEX,
 } from '../../common/variables.global.js';
 import { MediaService } from '../../media/services/media.service.js';
@@ -134,6 +136,12 @@ export class ImportsService {
     const outcomeByKey = new Map(
       outcomes.map((outcome) => [outcome.planned.node.key, outcome]),
     );
+    if (visibility === 'public') {
+      await this.assertCanPublishUnder(
+        ImportsService.existingParentsOfCreatedPages(plan, outcomes),
+        user,
+      );
+    }
 
     const media = plan.canUploadMedia
       ? ImportsService.mediaOwners(plan.tree.media, written)
@@ -166,17 +174,20 @@ export class ImportsService {
         ]),
       );
       const contentOf = (outcome: ImportPageOutcome): string =>
-        ImportMarkdownConverter.render(
-          outcome.planned.node.body,
-          outcome.planned.node.links,
-          {
-            pagePath: (nodeKey) =>
-              outcomeByKey.get(nodeKey)?.planned.path ?? '',
-            mediaUrl: (path, original) => {
-              const id = attachmentIdByPath.get(path);
-              return id ? `/api/media/${id}/raw` : original;
+        ImportsService.withinContentLimit(
+          outcome,
+          ImportMarkdownConverter.render(
+            outcome.planned.node.body,
+            outcome.planned.node.links,
+            {
+              pagePath: (nodeKey) =>
+                outcomeByKey.get(nodeKey)?.planned.path ?? '',
+              mediaUrl: (path, original) => {
+                const id = attachmentIdByPath.get(path);
+                return id ? `/api/media/${id}/raw` : original;
+              },
             },
-          },
+          ),
         );
 
       const createdPages: ImportedPageInput[] = [];
@@ -315,6 +326,44 @@ export class ImportsService {
     ) {
       throw new InsufficientPagePermissionException();
     }
+  }
+
+  private async assertCanPublishUnder(
+    parentIds: (string | null)[],
+    user: User,
+  ): Promise<void> {
+    for (const parentId of parentIds) {
+      if (
+        !(await this.permissionsService.canCreatePublicPageUnder(
+          user,
+          parentId,
+        ))
+      ) {
+        throw new InsufficientPagePermissionException();
+      }
+    }
+  }
+
+  private static existingParentsOfCreatedPages(
+    plan: ImportPlan,
+    outcomes: ImportPageOutcome[],
+  ): (string | null)[] {
+    const outcomeByKey = new Map(
+      outcomes.map((outcome) => [outcome.planned.node.key, outcome]),
+    );
+    const parentIds = new Set<string | null>();
+    for (const outcome of outcomes) {
+      if (outcome.action !== 'create') {
+        continue;
+      }
+      const parentKey = outcome.planned.node.parentKey;
+      const parent = parentKey ? outcomeByKey.get(parentKey)! : null;
+      if (parent?.action === 'create') {
+        continue;
+      }
+      parentIds.add(parent ? parent.pageId : plan.destination.pageId);
+    }
+    return [...parentIds];
   }
 
   private async existingPageActions(
@@ -548,6 +597,18 @@ export class ImportsService {
       );
     }
     return mode as ImportConflictMode;
+  }
+
+  private static withinContentLimit(
+    outcome: ImportPageOutcome,
+    content: string,
+  ): string {
+    if (content.length > PAGE_CONTENT_MAX_LENGTH) {
+      throw new ImportTooLargeException(
+        `The page "${outcome.planned.node.title}" would exceed ${PAGE_CONTENT_MAX_LENGTH} characters once imported`,
+      );
+    }
+    return content;
   }
 
   private static parseVisibility(raw: string | undefined): PageVisibility {

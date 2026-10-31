@@ -42,7 +42,10 @@ import { AnonymousFallbackJwtAuthGuard } from '../common/guards/anonymous-fallba
 import { OptionalJwtAuthGuard } from '../common/guards/optional-jwt-auth.guard.js';
 import { PermissionsGuard } from '../common/guards/permissions.guard.js';
 import type { AuthenticatedUser } from '../common/strategies/jwt.strategy.js';
-import { MAX_ATTACHMENT_SIZE_MB } from '../common/variables.global.js';
+import {
+  MAX_ATTACHMENT_SIZE_BYTES,
+  MAX_ATTACHMENT_SIZE_MB,
+} from '../common/variables.global.js';
 import { ListMediaDto } from './dto/in/list-media.dto.js';
 import { UploadMediaDto } from './dto/in/upload-media.dto.js';
 import { AttachmentResponseDto } from './dto/out/attachment-response.dto.js';
@@ -63,7 +66,11 @@ export class MediaController {
   @RequirePermission('media.upload')
   @ApiBearerAuth()
   @HttpCode(HttpStatus.CREATED)
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: MAX_ATTACHMENT_SIZE_BYTES, files: 1 },
+    }),
+  )
   @ApiConsumes('multipart/form-data')
   @ApiOperation({ summary: 'Uploader un fichier vers Minio' })
   @ApiBody({
@@ -240,6 +247,6 @@ export class MediaController {
     @Param('id') id: string,
     @CurrentUser() user: AuthenticatedUser,
   ): Promise<void> {
-    await this.mediaService.deleteAttachment(id, user.id);
+    await this.mediaService.deleteAttachment(id, user);
   }
 }

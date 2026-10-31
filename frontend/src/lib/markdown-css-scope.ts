@@ -1,3 +1,15 @@
+import {
+  isTokenBadString,
+  isTokenBadURL,
+  isTokenCloseCurly,
+  isTokenCloseParen,
+  isTokenCloseSquare,
+  isTokenFunction,
+  isTokenOpenCurly,
+  isTokenOpenParen,
+  isTokenOpenSquare,
+  tokenize,
+} from '@csstools/css-tokenizer'
 import { visit } from 'unist-util-visit'
 import type { Element, Root } from 'hast'
 
@@ -7,56 +19,34 @@ function scrubDangerousCss(css: string): string {
     .replace(/url\(\s*['"]?\s*javascript:[^)]*\)/gi, 'url()')
 }
 
-function hasBalancedBraces(css: string): boolean {
-  let depth = 0
-  let quote: '"' | "'" | null = null
-  let index = 0
-
-  while (index < css.length) {
-    const char = css[index]
-
-    if (quote) {
-      if (char === '\\' && index + 1 < css.length) {
-        index += 2
-        continue
-      }
-      if (char === '\n' || char === '\r' || char === '\f') {
-        quote = null
-        index += 1
-        continue
-      }
-      if (char === quote) {
-        quote = null
-      }
-      index += 1
-      continue
+function hasBalancedBlocks(css: string): boolean {
+  let hasParseError = false
+  const tokens = tokenize(
+    { css },
+    {
+      onParseError: () => {
+        hasParseError = true
+      },
+    },
+  )
+  const expectedClosers: string[] = []
+  for (const token of tokens) {
+    if (isTokenBadString(token) || isTokenBadURL(token)) {
+      return false
     }
-
-    if (char === '"' || char === "'") {
-      quote = char
-      index += 1
-      continue
-    }
-
-    if (char === '/' && css[index + 1] === '*') {
-      const end = css.indexOf('*/', index + 2)
-      index = end === -1 ? css.length : end + 2
-      continue
-    }
-
-    if (char === '{') {
-      depth += 1
-    } else if (char === '}') {
-      depth -= 1
-      if (depth < 0) {
+    if (isTokenOpenCurly(token)) {
+      expectedClosers.push('}')
+    } else if (isTokenOpenParen(token) || isTokenFunction(token)) {
+      expectedClosers.push(')')
+    } else if (isTokenOpenSquare(token)) {
+      expectedClosers.push(']')
+    } else if (isTokenCloseCurly(token) || isTokenCloseParen(token) || isTokenCloseSquare(token)) {
+      if (expectedClosers.pop() !== token[1]) {
         return false
       }
     }
-
-    index += 1
   }
-
-  return depth === 0 && quote === null
+  return expectedClosers.length === 0 && !hasParseError
 }
 
 export function rehypeScopeStyles(scopeId: string) {
@@ -67,12 +57,10 @@ export function rehypeScopeStyles(scopeId: string) {
       }
       for (const child of node.children) {
         if (child.type === 'text') {
-          if (!hasBalancedBraces(child.value)) {
-            child.value = `@scope ([id="${scopeId}"]) {\n}\n`
-            continue
-          }
           const scrubbed = scrubDangerousCss(child.value)
-          child.value = `@scope ([id="${scopeId}"]) {\n${scrubbed}\n}`
+          child.value = hasBalancedBlocks(scrubbed)
+            ? `@scope ([id="${scopeId}"]) {\n${scrubbed}\n}`
+            : `@scope ([id="${scopeId}"]) {\n}\n`
         }
       }
     })

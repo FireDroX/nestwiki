@@ -17,6 +17,11 @@ export const KNOWN_DEFAULT_SECRETS: readonly string[] = [
   'root',
   'ci-access-secret',
   'ci-refresh-secret',
+  'ci-mysql-root-password',
+  'ci-storage-secret-key',
+  'ci-jwt-access-secret-not-for-production',
+  'ci-jwt-refresh-secret-not-for-production',
+  'ci-admin-password-1!',
 ];
 export const PASSWORD_COMPLEXITY_REGEX =
   /^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$/;
@@ -27,6 +32,10 @@ export const DEFAULT_LIMIT = 20;
 export const MAX_LIMIT = 100;
 export const ACCESS_TOKEN_COOKIE = 'accessToken';
 export const REFRESH_TOKEN_COOKIE = 'refreshToken';
+export const SESSION_ACCESS_TOKEN_TYPE = 'access';
+export const SESSION_REFRESH_TOKEN_TYPE = 'refresh';
+export const PASSWORD_CHANGE_CLOCK_TOLERANCE_MS = 1000;
+export const DEFAULT_TRUSTED_PROXY_HOPS = 1;
 export const SLUG_REGEX = /^[a-z0-9-]+$/;
 export const SLUG_MAX_LENGTH = 255;
 export const RESERVED_ROOT_PAGE_SLUGS: readonly string[] = ['tree', 'trash'];
@@ -41,8 +50,15 @@ export const RESERVED_CHILD_OF_ROOT_PAGE_SLUGS: readonly string[] = [
 export const PAGE_LINK_TARGET_MAX_LENGTH = 700;
 export const TITLE_MAX_LENGTH = 255;
 export const CHANGE_SUMMARY_MAX_LENGTH = 255;
+export const PAGE_CONTENT_MAX_LENGTH = 1_000_000;
+export const MERGE_MAX_EDIT_LENGTH = 2000;
+export const MERGE_DIFF_TIMEOUT_MS = 150;
+export const VERSION_DIFF_MAX_EDIT_LENGTH = 5000;
+export const VERSION_DIFF_TIMEOUT_MS = 300;
 export const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+export const MEDIA_RAW_URL_PATTERN =
+  /\/media\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\/raw/gi;
 export const MAX_ATTACHMENT_SIZE_MB = 20;
 export const MAX_ATTACHMENT_SIZE_BYTES = MAX_ATTACHMENT_SIZE_MB * 1024 * 1024;
 export const ALLOWED_ATTACHMENT_MIME_TYPES = [
@@ -105,6 +121,17 @@ export const OAUTH_AUTHORIZATION_CODE_EXPIRY_SECONDS = 60;
 export const OAUTH_ACCESS_TOKEN_EXPIRY_SECONDS = 3600;
 export const OAUTH_REFRESH_TOKEN_EXPIRY_DAYS = 30;
 export const OAUTH_PKCE_CODE_CHALLENGE_METHOD = 'S256';
+export const OAUTH_MAX_REDIRECT_URIS = 10;
+export const OAUTH_REDIRECT_URI_MAX_LENGTH = 2048;
+export const OAUTH_CLIENT_NAME_MAX_LENGTH = 255;
+export const OAUTH_REGISTER_THROTTLE_LIMIT = 5;
+export const OAUTH_REGISTER_THROTTLE_TTL_MS = 60_000;
+export const OAUTH_UNUSED_CLIENT_RETENTION_HOURS = 24;
+export const OAUTH_LOOPBACK_HOSTS: readonly string[] = [
+  'localhost',
+  '127.0.0.1',
+  '[::1]',
+];
 export const EXPORT_MAX_PAGES = 500;
 export const EXPORT_MAX_MEDIA = 200;
 export const WEBHOOK_NAME_MAX_LENGTH = 100;
@@ -132,6 +159,9 @@ export const IMPORT_MAX_UNCOMPRESSED_SIZE_MB = 500;
 export const IMPORT_MAX_UNCOMPRESSED_SIZE_BYTES =
   IMPORT_MAX_UNCOMPRESSED_SIZE_MB * 1024 * 1024;
 export const IMPORT_MAX_PAGES = 1000;
+export const IMPORT_MAX_NOTE_SIZE_BYTES = PAGE_CONTENT_MAX_LENGTH;
+export const IMPORT_MAX_PATH_LENGTH = 1024;
+export const IMPORT_MAX_PATH_DEPTH = 32;
 export const ATTACHMENT_MIME_TYPES_BY_EXTENSION: Record<string, string> = {
   png: 'image/png',
   jpg: 'image/jpeg',

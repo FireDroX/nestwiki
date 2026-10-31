@@ -1,6 +1,7 @@
 {
   "common": {
     "appName": "NestWiki",
+    "mascotAlt": "The NestWiki robin in its nest, on the logo",
     "cancel": "Cancel",
     "delete": "Delete",
     "back": "Back",
@@ -14,6 +15,7 @@
   },
   "auth": {
     "appTagline": "Your team's knowledge base",
+    "backHome": "Back to home",
     "loginTab": "Sign in",
     "registerTab": "Sign up",
     "emailLabel": "Email address",
@@ -36,7 +38,14 @@
     "description": "{{name}} would like to connect to NestWiki on your behalf.",
     "allow": "Authorize",
     "deny": "Deny",
-    "notAdmin": "Only an administrator account can authorize this connection."
+    "notAdmin": "Only an administrator account can authorize this connection.",
+    "loading": "Loading the request…",
+    "loadError": "This access request is invalid or has expired.",
+    "redirectTo": "The authorization code will be sent to",
+    "unverified": "This client registered itself: NestWiki cannot verify its name. Only allow it if you just started this connection and this address really belongs to your tool.",
+    "scopesLabel": "Requested access",
+    "readOnly": "Read only",
+    "readOnlyHint": "The client will be able to read the wiki, but not change it or manage users."
   },
   "topbar": {
     "openSidebar": "Open navigation",
@@ -437,7 +446,9 @@
         "purgeAllConfirmDescription_other": "All {{count}} comments from {{name}} will be permanently deleted, along with any replies. This cannot be undone.",
         "purgeSuccess_one": "{{count}} comment purged.",
         "purgeSuccess_other": "{{count}} comments purged.",
-        "purgeFailed": "Failed to purge comments."
+        "purgeFailed": "Failed to purge comments.",
+        "hiddenPage": "Page you cannot access",
+        "hiddenContent": "Content hidden: you cannot access this page."
       }
     },
     "groups": {

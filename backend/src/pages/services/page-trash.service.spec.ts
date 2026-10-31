@@ -16,6 +16,10 @@ import {
   PageRestoredEvent,
 } from '../events/page-restored.event.js';
 import { PAGE_TREE_CHANGED_EVENT } from '../events/page-tree-changed.event.js';
+import {
+  PAGES_PURGED_EVENT,
+  PagesPurgedEvent,
+} from '../events/pages-purged.event.js';
 import type { PageTrashRepository } from '../persistence/page-trash.repository.js';
 import type { PagesRepository } from '../persistence/page.repository.js';
 import { PageTrashService } from './page-trash.service.js';
@@ -102,7 +106,7 @@ describe('PageTrashService', () => {
       findPaths: vi.fn().mockResolvedValue(new Map()),
       restoreBatch: vi.fn().mockResolvedValue(undefined),
       findTrashedSubtreeIds: vi.fn().mockResolvedValue([]),
-      purge: vi.fn().mockResolvedValue(undefined),
+      purge: vi.fn().mockResolvedValue([]),
     };
     pagesRepository = { findBySlugAndParent: vi.fn().mockResolvedValue(null) };
     permissionsService = {
@@ -320,6 +324,19 @@ describe('PageTrashService', () => {
         }),
       );
       expect(eventEmitter.emit).toHaveBeenCalledWith(PAGE_TREE_CHANGED_EVENT);
+    });
+
+    it('announces the attachments the purge left without a page', async () => {
+      pageTrashRepository.findTrashedById.mockResolvedValue(trashedRoot());
+      pageTrashRepository.findTrashedSubtreeIds.mockResolvedValue(['root']);
+      pageTrashRepository.purge.mockResolvedValue(['attachment-1']);
+
+      await service.purge('root', 'admin-id');
+
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        PAGES_PURGED_EVENT,
+        new PagesPurgedEvent(['attachment-1']),
+      );
     });
 
     it('rejects a page that is not a trashed deletion root', async () => {

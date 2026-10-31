@@ -383,6 +383,30 @@ describe('ImportTreeBuilder', () => {
       );
       expect(contentOf('c-fichier.md')).toBe('# c-fichier\n\nPas de titre');
     });
+
+    it('drops the closing hashes of a heading but keeps hashes inside the title', () => {
+      const { tree } = importFiles({
+        'a.md': '# Titre fermé ##  ',
+        'b.md': '# C#',
+        'c.md': '# ###',
+      });
+
+      expect(tree.nodes.map((node) => node.title)).toEqual([
+        'Titre fermé',
+        'C#',
+        '###',
+      ]);
+    });
+
+    it('reads a heading padded with spaces in linear time', () => {
+      const start = performance.now();
+      const { tree } = importFiles({
+        'a.md': `# Titre${' '.repeat(50_000)}fin`,
+      });
+
+      expect(performance.now() - start).toBeLessThan(300);
+      expect(tree.nodes[0].title).toMatch(/^Titre {250}$/);
+    });
   });
 
   describe('limits', () => {
@@ -396,6 +420,42 @@ describe('ImportTreeBuilder', () => {
       const files = Object.fromEntries(
         Array.from({ length: 1001 }, (_, index) => [
           `note-${index}.md`,
+          '# Note',
+        ]),
+      );
+
+      expect(() => ImportTreeBuilder.build(archive(files))).toThrow(
+        ImportTooLargeException,
+      );
+    });
+
+    it('rejects a deeply nested path quickly', () => {
+      const start = performance.now();
+
+      expect(() =>
+        ImportTreeBuilder.build(
+          archive({ [`${'a/'.repeat(16_000)}x.md`]: '' }),
+        ),
+      ).toThrow(ImportTooLargeException);
+      expect(performance.now() - start).toBeLessThan(300);
+    });
+
+    it('rejects a path longer than the limit', () => {
+      expect(() =>
+        ImportTreeBuilder.build(archive({ [`${'a'.repeat(1100)}.md`]: '' })),
+      ).toThrow(ImportTooLargeException);
+    });
+
+    it('accepts notes nested up to the depth limit', () => {
+      const { tree } = importFiles({ [`${'a/'.repeat(32)}x.md`]: '# X' });
+
+      expect(tree.nodes).toHaveLength(33);
+    });
+
+    it('rejects more than 1000 folders before sorting them', () => {
+      const files = Object.fromEntries(
+        Array.from({ length: 501 }, (_, index) => [
+          `dossier-${index}/sous-dossier/note.md`,
           '# Note',
         ]),
       );

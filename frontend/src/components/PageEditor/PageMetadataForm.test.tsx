@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useForm } from 'react-hook-form'
+import type { PageTreeNode } from '#api/pages'
 import { PageTreeContext } from '#hooks/usePageTree'
 import type { PageMetadataFormValues } from '#schemas/page-metadata.schema'
 import { PageMetadataForm } from './PageMetadataForm'
@@ -11,18 +12,25 @@ interface HarnessProps {
   linkingPageCount?: number
   updateLinks?: boolean
   onUpdateLinksChange?: (updateLinks: boolean) => void
+  tree?: PageTreeNode[]
+  parentId?: string | null
 }
 
-function Harness({ mode = 'create', ...linkProps }: HarnessProps) {
+function Harness({ mode = 'create', tree = [], parentId = null, ...linkProps }: HarnessProps) {
   const { control, setValue, watch } = useForm<PageMetadataFormValues>({
-    defaultValues: { title: '', slug: '', visibility: 'public', parentId: null },
+    defaultValues: { title: '', slug: '', visibility: 'public', parentId },
   })
 
   return (
-    <PageTreeContext.Provider value={{ tree: [], status: 'success', refresh: async () => {} }}>
+    <PageTreeContext.Provider value={{ tree, status: 'success', refresh: async () => {} }}>
       <PageMetadataForm mode={mode} control={control} setValue={setValue} watch={watch} {...linkProps} />
+      <output data-testid="visibility">{watch('visibility')}</output>
     </PageTreeContext.Provider>
   )
+}
+
+function treeNode(id: string, visibility: PageTreeNode['visibility']): PageTreeNode {
+  return { id, slug: id, title: id, visibility, canCreateChild: true, children: [] }
 }
 
 describe('PageMetadataForm', () => {
@@ -67,6 +75,35 @@ describe('PageMetadataForm', () => {
 
       expect(screen.queryByText(/contiennent des liens|contient des liens/)).not.toBeInTheDocument()
       expect(screen.queryByRole('checkbox', { name: 'Mettre à jour ces liens au déplacement' })).not.toBeInTheDocument()
+    })
+  })
+
+  describe('visibility of a new page', () => {
+    it('follows the visibility of the parent page', () => {
+      render(<Harness mode="create" tree={[treeNode('docs', 'public')]} parentId="docs" />)
+
+      expect(screen.getByTestId('visibility')).toHaveTextContent('public')
+    })
+
+    it('is private at the root', () => {
+      render(<Harness mode="create" />)
+
+      expect(screen.getByTestId('visibility')).toHaveTextContent('private')
+    })
+
+    it('keeps the visibility the user picked', async () => {
+      const user = userEvent.setup()
+      render(<Harness mode="create" tree={[treeNode('docs', 'public')]} parentId="docs" />)
+
+      await user.click(screen.getByRole('button', { name: /Privée/ }))
+
+      expect(screen.getByTestId('visibility')).toHaveTextContent('private')
+    })
+
+    it('leaves an existing page untouched', () => {
+      render(<Harness mode="edit" />)
+
+      expect(screen.getByTestId('visibility')).toHaveTextContent('public')
     })
   })
 })

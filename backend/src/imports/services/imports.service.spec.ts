@@ -4,6 +4,7 @@ import { ZipArchive } from 'archiver';
 import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 import { UserActivityLogService } from '../../activity/services/user-activity-log.service.js';
 import { PAGE_ACTIONS, type PageAction } from '../../common/permissions.js';
+import { ImportTooLargeException } from '../../common/exceptions/imports/import-too-large.exception.js';
 import { InsufficientPagePermissionException } from '../../common/exceptions/pages/insufficient-page-permission.exception.js';
 import { PageNotFoundException } from '../../common/exceptions/pages/page-not-found.exception.js';
 import { ValidationException } from '../../common/exceptions/validation.exception.js';
@@ -79,6 +80,7 @@ describe('ImportsService', () => {
   let service: ImportsService;
   let can: Mock;
   let hasGlobal: Mock;
+  let canCreatePublicPageUnder: Mock;
   let getByIdOrFail: Mock;
   let write: Mock;
   let storeImportedFile: Mock;
@@ -90,6 +92,7 @@ describe('ImportsService', () => {
   beforeEach(async () => {
     can = vi.fn().mockResolvedValue(true);
     hasGlobal = vi.fn().mockResolvedValue(true);
+    canCreatePublicPageUnder = vi.fn().mockResolvedValue(true);
     getByIdOrFail = vi.fn().mockResolvedValue(page(DOCS_ID, 'docs', null));
     write = vi.fn().mockResolvedValue(undefined);
     let uploads = 0;
@@ -121,6 +124,7 @@ describe('ImportsService', () => {
           useValue: {
             can,
             hasGlobal,
+            canCreatePublicPageUnder,
             getEffectivePageActionsBulk: (target: User, pageIds: string[]) =>
               effectiveActions(can, target, pageIds),
           },
@@ -560,6 +564,32 @@ describe('ImportsService', () => {
       );
 
       expect(writtenInput().createdPages[0].visibility).toBe('public');
+      expect(canCreatePublicPageUnder).toHaveBeenCalledWith(user, null);
+    });
+
+    it('refuses public pages under a parent the user cannot publish under', async () => {
+      canCreatePublicPageUnder.mockResolvedValue(false);
+
+      await expect(
+        service.execute(
+          markdownFile('note.md', '# Note'),
+          { parentId: DOCS_ID, visibility: 'public' },
+          currentUser,
+        ),
+      ).rejects.toThrow(InsufficientPagePermissionException);
+      expect(canCreatePublicPageUnder).toHaveBeenCalledWith(user, DOCS_ID);
+      expect(write).not.toHaveBeenCalled();
+      expect(storeImportedFile).not.toHaveBeenCalled();
+    });
+
+    it('does not check the publication right for private pages', async () => {
+      await service.execute(
+        markdownFile('note.md', '# Note'),
+        { parentId: DOCS_ID },
+        currentUser,
+      );
+
+      expect(canCreatePublicPageUnder).not.toHaveBeenCalled();
     });
 
     it('rejects invalid options', async () => {
@@ -577,6 +607,28 @@ describe('ImportsService', () => {
           currentUser,
         ),
       ).rejects.toThrow(ValidationException);
+    });
+
+    it('refuses a note whose links would push the page over the content limit', async () => {
+      const folders = Array.from({ length: 30 }, (_, index) =>
+        `dossier-${index}`.padEnd(30, 'x'),
+      ).join('/');
+
+      await expect(
+        service.execute(
+          await zipFile({
+            [`${folders}/cible.md`]: '# Cible',
+            'liens.md': `# Liens\n\n${'[[cible]] '.repeat(1100)}`,
+          }),
+          {},
+          currentUser,
+        ),
+      ).rejects.toThrow(
+        new ImportTooLargeException(
+          'The page "Liens" would exceed 1000000 characters once imported',
+        ),
+      );
+      expect(write).not.toHaveBeenCalled();
     });
 
     it('rolls back: deletes uploaded objects and announces nothing when writing fails', async () => {

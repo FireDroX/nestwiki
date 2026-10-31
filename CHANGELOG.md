@@ -2,6 +2,66 @@
 
 All notable changes to NestWiki are documented here, newest first, one `## <version> — <date>` section per release. This file is the single source for the in-app "Notes de version" page, which groups releases by minor version (`1.0`, `0.31`…). Entries up to 0.31.10 were written in French, the project's original language.
 
+## 1.4.6 — 2026-10-31
+
+- NestWiki a une mascotte : un rouge-gorge installé dans son nid, sur la barre rouge du logo, une page de wiki dans le bec. Elle accueille les visiteurs sur la page d'accueil et l'écran de connexion, et accompagne les messages « page introuvable », « accès refusé » et « erreur », en version claire ou sombre selon le thème.
+- Le logo de la barre du haut et l'icône de l'onglet du navigateur accueillent aussi le rouge-gorge dans son nid.
+- Nouvelle image d'aperçu pour les liens partagés (réseaux sociaux, messageries) : la mascotte à côté du nom NestWiki.
+
+## 1.4.5 — 2026-10-31
+
+- Sécurité : avec `docker-compose.yml`, MySQL (`3306`) et le stockage objet (`9000`) ne sont plus publiés que sur `127.0.0.1`, comme le web et l'API. La console web du stockage (`9001`) est désactivée par défaut (`RUSTFS_CONSOLE_ENABLE=true` pour la rallumer). ⚠️ Si une autre machine joignait MySQL ou le stockage directement, ajoutez `BACKING_BIND_ADDRESS=0.0.0.0` au `.env` racine.
+- Sécurité : le backend refuse de démarrer si `FRONTEND_URL` est absent ou n'est pas une adresse `http://` ou `https://`, et si un secret reprend l'une des valeurs publiées dans la CI. ⚠️ Vérifiez `FRONTEND_URL` dans `backend/.env` avant la mise à jour.
+- Sécurité : les cookies de session sont marqués `Secure` dès que `FRONTEND_URL` est en `https://`, au lieu de dépendre de `NODE_ENV`.
+- Sécurité : le conteneur du backend ne tourne plus en root. Avec `docker-compose.external.yml`, sa mémoire est limitée à 1 Go par défaut (`BACKEND_MEM_LIMIT`), et les images utilisées sont celles de la version déployée (`NESTWIKI_TAG`, `latest` par défaut).
+- Déploiement continu : il ne se déclenche plus que pour un push sur `main` de ce dépôt (une PR venue d'un fork ne peut plus le lancer). Il déploie exactement le commit testé, vérifie la clé d'hôte SSH du serveur et la somme de contrôle de `cloudflared`, et ne fait plus passer le jeton du registre par une ligne de commande. La CI épingle ses actions par commit et a des droits minimaux.
+- Dépendances : `qs` 6.16.1 (correctif de sécurité) et `@nestjs/swagger` 12.0.5.
+
+## 1.4.4 — 2026-10-31
+
+- Sécurité : un média affiché dans une page ne peut plus être supprimé de la médiathèque. Le contrôle « encore utilisé » cherchait un identifiant que les liens actuels ne contiennent plus, et laissait donc supprimer définitivement des images toujours affichées. La suppression est de nouveau refusée tant que la version courante d'une page, corbeille comprise, utilise le média.
+- Sécurité : le message de refus ne cite plus que les pages que vous pouvez lire. Les autres sont seulement comptées (« and 2 other page(s) »), au lieu de révéler le titre de pages privées.
+- Sécurité : un média qui n'est rattaché à aucune page n'est plus lisible que par la personne qui l'a téléversé et par les admins, au lieu de l'être par n'importe qui connaissant son lien.
+- Les images et fichiers téléversés depuis l'écran de création d'une page, ou via un assistant MCP sans page, sont rattachés à la page dès qu'elle est enregistrée avec leur lien. Ils suivent alors la visibilité et les droits de cette page. La mise à jour rattache aussi les médias déjà dans ce cas à la page qui les affiche.
+- La suppression définitive d'une page de la corbeille efface aussi les médias téléversés sur elle. Un média qu'une autre page affiche encore est conservé et rattaché à cette page.
+
+## 1.4.3 — 2026-10-31
+
+- Sécurité : un jeton d'accès OAuth donné à un assistant MCP n'est plus accepté comme session sur le reste de l'API. Il ne sert plus qu'au serveur MCP.
+- Sécurité : le compte est revérifié à chaque requête. Un utilisateur désactivé, supprimé ou rétrogradé perd ses droits immédiatement, au lieu de les garder jusqu'à 15 minutes. Changer son mot de passe ou le faire réinitialiser déconnecte aussitôt les autres sessions et les assistants connectés en OAuth, mais l'appareil qui change le mot de passe reste connecté. La mise à jour peut demander un rafraîchissement silencieux de la session, sans reconnexion.
+- Sécurité : la limitation de débit de la connexion, de l'inscription et du rafraîchissement de session ne se contourne plus en ajoutant un faux en-tête `X-Forwarded-For`, et Turnstile reçoit la vraie IP du visiteur. ⚠️ Si un tunnel ou un autre reverse proxy est placé devant le nginx du frontend (et pas directement devant le backend), ajoutez `TRUST_PROXY_HOPS=2` à `backend/.env`, sinon tous les visiteurs partagent la même limite.
+- Sécurité : une fois un verrouillage de compte expiré, le compteur d'échecs repart de zéro. Un inconnu ne peut plus maintenir un compte verrouillé avec une seule mauvaise tentative tous les quarts d'heure.
+- Sécurité : la mise à jour en temps réel d'une page s'arrête pour qui a perdu le droit de la lire, et la connexion temps réel se renouvelle avec la session au lieu de rester valable indéfiniment.
+- Sécurité : une session MCP ne peut plus être reprise avec une autre clé API ou un autre compte que celui qui l'a ouverte.
+- Sécurité : l'écran d'autorisation OAuth affiche le nom enregistré du client, l'adresse à laquelle le code sera envoyé et un avertissement « client non vérifié », au lieu d'un nom pris dans le lien. Il propose aussi un accès en lecture seule. Les scopes demandés par le client sont respectés, et le renouvellement de l'accès s'arrête si l'admin qui l'a accordé est rétrogradé ou désactivé.
+- Sécurité : l'enregistrement automatique des clients OAuth est borné : 10 adresses de redirection au plus, en `https` ou en `http` local uniquement, un nom de 255 caractères au plus, et 5 enregistrements par minute. Les clients jamais utilisés sont supprimés après 24 h.
+- Serveur MCP : les outils indiquent s'ils sont en lecture seule ou destructifs (`readOnlyHint`, `destructiveHint`), et les instructions du serveur rappellent que le contenu renvoyé est écrit par les utilisateurs et ne doit pas être suivi comme une consigne.
+
+## 1.4.2 — 2026-10-30
+
+- Sécurité : la permission `user.manage` ne permet plus de prendre la main sur un compte qui a plus de droits que soi. Sans être admin, il faut détenir tous les droits du compte (permissions globales et accès aux pages, directs ou hérités de ses groupes) pour réinitialiser son mot de passe, changer son e-mail, le réactiver ou le supprimer. Changer son nom reste possible.
+- Sécurité : la liste des commentaires d'un utilisateur (administration des comptes) masque le contenu et la page des commentaires posés sur des pages que l'on ne peut pas lire. Chacun voit toujours tous ses propres commentaires.
+- Sécurité : changer la visibilité d'une page ou la déplacer demande désormais ce droit sur chacune de ses sous-pages, comme la suppression. Une sous-page privée exclue de vos droits ne peut plus devenir publique, ni passer sous une autre page, par l'intermédiaire de sa parente.
+- Sécurité : on ne peut plus modifier un commentaire supprimé, ni un commentaire posé sur une page qu'on ne peut plus lire ou dont les commentaires sont désactivés.
+- Sécurité : une exclusion qui vise une page en corbeille est maintenant prise en compte quand on accorde des droits sur une sous-arborescence. Elle ne peut plus servir à accorder plus que ce qu'on détient, en vue de la restauration de la page.
+- Une nouvelle page prend par défaut la visibilité de sa page parente (privée à la racine), dans l'éditeur comme via l'API et le serveur MCP, où `visibility` devient facultatif. ⚠️ Créer une page publique sous une page privée, ou à la racine, demande maintenant le droit de gérer la visibilité de la page parente, ou de tout le wiki pour la racine. Un import en `public` suit la même règle.
+
+## 1.4.1 — 2026-10-30
+
+- Sécurité : après la connexion, le wiki ne redirige plus que vers une adresse du wiki lui-même. Un lien `/login?redirect=…` piégé ne peut plus exécuter de JavaScript dans le navigateur de la personne qui l'ouvre, ni l'envoyer vers un autre site. La connexion des clients OAuth (MCP) fonctionne comme avant.
+- Sécurité : les animations SVG (`<set>`, `<animate>`, `<animateMotion>`, `<animateTransform>`, `<discard>`) sont retirées du contenu des pages, ainsi que `<frame>` et `<applet>`, et une URL `javascript:` est retirée de n'importe quel attribut. Elles permettaient d'exécuter du JavaScript au clic d'un lecteur. ⚠️ Une page qui animait un SVG de cette façon s'affiche désormais sans l'animation : utiliser une animation CSS dans un bloc `<style>`.
+- Sécurité : un bloc `<style>` de page ne peut plus s'appliquer au reste de l'application grâce à une accolade échappée, une `url(…)` sans guillemets ou une parenthèse mal fermée. Le CSS est analysé comme le fait le navigateur, et un bloc mal formé est ignoré en entier.
+- Sécurité : le frontend envoie une Content-Security-Policy qui n'autorise que les scripts du wiki et de Cloudflare Turnstile, ainsi que `X-Content-Type-Options: nosniff`. ⚠️ Les sites autorisés à afficher le wiki dans une iframe se règlent avec `CSP_FRAME_ANCESTORS` dans le `.env` racine (`'self'` par défaut), et un proxy placé devant ne doit pas remplacer cet en-tête (voir la page Déploiement).
+
+## 1.4.0 — 2026-10-30
+
+- Sécurité : une page dont le contenu contient de longues suites de backticks ne peut plus bloquer le serveur, ni à l'enregistrement, ni à chaque lecture, ni au démarrage. La recherche des blocs de code dans le Markdown se fait désormais en temps linéaire, et l'indexation des liens au démarrage n'empêche plus l'application de répondre.
+- Sécurité : le contenu d'une page est limité à 1 000 000 caractères, à la création, à la modification, à l'aperçu de fusion, à la restauration d'une version et via le serveur MCP (erreur 413). ⚠️ Une page existante plus longue reste lisible et peut toujours être renommée, mais son contenu ne peut plus être modifié qu'en le raccourcissant sous la limite.
+- Sécurité : la fusion automatique de modifications simultanées repose sur un nouvel algorithme borné. Elle reste rapide sur les longues pages et sur les lignes répétées (lignes vides comprises), et répond 413 quand les deux côtés ont trop divergé pour être fusionnés.
+- Sécurité : la comparaison de deux versions répond 422 au lieu de bloquer le serveur quand elles diffèrent trop (plus de 5 000 lignes modifiées).
+- Sécurité : l'import Markdown / Obsidian refuse les chemins de plus de 1 024 caractères ou de plus de 32 dossiers imbriqués, ignore les notes de plus de 1 000 000 octets (un `.md` envoyé seul au-delà est refusé), refuse une page qui dépasserait la limite de contenu une fois ses liens réécrits, et ne ralentit plus sur les crochets, chevrons, titres ou blocs `<style>` malformés.
+- Sécurité : la photo de profil (2 Mo) et les médias (20 Mo) trop lourds sont refusés pendant l'envoi, avant d'être entièrement chargés en mémoire (erreur 413).
+
 ## 1.3.10 — 2026-10-28
 
 - Sécurité : les ports du backend (`3000`) et du frontend (`8080`) ne sont plus publiés que sur `127.0.0.1` par défaut, dans les deux `docker-compose` : seul un reverse proxy ou un tunnel tournant sur le serveur les atteint. ⚠️ Si vous accédiez au wiki directement par l'IP du serveur, ajoutez `BIND_ADDRESS=0.0.0.0` au `.env` racine.

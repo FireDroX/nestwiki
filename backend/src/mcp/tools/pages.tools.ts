@@ -39,7 +39,12 @@ export function buildPagesTools(
         title: z.string(),
         content: z.string(),
         parentId: z.string().optional(),
-        visibility: z.enum(PAGE_VISIBILITIES),
+        visibility: z
+          .enum(PAGE_VISIBILITIES)
+          .optional()
+          .describe(
+            'Absent : celle de la page parente (private à la racine). public sous un parent privé ou à la racine exige page.manage_visibility.',
+          ),
       },
       requiredScopes: [PAGES_WRITE_SCOPE],
       handler: async (input, ctx) => {
@@ -161,6 +166,7 @@ export function buildPagesTools(
         cascade: z.boolean().optional(),
       },
       requiredScopes: [PAGES_WRITE_SCOPE],
+      destructive: true,
       handler: async (input, ctx) => {
         await pagesService.deletePage(
           input.pageId,
@@ -200,6 +206,7 @@ export function buildPagesTools(
         visibility: z.enum(PAGE_VISIBILITIES),
       },
       requiredScopes: [PAGES_WRITE_SCOPE],
+      destructive: true,
       handler: async (input, ctx) => {
         const { page } = await pagesService.setVisibility(
           input.pageId,

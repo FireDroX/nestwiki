@@ -1,6 +1,7 @@
 {
   "common": {
     "appName": "NestWiki",
+    "mascotAlt": "Le rouge-gorge de NestWiki dans son nid, sur le logo",
     "cancel": "Annuler",
     "delete": "Supprimer",
     "back": "Retour",
@@ -14,6 +15,7 @@
   },
   "auth": {
     "appTagline": "La base de connaissance de l'équipe",
+    "backHome": "Retour à l'accueil",
     "loginTab": "Connexion",
     "registerTab": "Inscription",
     "emailLabel": "Adresse e-mail",
@@ -36,7 +38,14 @@
     "description": "{{name}} souhaite se connecter à NestWiki en votre nom.",
     "allow": "Autoriser",
     "deny": "Refuser",
-    "notAdmin": "Seul un compte administrateur peut autoriser cette connexion."
+    "notAdmin": "Seul un compte administrateur peut autoriser cette connexion.",
+    "loading": "Chargement de la demande…",
+    "loadError": "Cette demande d'accès est invalide ou a expiré.",
+    "redirectTo": "Le code d'autorisation sera envoyé à",
+    "unverified": "Ce client s'est enregistré lui-même : NestWiki ne peut pas vérifier son nom. N'autorisez que si vous venez de lancer cette connexion et que cette adresse est bien celle de votre outil.",
+    "scopesLabel": "Accès demandés",
+    "readOnly": "Lecture seule",
+    "readOnlyHint": "Le client pourra lire le wiki, mais ni le modifier ni gérer les utilisateurs."
   },
   "topbar": {
     "openSidebar": "Ouvrir la navigation",
@@ -437,7 +446,9 @@
         "purgeAllConfirmDescription_other": "Les {{count}} commentaires de {{name}} seront définitivement supprimés, ainsi que leurs éventuelles réponses. Cette action est irréversible.",
         "purgeSuccess_one": "{{count}} commentaire purgé.",
         "purgeSuccess_other": "{{count}} commentaires purgés.",
-        "purgeFailed": "Échec de la purge des commentaires."
+        "purgeFailed": "Échec de la purge des commentaires.",
+        "hiddenPage": "Page à laquelle vous n'avez pas accès",
+        "hiddenContent": "Contenu masqué : vous n'avez pas accès à cette page."
       }
     },
     "groups": {

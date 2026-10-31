@@ -63,19 +63,34 @@ describe('MarkdownRenderer', () => {
       expect(container.querySelector('meta')).toBeNull()
     })
 
-    it('renders the element with the on* attribute (proof the plugin ran; see markdown-sanitize.test.ts for the actual removal assertion)', () => {
-      const { container } = render(
-        <MarkdownRenderer content='<div onclick="evil()">hi</div>' mode="full" />,
-      )
-      expect(container.querySelector('div')).not.toBeNull()
-      expect(container).toHaveTextContent('hi')
-    })
-
     it('neutralizes a javascript: href', () => {
       const { container } = render(
         <MarkdownRenderer content='<a href="javascript:alert(1)">click</a>' mode="full" />,
       )
       expect(container.querySelector('a')?.getAttribute('href')).toBeNull()
+    })
+
+    it('strips SVG animations that could set a javascript: link', () => {
+      const content = [
+        '<svg><a><set attributeName="href" to="javascript:alert(1)"/>',
+        '<animate attributeName="href" values="javascript:alert(1)"/>',
+        '<animateMotion dur="1s"/><animateTransform attributeName="transform"/><discard/>',
+        '<text x="0" y="15">x</text></a></svg>',
+      ].join('')
+      const { container } = render(<MarkdownRenderer content={content} mode="full" />)
+
+      expect(container.querySelector('svg text')).not.toBeNull()
+      expect(container.querySelector('set, animate, animateMotion, animateTransform, discard')).toBeNull()
+      expect(container.innerHTML).not.toContain('javascript:')
+    })
+
+    it('neutralizes a javascript: url in any attribute, including xlink:href', () => {
+      const content =
+        '<svg><a xlink:href="javascript:alert(1)"><text>x</text></a></svg>\n\n<math href=" javascript:alert(1)"><mi>y</mi></math>'
+      const { container } = render(<MarkdownRenderer content={content} mode="full" />)
+
+      expect(container.querySelector('svg text')).not.toBeNull()
+      expect(container.innerHTML).not.toContain('javascript:')
     })
 
     it('keeps the style attribute and custom data attributes untouched', () => {

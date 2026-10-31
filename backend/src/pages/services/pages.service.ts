@@ -6,6 +6,7 @@ import type { AuthenticatedUser } from '../../common/strategies/jwt.strategy.js'
 import { CircularReferenceException } from '../../common/exceptions/pages/circular-reference.exception.js';
 import { InsufficientPagePermissionException } from '../../common/exceptions/pages/insufficient-page-permission.exception.js';
 import { PageAccessForbiddenException } from '../../common/exceptions/pages/page-access-forbidden.exception.js';
+import { PageContentTooLargeException } from '../../common/exceptions/pages/page-content-too-large.exception.js';
 import { PageHasChildrenException } from '../../common/exceptions/pages/page-has-children.exception.js';
 import { PageNotFoundException } from '../../common/exceptions/pages/page-not-found.exception.js';
 import { ParentPageNotFoundException } from '../../common/exceptions/pages/parent-page-not-found.exception.js';
@@ -16,6 +17,7 @@ import { ValidationException } from '../../common/exceptions/validation.exceptio
 import type { PageAction } from '../../common/permissions.js';
 import {
   CHANGE_SUMMARY_MAX_LENGTH,
+  PAGE_CONTENT_MAX_LENGTH,
   SLUG_MAX_LENGTH,
   RESERVED_CHILD_OF_ROOT_PAGE_SLUGS,
   RESERVED_ROOT_PAGE_SLUGS,
@@ -137,6 +139,14 @@ export class PagesService {
 
     PagesService.assertSlugNotReserved(dto.slug, parent);
 
+    const visibility = dto.visibility ?? parent?.visibility ?? 'private';
+    if (
+      visibility === 'public' &&
+      !(await this.permissionsService.canCreatePublicPageUnder(user, parentId))
+    ) {
+      throw new InsufficientPagePermissionException();
+    }
+
     const existing = await this.pagesRepository.findBySlugAndParent(
       dto.slug,
       parentId,
@@ -152,7 +162,7 @@ export class PagesService {
         title: dto.title,
         content: dto.content,
         parentId,
-        visibility: dto.visibility,
+        visibility,
         createdById,
       });
     } catch (error) {
@@ -171,7 +181,7 @@ export class PagesService {
     this.eventEmitter.emit(PAGE_TREE_CHANGED_EVENT);
     this.eventEmitter.emit(
       PAGE_CREATED_EVENT,
-      new PageCreatedEvent(result.page.id, createdById),
+      new PageCreatedEvent(result.page.id, createdById, result.version.content),
     );
     return { ...result, brokenLinks: await this.indexLinks(result, user) };
   }
@@ -431,6 +441,7 @@ export class PagesService {
     }
 
     await this.assertCan('page.restore_version', pageId, authorId);
+    PagesService.assertContentSize(content);
 
     const result = await this.pagesRepository.updateWithNewVersion({
       page,
@@ -635,6 +646,7 @@ export class PagesService {
     content: string,
     userId: string,
   ): Promise<PageMergePreviewResponseDto> {
+    this.validateMergePreview(baseVersionId, content);
     const page = await this.pagesRepository.findById(pageId);
     if (!page || !page.currentVersionId) {
       throw new PageNotFoundException();
@@ -760,6 +772,12 @@ export class PagesService {
       throw new SlugAlreadyExistsException();
     }
 
+    await this.assertCanOnAll(
+      'page.move',
+      await this.collectDescendantIds(id),
+      userId,
+    );
+
     const pathMove = await this.describePathMove(page, newParentId);
 
     let moved: Page;
@@ -845,21 +863,7 @@ export class PagesService {
     }
 
     const descendantIds = cascade ? await this.collectDescendantIds(id) : [];
-    if (descendantIds.length > 0) {
-      const user = await this.usersService.findById(userId);
-      const effectiveActions =
-        await this.permissionsService.getEffectivePageActionsBulk(
-          user,
-          descendantIds,
-        );
-      for (const descendantId of descendantIds) {
-        if (
-          !(effectiveActions.get(descendantId) ?? []).includes('page.delete')
-        ) {
-          throw new InsufficientPagePermissionException();
-        }
-      }
-    }
+    await this.assertCanOnAll('page.delete', descendantIds, userId);
     await this.pagesRepository.softDeleteBatch(
       [id, ...descendantIds],
       userId,
@@ -892,6 +896,11 @@ export class PagesService {
     }
 
     await this.assertCan('page.manage_visibility', id, userId);
+    await this.assertCanOnAll(
+      'page.manage_visibility',
+      await this.collectDescendantIds(id),
+      userId,
+    );
 
     const version = await this.pagesRepository.findVersionById(
       page.currentVersionId,
@@ -994,6 +1003,24 @@ export class PagesService {
     }
   }
 
+  private async assertCanOnAll(
+    action: PageAction,
+    pageIds: string[],
+    userId: string,
+  ): Promise<void> {
+    if (pageIds.length === 0) {
+      return;
+    }
+    const user = await this.usersService.findById(userId);
+    const effectiveActions =
+      await this.permissionsService.getEffectivePageActionsBulk(user, pageIds);
+    for (const pageId of pageIds) {
+      if (!(effectiveActions.get(pageId) ?? []).includes(action)) {
+        throw new InsufficientPagePermissionException();
+      }
+    }
+  }
+
   private async collectDescendantIds(id: string): Promise<string[]> {
     const children = await this.pagesRepository.findChildren(id);
     const ids: string[] = [];
@@ -1061,7 +1088,27 @@ export class PagesService {
     }
   }
 
+  private static assertContentSize(content: unknown): void {
+    if (
+      typeof content === 'string' &&
+      content.length > PAGE_CONTENT_MAX_LENGTH
+    ) {
+      throw new PageContentTooLargeException();
+    }
+  }
+
+  private validateMergePreview(baseVersionId: unknown, content: unknown): void {
+    if (typeof baseVersionId !== 'string') {
+      throw new ValidationException('baseVersionId must be a string');
+    }
+    if (typeof content !== 'string') {
+      throw new ValidationException('content must be a string');
+    }
+    PagesService.assertContentSize(content);
+  }
+
   private validateCreatePage(dto: CreatePageDto): void {
+    PagesService.assertContentSize(dto.content);
     const errors: string[] = [];
 
     if (!dto.slug || dto.slug.length > SLUG_MAX_LENGTH) {
@@ -1082,7 +1129,10 @@ export class PagesService {
       errors.push('content must be a string');
     }
 
-    if (!PAGE_VISIBILITIES.includes(dto.visibility)) {
+    if (
+      dto.visibility !== undefined &&
+      !PAGE_VISIBILITIES.includes(dto.visibility)
+    ) {
       errors.push(
         `visibility must be one of the following values: ${PAGE_VISIBILITIES.join(', ')}`,
       );
@@ -1120,6 +1170,7 @@ export class PagesService {
   }
 
   private validateUpdatePage(dto: UpdatePageDto): void {
+    PagesService.assertContentSize(dto.content);
     const errors: string[] = [];
 
     if (
