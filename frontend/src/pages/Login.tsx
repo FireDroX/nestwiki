@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Navigate, useNavigate, useSearchParams } from 'react-router'
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { isAxiosError } from 'axios'
 import { Controller, useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { FormError } from '#components/FormError'
+import { Mascot } from '#components/Mascot'
 import { TurnstileWidget } from '#components/Turnstile'
 import { Button } from '#components/ui/button'
 import { Field, FieldError, FieldGroup, FieldLabel } from '#components/ui/field'
@@ -206,6 +207,9 @@ export function Login() {
     <div className="flex min-h-svh items-center justify-center bg-muted/30 p-4">
       <div className="w-full max-w-sm rounded-lg border border-border bg-card p-6 shadow-sm">
         <div className="mb-6 text-center">
+          <Link to="/" title={t('auth.backHome')} aria-label={t('auth.backHome')} className="mx-auto mb-4 block w-fit">
+            <Mascot className="h-19" />
+          </Link>
           <h1 className="text-2xl font-semibold">{t('common.appName')}</h1>
           <p className="text-sm text-muted-foreground">{t('auth.appTagline')}</p>
         </div>

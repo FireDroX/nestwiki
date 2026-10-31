@@ -1,6 +1,7 @@
 {
   "common": {
     "appName": "NestWiki",
+    "mascotAlt": "Le rouge-gorge de NestWiki dans son nid, sur le logo",
     "cancel": "Annuler",
     "delete": "Supprimer",
     "back": "Retour",
@@ -14,6 +15,7 @@
   },
   "auth": {
     "appTagline": "La base de connaissance de l'équipe",
+    "backHome": "Retour à l'accueil",
     "loginTab": "Connexion",
     "registerTab": "Inscription",
     "emailLabel": "Adresse e-mail",

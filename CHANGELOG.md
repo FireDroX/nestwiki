@@ -2,6 +2,12 @@
 
 All notable changes to NestWiki are documented here, newest first, one `## <version> — <date>` section per release. This file is the single source for the in-app "Notes de version" page, which groups releases by minor version (`1.0`, `0.31`…). Entries up to 0.31.10 were written in French, the project's original language.
 
+## 1.4.6 — 2026-10-31
+
+- NestWiki a une mascotte : un rouge-gorge installé dans son nid, sur la barre rouge du logo, une page de wiki dans le bec. Elle accueille les visiteurs sur la page d'accueil et l'écran de connexion, et accompagne les messages « page introuvable », « accès refusé » et « erreur », en version claire ou sombre selon le thème.
+- Le logo de la barre du haut et l'icône de l'onglet du navigateur accueillent aussi le rouge-gorge dans son nid.
+- Nouvelle image d'aperçu pour les liens partagés (réseaux sociaux, messageries) : la mascotte à côté du nom NestWiki.
+
 ## 1.4.5 — 2026-10-31
 
 - Sécurité : avec `docker-compose.yml`, MySQL (`3306`) et le stockage objet (`9000`) ne sont plus publiés que sur `127.0.0.1`, comme le web et l'API. La console web du stockage (`9001`) est désactivée par défaut (`RUSTFS_CONSOLE_ENABLE=true` pour la rallumer). ⚠️ Si une autre machine joignait MySQL ou le stockage directement, ajoutez `BACKING_BIND_ADDRESS=0.0.0.0` au `.env` racine.
