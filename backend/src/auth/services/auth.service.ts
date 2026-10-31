@@ -14,6 +14,10 @@ import { InvalidTurnstileTokenException } from '../../common/exceptions/auth/inv
 import { WeakPasswordException } from '../../common/exceptions/auth/weak-password.exception.js';
 import { ValidationException } from '../../common/exceptions/validation.exception.js';
 import {
+  type SessionTokenPayload,
+  wasIssuedBeforePasswordChange,
+} from '../../common/session-token.js';
+import {
   ACCOUNT_LOCKOUT_DURATION_MINUTES,
   DISPLAY_NAME_MAX_LENGTH,
   DISPLAY_NAME_MIN_LENGTH,
@@ -21,6 +25,8 @@ import {
   MAX_FAILED_LOGIN_ATTEMPTS,
   MIN_PASSWORD_LENGTH,
   PASSWORD_COMPLEXITY_REGEX,
+  SESSION_ACCESS_TOKEN_TYPE,
+  SESSION_REFRESH_TOKEN_TYPE,
 } from '../../common/variables.global.js';
 import { PwnedPasswordService } from '../../security/services/pwned-password.service.js';
 import { TurnstileService } from '../../security/services/turnstile.service.js';
@@ -34,13 +40,6 @@ const SALT_ROUNDS = 10;
 const MYSQL_DUPLICATE_ENTRY_CODE = 'ER_DUP_ENTRY';
 const ACCESS_TOKEN_EXPIRATION = '15m';
 const REFRESH_TOKEN_EXPIRATION = '7d';
-
-interface JwtPayload {
-  sub: string;
-  email: string;
-  role: User['role'];
-  iat?: number;
-}
 
 export interface TokenPair {
   accessToken: string;
@@ -117,7 +116,10 @@ export class AuthService {
     return this.generateTokens(user);
   }
 
-  async changePassword(userId: string, dto: ChangePasswordDto): Promise<void> {
+  async changePassword(
+    userId: string,
+    dto: ChangePasswordDto,
+  ): Promise<TokenPair> {
     const user = await this.usersService.findById(userId);
 
     if (!(await bcrypt.compare(dto.currentPassword, user.passwordHash))) {
@@ -131,7 +133,10 @@ export class AuthService {
     }
 
     const passwordHash = await bcrypt.hash(dto.newPassword, SALT_ROUNDS);
-    await this.usersService.updatePassword(userId, passwordHash);
+    const updated = await this.usersService.updatePassword(
+      userId,
+      passwordHash,
+    );
 
     void this.userActivityLogService.record({
       userId,
@@ -139,6 +144,7 @@ export class AuthService {
       targetType: 'user',
       targetId: userId,
     });
+    return this.generateTokens(updated);
   }
 
   async refresh(
@@ -158,14 +164,7 @@ export class AuthService {
     if (!user.isActive) {
       throw new AccountDisabledException();
     }
-    if (
-      user.passwordChangedAt &&
-      payload.iat !== undefined &&
-      user.passwordChangedAt.getTime() > payload.iat * 1000
-    ) {
-      // The password was reset/changed after this refresh token was issued
-      // (e.g. an admin's forced reset-password) — the old session must not
-      // be able to keep minting fresh access tokens.
+    if (wasIssuedBeforePasswordChange(user, payload.iat)) {
       throw new InvalidRefreshTokenException();
     }
 
@@ -173,6 +172,7 @@ export class AuthService {
       sub: user.id,
       email: user.email,
       role: user.role,
+      type: SESSION_ACCESS_TOKEN_TYPE,
     });
 
     return { accessToken };
@@ -190,6 +190,10 @@ export class AuthService {
 
     if (user.lockedUntil && user.lockedUntil.getTime() > Date.now()) {
       throw new AccountLockedException(user.lockedUntil);
+    }
+    if (user.lockedUntil && user.failedLoginAttempts > 0) {
+      await this.usersService.resetFailedLoginAttempts(user.id);
+      user.failedLoginAttempts = 0;
     }
 
     if (!(await bcrypt.compare(password, user.passwordHash))) {
@@ -217,36 +221,50 @@ export class AuthService {
   }
 
   private generateTokens(user: User): TokenPair {
-    const payload: JwtPayload = {
+    const payload: SessionTokenPayload = {
       sub: user.id,
       email: user.email,
       role: user.role,
     };
 
-    const accessToken = this.generateAccessToken(payload);
-    const refreshToken = this.jwtService.sign(payload, {
-      secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
-      expiresIn: REFRESH_TOKEN_EXPIRATION,
+    const accessToken = this.generateAccessToken({
+      ...payload,
+      type: SESSION_ACCESS_TOKEN_TYPE,
     });
+    const refreshToken = this.jwtService.sign(
+      { ...payload, type: SESSION_REFRESH_TOKEN_TYPE },
+      {
+        secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
+        expiresIn: REFRESH_TOKEN_EXPIRATION,
+      },
+    );
 
     return { accessToken, refreshToken };
   }
 
-  private generateAccessToken(payload: JwtPayload): string {
+  private generateAccessToken(payload: SessionTokenPayload): string {
     return this.jwtService.sign(payload, {
       secret: this.configService.get<string>('JWT_ACCESS_SECRET'),
       expiresIn: ACCESS_TOKEN_EXPIRATION,
     });
   }
 
-  private verifyRefreshToken(refreshToken: string): JwtPayload {
+  private verifyRefreshToken(refreshToken: string): SessionTokenPayload {
+    let payload: SessionTokenPayload;
     try {
-      return this.jwtService.verify<JwtPayload>(refreshToken, {
+      payload = this.jwtService.verify<SessionTokenPayload>(refreshToken, {
         secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
       });
     } catch {
       throw new InvalidRefreshTokenException();
     }
+    if (
+      payload.type !== undefined &&
+      payload.type !== SESSION_REFRESH_TOKEN_TYPE
+    ) {
+      throw new InvalidRefreshTokenException();
+    }
+    return payload;
   }
 
   private validateLogin(dto: LoginDto): void {

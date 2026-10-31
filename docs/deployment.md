@@ -87,6 +87,10 @@ Le nginx du frontend envoie une `Content-Security-Policy` avec chaque page de l'
 
 Le chemin `/api` peut être routé directement vers le backend (c'est le cas de l'instance de l'auteur) : ces réponses JSON ne portent pas cette CSP, ce qui ne change rien puisqu'elles ne sont pas affichées comme des pages.
 
+### IP cliente derrière les proxys
+
+La limitation de débit (connexion, inscription, refresh) et Turnstile identifient le client par l'entrée de `X-Forwarded-For` ajoutée par le dernier proxy avant le backend : un client peut écrire ce qu'il veut au début de l'en-tête, mais pas la fin. `TRUST_PROXY_HOPS` (`backend/.env`, `1` par défaut) donne le nombre de proxys qui ajoutent une entrée : `1` quand le backend est atteint directement par le tunnel Cloudflare (instance de l'auteur, `/api` → `localhost:3000`) ou par le nginx du frontend, `2` si un tunnel ou un autre reverse proxy est placé devant le nginx du frontend. Une valeur trop basse fait partager la même limite à tous les visiteurs (l'IP du proxy) ; une valeur trop haute rend la limite contournable.
+
 Ces trois fichiers `.env` ne sont **jamais commités** (`.gitignore`) : sur un premier `git clone` sans eux, `docker compose up` échoue (variables manquantes) — c'est attendu, pas un bug. Une fois créés à la main comme ci-dessus, tous les déploiements suivants (manuels ou automatiques via CI/CD) fonctionnent.
 
 ## CI/CD

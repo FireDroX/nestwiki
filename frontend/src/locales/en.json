@@ -36,7 +36,14 @@
     "description": "{{name}} would like to connect to NestWiki on your behalf.",
     "allow": "Authorize",
     "deny": "Deny",
-    "notAdmin": "Only an administrator account can authorize this connection."
+    "notAdmin": "Only an administrator account can authorize this connection.",
+    "loading": "Loading the request…",
+    "loadError": "This access request is invalid or has expired.",
+    "redirectTo": "The authorization code will be sent to",
+    "unverified": "This client registered itself: NestWiki cannot verify its name. Only allow it if you just started this connection and this address really belongs to your tool.",
+    "scopesLabel": "Requested access",
+    "readOnly": "Read only",
+    "readOnlyHint": "The client will be able to read the wiki, but not change it or manage users."
   },
   "topbar": {
     "openSidebar": "Open navigation",

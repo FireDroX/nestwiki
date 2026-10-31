@@ -22,3 +22,9 @@ export interface OAuthClientSummaryDto {
   createdAt: Date;
   activeTokens: OAuthRefreshTokenSummaryDto[];
 }
+
+export interface OAuthConsentClientDto {
+  name: string;
+  redirectHost: string;
+  scopes: string[];
+}

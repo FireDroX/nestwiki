@@ -27,6 +27,10 @@ export const DEFAULT_LIMIT = 20;
 export const MAX_LIMIT = 100;
 export const ACCESS_TOKEN_COOKIE = 'accessToken';
 export const REFRESH_TOKEN_COOKIE = 'refreshToken';
+export const SESSION_ACCESS_TOKEN_TYPE = 'access';
+export const SESSION_REFRESH_TOKEN_TYPE = 'refresh';
+export const PASSWORD_CHANGE_CLOCK_TOLERANCE_MS = 1000;
+export const DEFAULT_TRUSTED_PROXY_HOPS = 1;
 export const SLUG_REGEX = /^[a-z0-9-]+$/;
 export const SLUG_MAX_LENGTH = 255;
 export const RESERVED_ROOT_PAGE_SLUGS: readonly string[] = ['tree', 'trash'];
@@ -110,6 +114,17 @@ export const OAUTH_AUTHORIZATION_CODE_EXPIRY_SECONDS = 60;
 export const OAUTH_ACCESS_TOKEN_EXPIRY_SECONDS = 3600;
 export const OAUTH_REFRESH_TOKEN_EXPIRY_DAYS = 30;
 export const OAUTH_PKCE_CODE_CHALLENGE_METHOD = 'S256';
+export const OAUTH_MAX_REDIRECT_URIS = 10;
+export const OAUTH_REDIRECT_URI_MAX_LENGTH = 2048;
+export const OAUTH_CLIENT_NAME_MAX_LENGTH = 255;
+export const OAUTH_REGISTER_THROTTLE_LIMIT = 5;
+export const OAUTH_REGISTER_THROTTLE_TTL_MS = 60_000;
+export const OAUTH_UNUSED_CLIENT_RETENTION_HOURS = 24;
+export const OAUTH_LOOPBACK_HOSTS: readonly string[] = [
+  'localhost',
+  '127.0.0.1',
+  '[::1]',
+];
 export const EXPORT_MAX_PAGES = 500;
 export const EXPORT_MAX_MEDIA = 200;
 export const WEBHOOK_NAME_MAX_LENGTH = 100;

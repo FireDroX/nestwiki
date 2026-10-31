@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { OAuthInvalidGrantException } from '../../common/exceptions/mcp/oauth-invalid-grant.exception.js';
 import { OAuthInvalidRequestException } from '../../common/exceptions/mcp/oauth-invalid-request.exception.js';
+import { wasIssuedBeforePasswordChange } from '../../common/session-token.js';
 import {
   MCP_SCOPES,
   OAUTH_ACCESS_TOKEN_EXPIRY_SECONDS,
@@ -12,6 +13,7 @@ import {
   OAUTH_REFRESH_TOKEN_EXPIRY_DAYS,
   OAUTH_REFRESH_TOKEN_PREFIX,
 } from '../../common/variables.global.js';
+import { UsersService } from '../../users/services/users.service.js';
 import { OAuthClient } from '../entities/oauth-client.entity.js';
 import type { OAuthRefreshTokenRepository } from '../persistence/oauth-refresh-token.repository.js';
 
@@ -23,6 +25,7 @@ interface PendingAuthorizationCode {
   userId: string;
   redirectUri: string;
   codeChallenge: string;
+  scopes: string[];
   expiresAt: number;
 }
 
@@ -38,6 +41,7 @@ export interface OAuthAccessTokenPayload {
   clientId: string;
   scopes: string[];
   type: 'mcp_oauth_access';
+  iat?: number;
 }
 
 @Injectable()
@@ -49,13 +53,31 @@ export class OAuthFlowService {
     private readonly refreshTokenRepository: OAuthRefreshTokenRepository,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly usersService: UsersService,
   ) {}
+
+  static resolveScopes(requested: string | undefined): string[] {
+    if (!requested || requested.trim().length === 0) {
+      return [...MCP_SCOPES];
+    }
+    const scopes = [
+      ...new Set(requested.split(/\s+/).filter((scope) => scope.length > 0)),
+    ];
+    const unknown = scopes.filter((scope) => !MCP_SCOPES.includes(scope));
+    if (unknown.length > 0) {
+      throw new OAuthInvalidRequestException(
+        `Unknown scope: ${unknown.join(' ')}`,
+      );
+    }
+    return MCP_SCOPES.filter((scope) => scopes.includes(scope));
+  }
 
   createAuthorizationCode(input: {
     clientDbId: string;
     userId: string;
     redirectUri: string;
     codeChallenge: string;
+    scopes: string[];
   }): string {
     const code = `${OAUTH_AUTHORIZATION_CODE_PREFIX}${randomBytes(24).toString('hex')}`;
     this.pendingCodes.set(code, {
@@ -87,7 +109,7 @@ export class OAuthFlowService {
       throw new OAuthInvalidGrantException();
     }
 
-    return this.issueTokenPair(input.client, pending.userId);
+    return this.issueTokenPair(input.client, pending.userId, pending.scopes);
   }
 
   async refresh(input: {
@@ -107,7 +129,26 @@ export class OAuthFlowService {
     }
 
     await this.refreshTokenRepository.revoke(stored.id);
-    return this.issueTokenPair(input.client, stored.userId);
+    await this.assertUserStillAuthorizes(stored.userId, stored.createdAt);
+    return this.issueTokenPair(input.client, stored.userId, stored.scopes);
+  }
+
+  private async assertUserStillAuthorizes(
+    userId: string,
+    grantedAt: Date,
+  ): Promise<void> {
+    const user = await this.usersService.findById(userId).catch(() => null);
+    if (
+      !user ||
+      !user.isActive ||
+      user.role !== 'admin' ||
+      wasIssuedBeforePasswordChange(
+        user,
+        Math.floor(grantedAt.getTime() / 1000),
+      )
+    ) {
+      throw new OAuthInvalidGrantException();
+    }
   }
 
   async revoke(
@@ -129,8 +170,8 @@ export class OAuthFlowService {
   private async issueTokenPair(
     client: OAuthClient,
     userId: string,
+    scopes: string[],
   ): Promise<OAuthTokenPair> {
-    const scopes = [...MCP_SCOPES];
     const payload: OAuthAccessTokenPayload = {
       sub: userId,
       clientId: client.id,

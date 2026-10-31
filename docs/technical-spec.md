@@ -303,6 +303,11 @@ Les événements (`page.created`, `page.updated`, `page.moved`, `page.deleted`, 
 | POST    | /auth/register | non  | Inscription — rate limit strict + Turnstile requis (EPIC-20) |
 | POST    | /auth/login    | non  | Connexion — rate limit strict + Turnstile requis, verrouillage après échecs répétés (EPIC-20) |
 | POST    | /auth/refresh  | non  | Rafraîchir le token |
+| PATCH   | /auth/password | oui  | Changer son mot de passe ; dépose de nouveaux cookies de session, toutes les autres sessions et les accès OAuth MCP de l'utilisateur sont coupés |
+
+Les jetons de session portent un `type` (`access` ou `refresh`) : un jeton d'un autre type, dont les jetons OAuth MCP signés avec le même secret, est refusé comme session. À chaque requête, `JwtStrategy` (via `SessionUserResolver`) recharge l'utilisateur : compte supprimé ou désactivé, ou jeton émis avant le dernier changement de mot de passe → 401, et le rôle vient de la base, pas du jeton. Le socket temps réel est authentifié de la même façon à la connexion, déconnecté à l'expiration de son jeton (le frontend rafraîchit la session et se reconnecte), et chaque événement d'une page est revérifié pour chaque socket abonné : un socket qui a perdu `page.read` quitte la room. Après expiration d'un verrouillage de compte, le compteur d'échecs repart de zéro.
+
+L'IP cliente utilisée pour la limitation de débit et Turnstile est l'entrée de `X-Forwarded-For` ajoutée par le reverse proxy le plus proche (la dernière par défaut, `TRUST_PROXY_HOPS` dans `backend/.env` pour plusieurs proxys en série) ; les entrées écrites par le client sont ignorées.
 
 ### Users
 
@@ -424,7 +429,11 @@ Voir aussi `/pages/*path` et `/pages/tree`, qui exposent respectivement `permiss
 
 | Méthode   | Route                   | Auth                 | Description                                         |
 | --------- | ----------------------- | -------------------- | --------------------------------------------------- |
-| POST /GET | /mcp                    | clé API MCP (scopes) | Transport MCP (JSON-RPC), expose les tools `wiki_*` |
+| POST /GET | /mcp                    | clé API MCP ou jeton OAuth (scopes) | Transport MCP (JSON-RPC), expose les tools `wiki_*` avec leurs annotations (`readOnlyHint`, `destructiveHint`) ; une session `mcp-session-id` n'accepte que la clé (ou le client OAuth et l'utilisateur) qui l'a ouverte |
+| POST      | /oauth/register         | non                  | Enregistrement dynamique d'un client OAuth : 10 `redirect_uris` au plus (2 048 caractères chacune, `https`, ou `http` vers `localhost`/`127.0.0.1`/`[::1]`), `client_name` ≤ 255 caractères ; 5 requêtes/min ; les clients jamais utilisés depuis 24 h sont purgés |
+| GET       | /oauth/authorize        | session              | Valide `client_id`, `redirect_uri` et `scope` (facultatif, tous les scopes MCP par défaut, `invalid_scope` si inconnu), puis redirige vers l'écran de consentement |
+| GET       | /oauth/authorize/client | session              | Pour l'écran de consentement : nom enregistré du client, hôte de redirection et scopes demandés |
+| POST      | /oauth/authorize/decision | admin              | Accorder (`scope` : sous-ensemble choisi, ex. lecture seule) ou refuser l'accès ; les jetons OAuth ne portent que les scopes accordés, et le refresh est refusé si l'admin a été rétrogradé, désactivé ou a changé de mot de passe |
 | POST      | /admin/mcp/api-keys     | admin                | Créer une clé API MCP                               |
 | GET       | /admin/mcp/api-keys     | admin                | Lister les clés API MCP                             |
 | DELETE    | /admin/mcp/api-keys/:id | admin                | Révoquer une clé                                    |

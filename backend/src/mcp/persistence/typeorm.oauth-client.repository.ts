@@ -29,4 +29,11 @@ export class TypeormOAuthClientRepository implements OAuthClientRepository {
   findByClientId(clientId: string): Promise<OAuthClient | null> {
     return this.repository.findOneBy({ clientId });
   }
+
+  async deleteWithoutTokensCreatedBefore(cutoff: Date): Promise<void> {
+    await this.repository.query(
+      'DELETE FROM `oauth_clients` WHERE `created_at` < ? AND NOT EXISTS (SELECT 1 FROM `oauth_refresh_tokens` WHERE `oauth_refresh_tokens`.`client_id` = `oauth_clients`.`id`)',
+      [cutoff],
+    );
+  }
 }

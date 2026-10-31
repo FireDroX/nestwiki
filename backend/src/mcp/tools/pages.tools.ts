@@ -166,6 +166,7 @@ export function buildPagesTools(
         cascade: z.boolean().optional(),
       },
       requiredScopes: [PAGES_WRITE_SCOPE],
+      destructive: true,
       handler: async (input, ctx) => {
         await pagesService.deletePage(
           input.pageId,
@@ -205,6 +206,7 @@ export function buildPagesTools(
         visibility: z.enum(PAGE_VISIBILITIES),
       },
       requiredScopes: [PAGES_WRITE_SCOPE],
+      destructive: true,
       handler: async (input, ctx) => {
         const { page } = await pagesService.setVisibility(
           input.pageId,

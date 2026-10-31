@@ -1,8 +1,10 @@
+import { ResponseDto } from '../../common/dto/response.dto.js';
 import { OAuthClient } from '../entities/oauth-client.entity.js';
 import { OAuthRefreshToken } from '../entities/oauth-refresh-token.entity.js';
 import {
   OAuthClientRegisteredResponseDto,
   OAuthClientSummaryDto,
+  OAuthConsentClientDto,
 } from '../dto/out/oauth-client-response.dto.js';
 
 export class OAuthClientMapper {
@@ -17,6 +19,18 @@ export class OAuthClientMapper {
       redirect_uris: entity.redirectUris,
       client_name: entity.name,
     };
+  }
+
+  static toConsentResponse(
+    entity: OAuthClient,
+    redirectUri: string,
+    scopes: string[],
+  ): ResponseDto<OAuthConsentClientDto> {
+    return new ResponseDto({
+      name: entity.name,
+      redirectHost: new URL(redirectUri).host,
+      scopes,
+    });
   }
 
   static toAdminSummary(

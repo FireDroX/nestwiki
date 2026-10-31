@@ -425,6 +425,8 @@ Les ports \`3000\` et \`8080\` sont publiés sur \`BIND_ADDRESS\` (\`127.0.0.1\`
 
 Le frontend envoie une Content-Security-Policy (scripts du site et de Cloudflare Turnstile uniquement). Pour afficher le wiki dans une iframe sur un autre site, lister les sites autorisés dans \`CSP_FRAME_ANCESTORS\` du \`.env\` racine, guillemets doubles compris : \`CSP_FRAME_ANCESTORS="'self' https://example.org"\` (\`'self'\` par défaut). Un proxy placé devant ne doit pas remplacer cet en-tête.
 
+La limitation de débit et Turnstile identifient le visiteur par la dernière entrée de \`X-Forwarded-For\`, celle qu'ajoute le proxy devant le backend. Si un tunnel ou un autre reverse proxy est placé devant le nginx du frontend, mettre \`TRUST_PROXY_HOPS=2\` dans \`backend/.env\`, sinon tous les visiteurs partagent la même limite.
+
 **Version allégée (mariadb/minio déjà existants) :**
 
 \`\`\`bash

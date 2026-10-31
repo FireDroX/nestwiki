@@ -90,6 +90,7 @@ export function buildUsersTools(
       description: "Modifier le rôle d'un utilisateur",
       inputSchema: { userId: z.string(), role: z.enum(USER_ROLES) },
       requiredScopes: [USERS_WRITE_SCOPE],
+      destructive: true,
       hideWithoutScope: true,
       handler: async (input, ctx) => {
         const actor = await resolveMcpUser(usersService, ctx);
@@ -126,6 +127,7 @@ export function buildUsersTools(
       description: "Remplacer la liste des groupes d'un utilisateur",
       inputSchema: { userId: z.string(), groupIds: z.array(z.string()) },
       requiredScopes: [USERS_WRITE_SCOPE],
+      destructive: true,
       hideWithoutScope: true,
       handler: async (input, ctx) => {
         const actor = await resolveMcpUser(usersService, ctx);
@@ -174,6 +176,7 @@ export function buildUsersTools(
         permissions: z.array(z.enum(GLOBAL_PERMISSIONS)),
       },
       requiredScopes: [USERS_WRITE_SCOPE],
+      destructive: true,
       hideWithoutScope: true,
       handler: async (input, ctx) => {
         const actor = await resolveMcpUser(usersService, ctx);

@@ -20,6 +20,13 @@ async function refreshAccessToken(): Promise<void> {
   )
 }
 
+export function refreshSession(): Promise<void> {
+  refreshPromise ??= refreshAccessToken().finally(() => {
+    refreshPromise = null
+  })
+  return refreshPromise
+}
+
 export const AUTH_LOGOUT_EVENT = 'auth:logout'
 
 function logout(): void {
@@ -38,10 +45,7 @@ apiClient.interceptors.response.use(
     originalRequest._retry = true
 
     try {
-      refreshPromise ??= refreshAccessToken().finally(() => {
-        refreshPromise = null
-      })
-      await refreshPromise
+      await refreshSession()
       const { reconnectRealtimeSocket } = await import('#lib/realtime-client')
       reconnectRealtimeSocket()
       return apiClient(originalRequest)

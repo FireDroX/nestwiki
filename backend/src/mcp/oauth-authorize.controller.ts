@@ -12,23 +12,24 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { JwtService } from '@nestjs/jwt';
 import { ApiExcludeEndpoint, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { CurrentUser } from '../common/decorators/current-user.decorator.js';
 import { ResponseDto } from '../common/dto/response.dto.js';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard.js';
+import { SessionUserResolver } from '../common/services/session-user.resolver.js';
 import type { AuthenticatedUser } from '../common/strategies/jwt.strategy.js';
 import {
   ACCESS_TOKEN_COOKIE,
   OAUTH_PKCE_CODE_CHALLENGE_METHOD,
 } from '../common/variables.global.js';
-import type { UserRole } from '../users/entities/user.entity.js';
 import { OAuthAuthorizeDecisionDto } from './dto/in/oauth-authorize-decision.dto.js';
 import { OAuthAuthorizeDecisionResponseDto } from './dto/out/oauth-authorize-decision-response.dto.js';
+import { OAuthConsentClientDto } from './dto/out/oauth-client-response.dto.js';
 import { OAuthAccessDeniedException } from '../common/exceptions/mcp/oauth-access-denied.exception.js';
 import { OAuthInvalidRequestException } from '../common/exceptions/mcp/oauth-invalid-request.exception.js';
 import { McpExceptionFilter } from './filter/mcp.exception.filter.js';
+import { OAuthClientMapper } from './mapper/oauth-client.mapper.js';
 import { OAuthExceptionFilter } from './filter/oauth.exception.filter.js';
 import { OAuthClientsService } from './services/oauth-clients.service.js';
 import { OAuthFlowService } from './services/oauth-flow.service.js';
@@ -41,6 +42,13 @@ interface AuthorizeQuery {
   code_challenge: string;
   code_challenge_method: string;
   state?: string;
+  scope?: string;
+}
+
+interface ConsentClientQuery {
+  client_id: string;
+  redirect_uri: string;
+  scope?: string;
 }
 
 @ApiTags('OAuth')
@@ -50,7 +58,7 @@ export class OAuthAuthorizeController {
     private readonly oauthClientsService: OAuthClientsService,
     private readonly oauthFlowService: OAuthFlowService,
     private readonly adminAuditLogService: AdminAuditLogService,
-    private readonly jwtService: JwtService,
+    private readonly sessionUserResolver: SessionUserResolver,
     private readonly configService: ConfigService,
   ) {}
 
@@ -100,20 +108,34 @@ export class OAuthAuthorizeController {
       return;
     }
 
+    let scopes: string[];
+    try {
+      scopes = OAuthFlowService.resolveScopes(query.scope);
+    } catch {
+      res.redirect(
+        OAuthAuthorizeController.buildErrorRedirect(
+          query.redirect_uri,
+          'invalid_scope',
+          query.state,
+        ),
+      );
+      return;
+    }
+
     const frontendUrl = this.configService.get<string>('FRONTEND_URL');
     const consentParams = new URLSearchParams({
       client_id: query.client_id,
-      client_name: client.name,
       redirect_uri: query.redirect_uri,
       code_challenge: query.code_challenge,
       code_challenge_method: query.code_challenge_method,
+      scope: scopes.join(' '),
     });
     if (query.state) {
       consentParams.set('state', query.state);
     }
     const consentUrl = `${frontendUrl}/oauth/consent?${consentParams.toString()}`;
 
-    const sessionUser = this.getSessionUser(req);
+    const sessionUser = await this.getSessionUser(req);
     if (!sessionUser) {
       const loginUrl = `${frontendUrl}/login?redirect=${encodeURIComponent(consentUrl)}`;
       res.redirect(loginUrl);
@@ -121,6 +143,29 @@ export class OAuthAuthorizeController {
     }
 
     res.redirect(consentUrl);
+  }
+
+  @Get('authorize/client')
+  @UseGuards(JwtAuthGuard)
+  @UseFilters(McpExceptionFilter)
+  @ApiOperation({
+    summary:
+      "Client OAuth d'une demande d'accès : nom enregistré, hôte de redirection et scopes demandés",
+  })
+  async getConsentClient(
+    @Query() query: ConsentClientQuery,
+  ): Promise<ResponseDto<OAuthConsentClientDto>> {
+    const client = await this.oauthClientsService.getByClientId(
+      query.client_id,
+    );
+    if (!client.redirectUris.includes(query.redirect_uri)) {
+      throw new OAuthInvalidRequestException('Unregistered redirect_uri');
+    }
+    return OAuthClientMapper.toConsentResponse(
+      client,
+      query.redirect_uri,
+      OAuthFlowService.resolveScopes(query.scope),
+    );
   }
 
   @Post('authorize/decision')
@@ -170,11 +215,13 @@ export class OAuthAuthorizeController {
       );
     }
 
+    const scopes = OAuthFlowService.resolveScopes(dto.scope);
     const code = this.oauthFlowService.createAuthorizationCode({
       clientDbId: client.id,
       userId: user.id,
       redirectUri: dto.redirectUri,
       codeChallenge: dto.codeChallenge,
+      scopes,
     });
 
     await this.adminAuditLogService.record({
@@ -182,6 +229,7 @@ export class OAuthAuthorizeController {
       action: 'mcp.oauth_authorized',
       targetType: 'oauth_client',
       targetId: client.id,
+      metadata: { scopes },
     });
 
     const redirectParams = new URLSearchParams({ code });
@@ -193,23 +241,15 @@ export class OAuthAuthorizeController {
     });
   }
 
-  private getSessionUser(req: Request): AuthenticatedUser | null {
+  private async getSessionUser(
+    req: Request,
+  ): Promise<AuthenticatedUser | null> {
     const token = req.cookies?.[ACCESS_TOKEN_COOKIE] as string | undefined;
     if (!token) {
       return null;
     }
-    try {
-      const payload = this.jwtService.verify<{
-        sub: string;
-        email: string;
-        role: UserRole;
-      }>(token, {
-        secret: this.configService.get<string>('JWT_ACCESS_SECRET'),
-      });
-      return { id: payload.sub, email: payload.email, role: payload.role };
-    } catch {
-      return null;
-    }
+    const session = await this.sessionUserResolver.verify(token);
+    return session?.user ?? null;
   }
 
   private static buildErrorRedirect(

@@ -98,6 +98,7 @@ export function buildTagsTools(
       description: 'Supprimer un tag (cascade sur les pages liées)',
       inputSchema: { tagId: z.string() },
       requiredScopes: [TAGS_WRITE_SCOPE],
+      destructive: true,
       handler: async (input, ctx) => {
         const user = await resolveMcpUser(usersService, ctx);
         await requireGlobalPermission(permissionsService, user, 'tag.delete');

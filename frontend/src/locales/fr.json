@@ -36,7 +36,14 @@
     "description": "{{name}} souhaite se connecter à NestWiki en votre nom.",
     "allow": "Autoriser",
     "deny": "Refuser",
-    "notAdmin": "Seul un compte administrateur peut autoriser cette connexion."
+    "notAdmin": "Seul un compte administrateur peut autoriser cette connexion.",
+    "loading": "Chargement de la demande…",
+    "loadError": "Cette demande d'accès est invalide ou a expiré.",
+    "redirectTo": "Le code d'autorisation sera envoyé à",
+    "unverified": "Ce client s'est enregistré lui-même : NestWiki ne peut pas vérifier son nom. N'autorisez que si vous venez de lancer cette connexion et que cette adresse est bien celle de votre outil.",
+    "scopesLabel": "Accès demandés",
+    "readOnly": "Lecture seule",
+    "readOnlyHint": "Le client pourra lire le wiki, mais ni le modifier ni gérer les utilisateurs."
   },
   "topbar": {
     "openSidebar": "Ouvrir la navigation",

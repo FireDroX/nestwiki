@@ -153,9 +153,9 @@ describe('PermissionsService', () => {
       expect(groupsRepository.findGroupIdsForUser).not.toHaveBeenCalled();
     });
 
-    it('returns true for an inactive admin (literal rule order: admin check before isActive check)', async () => {
+    it('returns false for an inactive admin: the account status is checked first', async () => {
       const inactiveAdmin = buildUser({ role: 'admin', isActive: false });
-      expect(await service.hasGlobal(inactiveAdmin, 'user.manage')).toBe(true);
+      expect(await service.hasGlobal(inactiveAdmin, 'user.manage')).toBe(false);
     });
 
     it('returns false for an inactive non-admin user even if they hold the permission directly', async () => {
@@ -289,12 +289,12 @@ describe('PermissionsService', () => {
       expect(await service.can(admin, 'page.delete', 'p1')).toBe(true);
     });
 
-    it('grants everything to an inactive admin (literal rule order)', async () => {
+    it('grants nothing on a private page to an inactive admin', async () => {
       const inactiveAdmin = buildUser({ role: 'admin', isActive: false });
       pageHierarchyRepository.findChains.mockResolvedValue(
         chainFor('p1', 'private', ['p1']),
       );
-      expect(await service.can(inactiveAdmin, 'page.delete', 'p1')).toBe(true);
+      expect(await service.can(inactiveAdmin, 'page.delete', 'p1')).toBe(false);
     });
 
     it('grants an action via a direct user rule scoped to exactly this page', async () => {
@@ -634,7 +634,7 @@ describe('PermissionsService', () => {
       ).toEqual(['page.read']);
     });
 
-    it('returns every action for an inactive admin', async () => {
+    it('returns no action on a private page for an inactive admin', async () => {
       const inactiveAdmin = buildUser({ role: 'admin', isActive: false });
       pageHierarchyRepository.findChains.mockResolvedValue(
         new Map([
@@ -642,7 +642,7 @@ describe('PermissionsService', () => {
         ]),
       );
       const result = await service.getEffectivePageActions(inactiveAdmin, 'p1');
-      expect(result.length).toBe(9);
+      expect(result).toEqual([]);
     });
   });
 

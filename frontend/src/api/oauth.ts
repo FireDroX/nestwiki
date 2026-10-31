@@ -7,6 +7,7 @@ export interface OAuthAuthorizeDecisionPayload {
   codeChallenge: string
   codeChallengeMethod: string
   state?: string
+  scope?: string
   decision: 'allow' | 'deny'
 }
 
@@ -21,5 +22,22 @@ export async function postAuthorizeDecision(
     '/oauth/authorize/decision',
     payload,
   )
+  return data.data
+}
+
+export interface OAuthConsentClient {
+  name: string
+  redirectHost: string
+  scopes: string[]
+}
+
+export async function getConsentClient(params: {
+  clientId: string
+  redirectUri: string
+  scope?: string
+}): Promise<OAuthConsentClient> {
+  const { data } = await apiClient.get<ResponseDto<OAuthConsentClient>>('/oauth/authorize/client', {
+    params: { client_id: params.clientId, redirect_uri: params.redirectUri, scope: params.scope },
+  })
   return data.data
 }
