@@ -1,21 +1,33 @@
 name: Deploy
 
-# Runs only after the CI workflow completes successfully on main — never
-# on a PR, and never if lint/tests/build failed.
+# Runs only after the CI workflow completes successfully for a push to
+# main of this repository. The `branches` filter of `workflow_run` only
+# matches the branch *name* of the triggering run — a pull request from
+# a fork whose branch is called `main` would match it too — so the job
+# condition below also checks the event and the head repository.
 on:
   workflow_run:
     workflows: [CI]
     types: [completed]
     branches: [main]
 
+permissions: {}
+
 env:
   REGISTRY: ghcr.io
+  CLOUDFLARED_VERSION: 2026.10.1
+  CLOUDFLARED_SHA256: 3bfc539f45d2620c71debb7a86be0efa737ed5ccbad9eb85c787116900e5c586
 
 jobs:
   deploy:
     name: deploy
     runs-on: ubuntu-latest
-    if: github.repository == 'FireDroX/nestwiki' && github.event.workflow_run.conclusion == 'success'
+    if: >-
+      github.repository == 'FireDroX/nestwiki' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
     permissions:
       packages: read
     # ssh.addrien.fr sits behind Cloudflare Access: cloudflared (the SSH
@@ -25,35 +37,51 @@ jobs:
       TUNNEL_SERVICE_TOKEN_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
       TUNNEL_SERVICE_TOKEN_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
     steps:
-      - name: Install cloudflared
+      - name: Install cloudflared (pinned version, checksum verified)
         run: |
-          curl -fsSL -o cloudflared https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64
+          curl -fsSL -o cloudflared "https://github.com/cloudflare/cloudflared/releases/download/${CLOUDFLARED_VERSION}/cloudflared-linux-amd64"
+          echo "${CLOUDFLARED_SHA256}  cloudflared" | sha256sum -c -
           chmod +x cloudflared
           sudo mv cloudflared /usr/local/bin/cloudflared
           cloudflared --version
 
+      # DEPLOY_SSH_HOST_KEY is the server's public host key (the content
+      # of /etc/ssh/ssh_host_ed25519_key.pub): the connection is refused
+      # if the server answers with any other key.
       - name: Configure SSH over the Cloudflare Tunnel
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
+          SSH_HOST_KEY: ${{ secrets.DEPLOY_SSH_HOST_KEY }}
+          SSH_HOSTNAME: ${{ secrets.DEPLOY_SSH_HOSTNAME }}
+          SSH_USER: ${{ secrets.DEPLOY_SSH_USER }}
         run: |
+          if [ -z "$SSH_HOST_KEY" ]; then
+            echo "The DEPLOY_SSH_HOST_KEY secret is missing: see docs/deployment.md." >&2
+            exit 1
+          fi
           mkdir -p ~/.ssh
-          printf '%s\n' "${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
+          printf '%s %s\n' "$SSH_HOSTNAME" "$SSH_HOST_KEY" > ~/.ssh/known_hosts
           cat >> ~/.ssh/config <<EOF
           Host deploy-target
-            HostName ${{ secrets.DEPLOY_SSH_HOSTNAME }}
-            User ${{ secrets.DEPLOY_SSH_USER }}
+            HostName ${SSH_HOSTNAME}
+            User ${SSH_USER}
             IdentityFile ~/.ssh/id_ed25519
-            StrictHostKeyChecking no
-            UserKnownHostsFile /dev/null
+            StrictHostKeyChecking yes
+            UserKnownHostsFile ~/.ssh/known_hosts
             ProxyCommand cloudflared access ssh --hostname %h
           EOF
 
-      # GITHUB_TOKEN is masked in the log automatically. This login is
-      # scoped to the deploy target's docker daemon and only needs to
-      # survive long enough for the `pull` step right after — the
-      # token itself expires with this job run.
+      # The token goes through ssh's stdin, never on a command line
+      # (neither here nor on the deploy target, where `ps` would show
+      # it). It expires with this job run.
       - name: Log in to the Container registry on the deploy target
+        env:
+          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REGISTRY_USER: ${{ github.actor }}
         run: |
-          ssh deploy-target "echo '${{ secrets.GITHUB_TOKEN }}' | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin"
+          printf '%s' "$REGISTRY_TOKEN" | ssh deploy-target "docker login ${REGISTRY} -u ${REGISTRY_USER} --password-stdin"
 
       # First deploy on a fresh server is expected to fail here: the
       # .env files (root, backend/, frontend/) aren't committed to git,
@@ -61,13 +89,27 @@ jobs:
       # someone creates them by hand on the server. Every deploy after
       # that succeeds.
       #
-      # docker-compose.external.yml (not the full docker-compose.yml):
-      # this deploy target reuses an already-existing mariadb/minio
-      # rather than running its own — see the Déploiement wiki page.
-      # Images are pulled pre-built from GHCR (job build-and-push-images
-      # in ci.yml), never rebuilt from source here. DEPLOY_PATH is
-      # intentionally unquoted below so `~` in it still expands
-      # remotely (quoted, bash treats `~` as a literal char).
-      - name: git pull && docker compose (external) pull && up -d
+      # The server moves to the exact commit CI tested (fast-forward
+      # only) and runs the images tagged with that commit's version, so
+      # a newer push to main can't slip in between. docker-compose
+      # .external.yml (not the full docker-compose.yml): this deploy
+      # target reuses an already-existing mariadb/minio rather than
+      # running its own — see the Déploiement wiki page. Images are
+      # pulled pre-built from GHCR, never rebuilt from source here.
+      # DEPLOY_PATH is intentionally unquoted below so `~` in it still
+      # expands remotely (quoted, bash treats `~` as a literal char).
+      - name: Check out the tested commit && docker compose (external) pull && up -d
+        env:
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
-          ssh deploy-target "cd ${{ secrets.DEPLOY_PATH }} && git pull && docker compose -f docker-compose.external.yml pull && docker compose -f docker-compose.external.yml up -d"
+          ssh deploy-target bash -s <<EOF
+          set -e
+          cd ${DEPLOY_PATH}
+          git fetch origin main
+          git merge --ff-only ${HEAD_SHA}
+          export NESTWIKI_TAG="\$(grep -m 1 '"version"' package.json | cut -d '"' -f 4)"
+          echo "Deploying \${NESTWIKI_TAG} (${HEAD_SHA})"
+          docker compose -f docker-compose.external.yml pull
+          docker compose -f docker-compose.external.yml up -d
+          EOF

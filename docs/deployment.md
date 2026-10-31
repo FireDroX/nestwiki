@@ -50,8 +50,8 @@ Si le stockage objet (S3-compatible) n'existe pas encore et que vous voulez le l
 ```bash
 docker run -d --name minio --network mariadb-network --restart unless-stopped \
   -e RUSTFS_ACCESS_KEY=<clé-accès> -e RUSTFS_SECRET_KEY=<clé-secrète> \
-  -e RUSTFS_ADDRESS=":9000" -e RUSTFS_CONSOLE_ADDRESS=":9001" -e RUSTFS_CONSOLE_ENABLE=true \
-  -p 9000:9000 -p 9001:9001 -v minio-data:/data \
+  -e RUSTFS_ADDRESS=":9000" -e RUSTFS_CONSOLE_ENABLE=false \
+  -p 127.0.0.1:9000:9000 -v minio-data:/data \
   rustfs/rustfs:latest /data
 ```
 
@@ -66,7 +66,7 @@ docker run --rm -v <nom-projet>_minio-data:/data alpine chown -R 10001:10001 /da
 
 ### Isolation réseau
 
-Une RCE dans un conteneur ne doit pas donner accès aux autres services. Les deux compose publient les ports `3000`/`8080` sur `BIND_ADDRESS` (`127.0.0.1` par défaut : seul un reverse proxy ou un tunnel tournant sur l'hôte les atteint) et laissent le frontend sur le seul réseau `default`, avec le backend : il ne voit ni la base ni le stockage. `docker-compose.yml` met `mysql`/`minio` sur un réseau `backing` partagé uniquement avec le backend.
+Une RCE dans un conteneur ne doit pas donner accès aux autres services. Les deux compose publient les ports `3000`/`8080` sur `BIND_ADDRESS` (`127.0.0.1` par défaut : seul un reverse proxy ou un tunnel tournant sur l'hôte les atteint) et laissent le frontend sur le seul réseau `default`, avec le backend : il ne voit ni la base ni le stockage. `docker-compose.yml` met `mysql`/`minio` sur un réseau `backing` partagé uniquement avec le backend, et publie leurs ports (`3306`, `9000`, console `9001` désactivée par défaut) sur `BACKING_BIND_ADDRESS`, `127.0.0.1` par défaut.
 
 Avec `docker-compose.external.yml`, isoler le backend des autres conteneurs du serveur demande des réseaux `--internal` dédiés, partagés uniquement avec la base et le stockage. Exemple de l'instance de l'auteur (sous-réseaux fixes pour pouvoir restreindre l'hôte de l'utilisateur SQL, ex. `'nestwiki'@'172.31.10.%'`) :
 
@@ -99,22 +99,27 @@ Deux branches longues : **`dev`**, branche d'intégration où sont mergées les 
 
 - `.github/workflows/ci.yml` — sur chaque PR vers `main` ou `dev` et chaque push vers ces deux branches, en parallèle : lint + tests unitaires backend, tests e2e backend, lint + tests frontend, et build des deux images Docker (job `image`, cache de couches `type=gha`). L'image backend est démarrée contre une vraie base MySQL et un stockage objet (smoke test : migrations, seeds, `/api/health`). Sur un push vers `main` ou `dev`, `image` pousse seulement le tag `sha-<commit>` sur GHCR (`ghcr.io/firedrox/nestwiki-{backend,frontend}`) ; une fois tous les tests verts, le job `release` ajoute à ces images testées les tags `latest`, `X.Y.Z` et `X.Y` (lus dans `package.json`, via `docker buildx imagetools create`, sans rebuild), puis publie la release GitHub `vX.Y.Z` (texte = section `## X.Y.Z` de `CHANGELOG.md`, tag posé sur le commit de `main`), marquée « latest » ; les pré-releases des versions arrivées avec ce merge (voir `dev` ci-dessous) deviennent des releases, et celle de `vX.Y.Z` est remplacée. Rien n'est fait si `vX.Y.Z` est déjà une release.
 - Sur un push vers `dev`, une fois tous les tests verts, le job `prerelease` ajoute aux images testées les tags `dev` et `X.Y.Z-dev`, puis publie `vX.Y.Z` comme **pré-release** GitHub (même texte tiré de `CHANGELOG.md`). Un nouveau push de la même version (corrections après relecture) déplace la pré-release sur le nouveau commit ; une version déjà publiée en release n'est jamais touchée. Aucun déploiement : pour essayer une pré-release, `docker compose -f docker-compose.external.yml` avec les images `:dev` à la place de `:latest`. Les Dockerfiles retirent le champ `version` des `package.json` avant d'installer les dépendances : le bump de version de chaque ticket ne change donc pas la couche `node_modules`, que le serveur n'a à retélécharger que quand le lockfile change.
-- `.github/workflows/deploy.yml` — se déclenche uniquement quand `ci.yml` vient de réussir sur `main` (`workflow_run`, jamais sur une PR ni sur `dev`), et seulement sur le dépôt `FireDroX/nestwiki` (jamais sur un fork) : se connecte en SSH au serveur via un tunnel Cloudflare, se log in à GHCR, puis `git pull && docker compose pull && docker compose up -d` — pull les images déjà construites par `ci.yml`, jamais de rebuild sur le serveur.
+- `.github/workflows/deploy.yml` — se déclenche uniquement quand `ci.yml` vient de réussir pour un **push** sur `main` du dépôt `FireDroX/nestwiki` (`workflow_run`). Le filtre `branches` de `workflow_run` ne regarde que le nom de branche : une PR venue d'un fork dont la branche s'appelle `main` y correspondrait aussi, d'où la condition du job sur `event == 'push'`, `head_branch` et `head_repository`. Il installe `cloudflared` à une version fixe dont la somme SHA256 est vérifiée, se connecte en SSH au serveur via le tunnel Cloudflare en vérifiant sa clé d'hôte, se log in à GHCR (jeton passé sur l'entrée standard, jamais sur une ligne de commande), avance le clone du serveur sur le commit testé (`git merge --ff-only <sha>`), puis `docker compose pull && up -d` avec `NESTWIKI_TAG` = version de ce commit : les images déjà construites et taguées `X.Y.Z` par `ci.yml`, jamais de rebuild sur le serveur.
+- Les actions tierces de `ci.yml` sont épinglées par SHA de commit (version en commentaire, mises à jour par Dependabot), le workflow n'a par défaut que `contents: read`, et les checkouts ne gardent pas le jeton dans `.git/config` (`persist-credentials: false`).
 
-Le déploiement passe par un tunnel Cloudflare (`cloudflared`) plutôt que d'exposer SSH publiquement — sans application Access devant (pas de service token à gérer). À configurer une fois, côté [Cloudflare Zero Trust](https://one.dash.cloudflare.com/) :
+Le déploiement passe par un tunnel Cloudflare (`cloudflared`) plutôt que d'exposer SSH publiquement, et ce hostname est protégé par une application Cloudflare Access : le runner s'y authentifie avec un service token, faute de pouvoir faire la connexion dans un navigateur. À configurer une fois, côté [Cloudflare Zero Trust](https://one.dash.cloudflare.com/) :
 
 1. **Tunnel** — créer un tunnel `cloudflared` sur le serveur, avec une route publique (Public Hostname) vers `ssh://localhost:22`.
-2. **Clé SSH** — générer une paire de clés dédiée au déploiement (`ssh-keygen -t ed25519 -C "nestwiki-deploy"`, sans passphrase) et ajouter la clé **publique** à `~/.ssh/authorized_keys` de l'utilisateur de déploiement sur le serveur.
+2. **Access** — créer une application Access (type self-hosted) sur ce hostname, un service token (Access → Service Auth), et une règle de l'application en action **Service Auth** qui autorise ce token.
+3. **Clé SSH** — générer une paire de clés dédiée au déploiement (`ssh-keygen -t ed25519 -C "nestwiki-deploy"`, sans passphrase) et ajouter la clé **publique** à `~/.ssh/authorized_keys` de l'utilisateur de déploiement sur le serveur.
 
 Puis, secrets du dépôt GitHub (Settings → Secrets and variables → Actions) :
 
 | Secret | Contenu |
 | --- | --- |
-| `DEPLOY_SSH_PRIVATE_KEY` | Clé **privée** générée à l'étape 2 |
+| `CF_ACCESS_CLIENT_ID` | Client ID du service token Access (étape 2) |
+| `CF_ACCESS_CLIENT_SECRET` | Client Secret du service token Access (étape 2) |
+| `DEPLOY_SSH_PRIVATE_KEY` | Clé **privée** générée à l'étape 3 |
 | `DEPLOY_SSH_HOSTNAME` | Hostname public du tunnel (étape 1) |
+| `DEPLOY_SSH_HOST_KEY` | Clé d'hôte **publique** du serveur, contenu de `/etc/ssh/ssh_host_ed25519_key.pub` (ex. `ssh-ed25519 AAAA… root@serveur`). Le déploiement refuse de se connecter si le serveur présente une autre clé, et échoue si ce secret manque |
 | `DEPLOY_SSH_USER` | Utilisateur SSH sur le serveur |
 | `DEPLOY_PATH` | Chemin absolu du clone git sur le serveur (ex. `/opt/nestwiki`) |
 
-Si une application Access protège un jour ce hostname (service token), `deploy.yml` sait déjà où l'ajouter : `TUNNEL_SERVICE_TOKEN_ID`/`TUNNEL_SERVICE_TOKEN_SECRET` en env du job `deploy`, lus automatiquement par `cloudflared access ssh`.
+`deploy.yml` passe les deux secrets Access à `cloudflared access ssh` (le `ProxyCommand` SSH) par les variables `TUNNEL_SERVICE_TOKEN_ID`/`TUNNEL_SERVICE_TOKEN_SECRET` du job `deploy`. Sans application Access devant le hostname, ces deux secrets peuvent rester vides.
 
 `deploy.yml` ne configure ni ne modifie la protection de branche `main` (statut check requis pour bloquer un merge sur test cassé) — c'est un réglage du dépôt GitHub (Settings → Branches), pas quelque chose qu'un fichier de workflow puisse exprimer.

@@ -17,6 +17,11 @@ export const KNOWN_DEFAULT_SECRETS: readonly string[] = [
   'root',
   'ci-access-secret',
   'ci-refresh-secret',
+  'ci-mysql-root-password',
+  'ci-storage-secret-key',
+  'ci-jwt-access-secret-not-for-production',
+  'ci-jwt-refresh-secret-not-for-production',
+  'ci-admin-password-1!',
 ];
 export const PASSWORD_COMPLEXITY_REGEX =
   /^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).+$/;

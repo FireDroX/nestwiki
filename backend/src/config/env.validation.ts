@@ -63,6 +63,17 @@ function distinctJwtSecrets(config: RawEnvironment): string[] {
   return [];
 }
 
+function frontendUrlProblems(config: RawEnvironment): string[] {
+  const value = readValue(config, 'FRONTEND_URL');
+  if (value === undefined) {
+    return ['FRONTEND_URL: is required'];
+  }
+  const protocol = URL.parse(value.trim())?.protocol;
+  return protocol === 'http:' || protocol === 'https:'
+    ? []
+    : ['FRONTEND_URL: must be an http:// or https:// URL'];
+}
+
 function isDevelopmentMode(config: RawEnvironment): boolean {
   return readValue(config, 'DEV')?.trim().toLowerCase() === 'true';
 }
@@ -78,6 +89,7 @@ export function validateEnvironment(config: RawEnvironment): RawEnvironment {
     ...requiredSecret(config, 'DB_PASSWORD'),
     ...requiredSecret(config, 'MINIO_SECRET_KEY'),
     ...optionalSecret(config, 'ADMIN_PASSWORD', MIN_PASSWORD_LENGTH),
+    ...frontendUrlProblems(config),
   ];
   if (problems.length > 0) {
     throw new InvalidEnvironmentException(problems);
