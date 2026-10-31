@@ -1166,7 +1166,7 @@ describe('PagesService', () => {
       pagesRepository.findBySlugAndParent.mockResolvedValue(null);
       pagesRepository.createWithFirstVersion.mockResolvedValue({
         page: buildPage({ id: 'new-1' }),
-        version: buildVersion({ id: 'v-new' }),
+        version: buildVersion({ id: 'v-new', content: 'x' }),
       });
 
       await service.createPage(
@@ -1176,7 +1176,7 @@ describe('PagesService', () => {
 
       expect(eventEmitter.emit).toHaveBeenCalledWith(
         PAGE_CREATED_EVENT,
-        new PageCreatedEvent('new-1', 'user-1'),
+        new PageCreatedEvent('new-1', 'user-1', 'x'),
       );
     });
 

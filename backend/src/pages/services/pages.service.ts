@@ -181,7 +181,7 @@ export class PagesService {
     this.eventEmitter.emit(PAGE_TREE_CHANGED_EVENT);
     this.eventEmitter.emit(
       PAGE_CREATED_EVENT,
-      new PageCreatedEvent(result.page.id, createdById),
+      new PageCreatedEvent(result.page.id, createdById, result.version.content),
     );
     return { ...result, brokenLinks: await this.indexLinks(result, user) };
   }

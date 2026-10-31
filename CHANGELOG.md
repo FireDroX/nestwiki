@@ -2,6 +2,14 @@
 
 All notable changes to NestWiki are documented here, newest first, one `## <version> — <date>` section per release. This file is the single source for the in-app "Notes de version" page, which groups releases by minor version (`1.0`, `0.31`…). Entries up to 0.31.10 were written in French, the project's original language.
 
+## 1.4.4 — 2026-10-31
+
+- Sécurité : un média affiché dans une page ne peut plus être supprimé de la médiathèque. Le contrôle « encore utilisé » cherchait un identifiant que les liens actuels ne contiennent plus, et laissait donc supprimer définitivement des images toujours affichées. La suppression est de nouveau refusée tant que la version courante d'une page, corbeille comprise, utilise le média.
+- Sécurité : le message de refus ne cite plus que les pages que vous pouvez lire. Les autres sont seulement comptées (« and 2 other page(s) »), au lieu de révéler le titre de pages privées.
+- Sécurité : un média qui n'est rattaché à aucune page n'est plus lisible que par la personne qui l'a téléversé et par les admins, au lieu de l'être par n'importe qui connaissant son lien.
+- Les images et fichiers téléversés depuis l'écran de création d'une page, ou via un assistant MCP sans page, sont rattachés à la page dès qu'elle est enregistrée avec leur lien. Ils suivent alors la visibilité et les droits de cette page. La mise à jour rattache aussi les médias déjà dans ce cas à la page qui les affiche.
+- La suppression définitive d'une page de la corbeille efface aussi les médias téléversés sur elle. Un média qu'une autre page affiche encore est conservé et rattaché à cette page.
+
 ## 1.4.3 — 2026-10-31
 
 - Sécurité : un jeton d'accès OAuth donné à un assistant MCP n'est plus accepté comme session sur le reste de l'API. Il ne sert plus qu'au serveur MCP.

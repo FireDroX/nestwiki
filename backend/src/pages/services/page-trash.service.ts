@@ -17,6 +17,10 @@ import {
   PageRestoredEvent,
 } from '../events/page-restored.event.js';
 import { PAGE_TREE_CHANGED_EVENT } from '../events/page-tree-changed.event.js';
+import {
+  PAGES_PURGED_EVENT,
+  PagesPurgedEvent,
+} from '../events/pages-purged.event.js';
 import type { PageTrashRepository } from '../persistence/page-trash.repository.js';
 import type { PagesRepository } from '../persistence/page.repository.js';
 
@@ -105,7 +109,7 @@ export class PageTrashService {
     const pageIds = await this.pageTrashRepository.findTrashedSubtreeIds(
       page.id,
     );
-    await this.pageTrashRepository.purge(pageIds);
+    const detachedAttachmentIds = await this.pageTrashRepository.purge(pageIds);
 
     void this.userActivityLogService.record({
       userId,
@@ -115,6 +119,10 @@ export class PageTrashService {
       metadata: { title: page.title, pageCount: pageIds.length },
     });
     this.eventEmitter.emit(PAGE_TREE_CHANGED_EVENT);
+    this.eventEmitter.emit(
+      PAGES_PURGED_EVENT,
+      new PagesPurgedEvent(detachedAttachmentIds),
+    );
   }
 
   private async findDeletionRootOrFail(id: string): Promise<Page> {

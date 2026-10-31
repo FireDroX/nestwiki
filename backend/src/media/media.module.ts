@@ -9,6 +9,7 @@ import { UsersModule } from '../users/users.module.js';
 import { Attachment } from './entities/attachment.entity.js';
 import { MediaController } from './media.controller.js';
 import { TypeormAttachmentsRepository } from './persistence/typeorm.attachment.repository.js';
+import { MediaPageEventsListener } from './services/media-page-events.listener.js';
 import { MediaService } from './services/media.service.js';
 
 @Module({
@@ -33,6 +34,7 @@ import { MediaService } from './services/media.service.js';
         config.get<string>('MINIO_BUCKET')!,
     },
     MediaService,
+    MediaPageEventsListener,
   ],
   exports: [MediaService],
 })
