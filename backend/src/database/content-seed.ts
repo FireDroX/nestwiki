@@ -421,7 +421,7 @@ cp frontend/.env.example frontend/.env
 docker compose up -d --build
 \`\`\`
 
-Les ports \`3000\` et \`8080\` sont publiés sur \`BIND_ADDRESS\` (\`127.0.0.1\` par défaut) : seul un reverse proxy ou un tunnel tournant sur le serveur les atteint. \`BIND_ADDRESS=0.0.0.0\` dans le \`.env\` racine pour les exposer sur toutes les interfaces.
+Les ports \`3000\` et \`8080\` sont publiés sur \`BIND_ADDRESS\` (\`127.0.0.1\` par défaut) : seul un reverse proxy ou un tunnel tournant sur le serveur les atteint. \`BIND_ADDRESS=0.0.0.0\` dans le \`.env\` racine pour les exposer sur toutes les interfaces. Les ports de MySQL (\`3306\`) et du stockage (\`9000\`) suivent \`BACKING_BIND_ADDRESS\`, \`127.0.0.1\` par défaut lui aussi : ne le changer que si une autre machine doit les joindre directement. La console web du stockage (\`9001\`) est désactivée sauf avec \`RUSTFS_CONSOLE_ENABLE=true\`.
 
 Le frontend envoie une Content-Security-Policy (scripts du site et de Cloudflare Turnstile uniquement). Pour afficher le wiki dans une iframe sur un autre site, lister les sites autorisés dans \`CSP_FRAME_ANCESTORS\` du \`.env\` racine, guillemets doubles compris : \`CSP_FRAME_ANCESTORS="'self' https://example.org"\` (\`'self'\` par défaut). Un proxy placé devant ne doit pas remplacer cet en-tête.
 
@@ -448,8 +448,8 @@ Si Minio n'existe pas encore et que vous voulez le lancer à part (sans compose)
 \`\`\`bash
 docker run -d --name minio --network mariadb-network --restart unless-stopped \\
   -e MINIO_ROOT_USER=<clé-accès> -e MINIO_ROOT_PASSWORD=<clé-secrète> \\
-  -p 9000:9000 -p 9001:9001 -v minio-data:/data \\
-  minio/minio server /data --console-address ":9001"
+  -p 127.0.0.1:9000:9000 -v minio-data:/data \\
+  minio/minio server /data
 \`\`\`
 
 <div class="callout">
@@ -471,23 +471,27 @@ Le backend construit les URLs absolues de la carte (\`og:url\`, boutons) à part
 ## CI/CD
 
 - \`.github/workflows/ci.yml\` — lint, tests (backend + frontend) et build des deux images Docker, en parallèle, sur chaque PR et chaque push vers \`main\` ; l'image backend est démarrée contre une vraie base pour vérifier migrations et seeds. Sur \`main\`, les images testées sont poussées sur GHCR puis taguées \`latest\`. Voir la page [Notes de version](/pages/documentation/notes-de-version) pour le détail des jobs.
-- \`.github/workflows/deploy.yml\` — se déclenche uniquement quand \`ci.yml\` vient de réussir sur \`main\` (\`workflow_run\`, jamais sur une PR) : se connecte en SSH au serveur via un tunnel Cloudflare, puis \`git pull && docker compose up -d --build\`.
+- \`.github/workflows/deploy.yml\` — se déclenche uniquement quand \`ci.yml\` vient de réussir pour un push sur \`main\` de ce dépôt (\`workflow_run\`, jamais pour une PR, même venue d'un fork) : se connecte en SSH au serveur via un tunnel Cloudflare en vérifiant sa clé d'hôte, avance le clone sur le commit testé, puis \`docker compose pull && up -d\` avec les images de cette version.
 
-Le déploiement passe par un tunnel Cloudflare (\`cloudflared\`) plutôt que d'exposer SSH publiquement — sans application Access devant (pas de service token à gérer). À configurer une fois, côté [Cloudflare Zero Trust](https://one.dash.cloudflare.com/) :
+Le déploiement passe par un tunnel Cloudflare (\`cloudflared\`) plutôt que d'exposer SSH publiquement, et ce hostname est protégé par une application Cloudflare Access : le runner s'y authentifie avec un service token, faute de pouvoir faire la connexion dans un navigateur. À configurer une fois, côté [Cloudflare Zero Trust](https://one.dash.cloudflare.com/) :
 
 1. **Tunnel** — créer un tunnel \`cloudflared\` sur le serveur, avec une route publique (Public Hostname) vers \`ssh://localhost:22\`.
-2. **Clé SSH** — générer une paire de clés dédiée au déploiement (\`ssh-keygen -t ed25519 -C "nestwiki-deploy"\`, sans passphrase) et ajouter la clé **publique** à \`~/.ssh/authorized_keys\` de l'utilisateur de déploiement sur le serveur.
+2. **Access** — créer une application Access (type self-hosted) sur ce hostname, un service token (Access → Service Auth), et une règle de l'application en action **Service Auth** qui autorise ce token.
+3. **Clé SSH** — générer une paire de clés dédiée au déploiement (\`ssh-keygen -t ed25519 -C "nestwiki-deploy"\`, sans passphrase) et ajouter la clé **publique** à \`~/.ssh/authorized_keys\` de l'utilisateur de déploiement sur le serveur.
 
 Puis, secrets du dépôt GitHub (Settings → Secrets and variables → Actions) :
 
 | Secret | Contenu |
 | --- | --- |
-| \`DEPLOY_SSH_PRIVATE_KEY\` | Clé **privée** générée à l'étape 2 |
+| \`CF_ACCESS_CLIENT_ID\` | Client ID du service token Access (étape 2) |
+| \`CF_ACCESS_CLIENT_SECRET\` | Client Secret du service token Access (étape 2) |
+| \`DEPLOY_SSH_PRIVATE_KEY\` | Clé **privée** générée à l'étape 3 |
 | \`DEPLOY_SSH_HOSTNAME\` | Hostname public du tunnel (étape 1) |
+| \`DEPLOY_SSH_HOST_KEY\` | Clé d'hôte publique du serveur (contenu de \`/etc/ssh/ssh_host_ed25519_key.pub\`) |
 | \`DEPLOY_SSH_USER\` | Utilisateur SSH sur le serveur |
 | \`DEPLOY_PATH\` | Chemin absolu du clone git sur le serveur (ex. \`/opt/nestwiki\`) |
 
-Si une application Access protège un jour ce hostname (service token), \`deploy.yml\` sait déjà où l'ajouter : \`TUNNEL_SERVICE_TOKEN_ID\`/\`TUNNEL_SERVICE_TOKEN_SECRET\` en env du job \`deploy\`, lus automatiquement par \`cloudflared access ssh\`.
+\`deploy.yml\` passe les deux secrets Access à \`cloudflared access ssh\` (le \`ProxyCommand\` SSH) par les variables \`TUNNEL_SERVICE_TOKEN_ID\`/\`TUNNEL_SERVICE_TOKEN_SECRET\` du job \`deploy\`. Sans application Access devant le hostname, ces deux secrets peuvent rester vides.
 
 \`deploy.yml\` ne configure ni ne modifie la protection de branche \`main\` (statut check requis pour bloquer un merge sur test cassé) — c'est un réglage du dépôt GitHub (Settings → Branches), pas quelque chose qu'un fichier de workflow puisse exprimer.`,
           },

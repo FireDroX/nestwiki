@@ -11,6 +11,7 @@ function validConfig(): Record<string, unknown> {
     JWT_REFRESH_SECRET: STRONG_REFRESH,
     DB_PASSWORD: 'db-password-from-a-vault',
     MINIO_SECRET_KEY: 'storage-secret-from-a-vault',
+    FRONTEND_URL: 'https://wiki.example.org',
   };
 }
 
@@ -38,6 +39,7 @@ describe('validateEnvironment', () => {
     'JWT_REFRESH_SECRET',
     'DB_PASSWORD',
     'MINIO_SECRET_KEY',
+    'FRONTEND_URL',
   ])('rejects a missing %s', (key) => {
     const config = validConfig();
     delete config[key];
@@ -57,14 +59,17 @@ describe('validateEnvironment', () => {
     ).toEqual(['JWT_ACCESS_SECRET: must be at least 32 characters long']);
   });
 
-  it.each(['changeme', 'minioadmin', 'root', 'ci-access-secret'])(
-    'rejects the known default value "%s"',
-    (value) => {
-      expect(
-        problemsFor({ ...validConfig(), MINIO_SECRET_KEY: value }),
-      ).toEqual(['MINIO_SECRET_KEY: uses a well-known default value']);
-    },
-  );
+  it.each([
+    'changeme',
+    'minioadmin',
+    'root',
+    'ci-access-secret',
+    'ci-storage-secret-key',
+  ])('rejects the known default value "%s"', (value) => {
+    expect(problemsFor({ ...validConfig(), MINIO_SECRET_KEY: value })).toEqual([
+      'MINIO_SECRET_KEY: uses a well-known default value',
+    ]);
+  });
 
   it('matches known default values regardless of case and surrounding spaces', () => {
     expect(
@@ -76,6 +81,25 @@ describe('validateEnvironment', () => {
     expect(
       problemsFor({ ...validConfig(), JWT_REFRESH_SECRET: STRONG_ACCESS }),
     ).toEqual(['JWT_REFRESH_SECRET: must differ from JWT_ACCESS_SECRET']);
+  });
+
+  it.each(['http://localhost:5173', 'https://wiki.example.org/'])(
+    'accepts FRONTEND_URL %s',
+    (value) => {
+      expect(problemsFor({ ...validConfig(), FRONTEND_URL: value })).toEqual(
+        [],
+      );
+    },
+  );
+
+  it.each([
+    'wiki.example.org',
+    'javascript:alert(1)',
+    'ftp://wiki.example.org',
+  ])('rejects FRONTEND_URL %s', (value) => {
+    expect(problemsFor({ ...validConfig(), FRONTEND_URL: value })).toEqual([
+      'FRONTEND_URL: must be an http:// or https:// URL',
+    ]);
   });
 
   it('accepts a missing ADMIN_PASSWORD', () => {
@@ -104,6 +128,7 @@ describe('validateEnvironment', () => {
       'JWT_REFRESH_SECRET: must differ from JWT_ACCESS_SECRET',
       'DB_PASSWORD: uses a well-known default value',
       'MINIO_SECRET_KEY: is required',
+      'FRONTEND_URL: is required',
     ]);
   });
 

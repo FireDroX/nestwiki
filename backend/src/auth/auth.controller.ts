@@ -198,9 +198,16 @@ export class AuthController {
     res.cookie(name, value, {
       httpOnly: true,
       sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
+      secure: AuthController.isServedOverHttps(),
       path: '/',
       maxAge,
     });
+  }
+
+  private static isServedOverHttps(): boolean {
+    return (
+      process.env.FRONTEND_URL?.trim().toLowerCase().startsWith('https://') ??
+      false
+    );
   }
 }

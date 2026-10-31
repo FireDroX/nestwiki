@@ -6,26 +6,29 @@ on:
   push:
     branches: [main, dev]
 
+permissions:
+  contents: read
+
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+# DB_PASSWORD, MINIO_SECRET_KEY and the JWT secrets are generated at the
+# start of each job that needs them (.github/scripts/ci-secrets.sh):
+# a value written here would be public, and the backend refuses to start
+# with a known one.
 env:
   NODE_VERSION: '24'
   REGISTRY: ghcr.io
   DB_HOST: localhost
   DB_PORT: 3306
   DB_USERNAME: root
-  DB_PASSWORD: ci-mysql-root-password
   DB_DATABASE: nestwiki
   MINIO_ENDPOINT: localhost
   MINIO_PORT: 9000
-  MINIO_ACCESS_KEY: minioadmin
-  MINIO_SECRET_KEY: ci-storage-secret-key
+  MINIO_ACCESS_KEY: nestwiki
   MINIO_BUCKET: nestwiki
   MINIO_USE_SSL: 'false'
-  JWT_ACCESS_SECRET: ci-jwt-access-secret-not-for-production
-  JWT_REFRESH_SECRET: ci-jwt-refresh-secret-not-for-production
   FRONTEND_URL: http://localhost:5173
   PORT: '3000'
 
@@ -34,9 +37,13 @@ jobs:
     name: backend (lint + unit tests)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Generate throwaway secrets
+        run: .github/scripts/ci-secrets.sh
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
@@ -48,11 +55,15 @@ jobs:
     name: backend (e2e tests)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Generate throwaway secrets
+        run: .github/scripts/ci-secrets.sh
       - name: Start MySQL and object storage
         run: .github/scripts/test-services.sh start
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v7
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
@@ -65,9 +76,11 @@ jobs:
     name: frontend (lint + tests)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
@@ -98,13 +111,19 @@ jobs:
       PUSH: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev') }}
       WRITE_CACHE: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Generate throwaway secrets
+        if: matrix.image == 'backend'
+        run: .github/scripts/ci-secrets.sh
 
       - name: Start MySQL and object storage
         if: matrix.image == 'backend'
         run: .github/scripts/test-services.sh start
 
-      - uses: docker/setup-buildx-action@v4
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
       - name: Read the project version
         id: version
@@ -115,7 +134,7 @@ jobs:
       # repo's actual (mixed-case) owner.
       - name: Extract metadata (tag, labels)
         id: meta
-        uses: docker/metadata-action@v6
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
         with:
           images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/nestwiki-${{ matrix.image }}
           tags: type=sha,format=long
@@ -123,14 +142,14 @@ jobs:
 
       - name: Log in to the Container registry
         if: env.PUSH == 'true'
-        uses: docker/login-action@v4
+        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build the image (and push its sha-<commit> tag on main and dev)
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
           file: ${{ matrix.image }}/Dockerfile
@@ -149,7 +168,6 @@ jobs:
         env:
           IMAGE: ${{ steps.meta.outputs.tags }}
           ADMIN_EMAIL: admin@ci.local
-          ADMIN_PASSWORD: Ci-Admin-Password-1!
           ADMIN_DISPLAY_NAME: CI Admin
         run: |
           .github/scripts/test-services.sh wait
@@ -184,14 +202,16 @@ jobs:
       contents: write
       packages: write
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Read the project version
         id: version
         run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
 
       - name: Log in to the Container registry
-        uses: docker/login-action@v4
+        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -249,14 +269,16 @@ jobs:
       contents: write
       packages: write
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Read the project version
         id: version
         run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
 
       - name: Log in to the Container registry
-        uses: docker/login-action@v4
+        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}

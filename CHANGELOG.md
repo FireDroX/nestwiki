@@ -2,6 +2,15 @@
 
 All notable changes to NestWiki are documented here, newest first, one `## <version> — <date>` section per release. This file is the single source for the in-app "Notes de version" page, which groups releases by minor version (`1.0`, `0.31`…). Entries up to 0.31.10 were written in French, the project's original language.
 
+## 1.4.5 — 2026-10-31
+
+- Sécurité : avec `docker-compose.yml`, MySQL (`3306`) et le stockage objet (`9000`) ne sont plus publiés que sur `127.0.0.1`, comme le web et l'API. La console web du stockage (`9001`) est désactivée par défaut (`RUSTFS_CONSOLE_ENABLE=true` pour la rallumer). ⚠️ Si une autre machine joignait MySQL ou le stockage directement, ajoutez `BACKING_BIND_ADDRESS=0.0.0.0` au `.env` racine.
+- Sécurité : le backend refuse de démarrer si `FRONTEND_URL` est absent ou n'est pas une adresse `http://` ou `https://`, et si un secret reprend l'une des valeurs publiées dans la CI. ⚠️ Vérifiez `FRONTEND_URL` dans `backend/.env` avant la mise à jour.
+- Sécurité : les cookies de session sont marqués `Secure` dès que `FRONTEND_URL` est en `https://`, au lieu de dépendre de `NODE_ENV`.
+- Sécurité : le conteneur du backend ne tourne plus en root. Avec `docker-compose.external.yml`, sa mémoire est limitée à 1 Go par défaut (`BACKEND_MEM_LIMIT`), et les images utilisées sont celles de la version déployée (`NESTWIKI_TAG`, `latest` par défaut).
+- Déploiement continu : il ne se déclenche plus que pour un push sur `main` de ce dépôt (une PR venue d'un fork ne peut plus le lancer). Il déploie exactement le commit testé, vérifie la clé d'hôte SSH du serveur et la somme de contrôle de `cloudflared`, et ne fait plus passer le jeton du registre par une ligne de commande. La CI épingle ses actions par commit et a des droits minimaux.
+- Dépendances : `qs` 6.16.1 (correctif de sécurité) et `@nestjs/swagger` 12.0.5.
+
 ## 1.4.4 — 2026-10-31
 
 - Sécurité : un média affiché dans une page ne peut plus être supprimé de la médiathèque. Le contrôle « encore utilisé » cherchait un identifiant que les liens actuels ne contiennent plus, et laissait donc supprimer définitivement des images toujours affichées. La suppression est de nouveau refusée tant que la version courante d'une page, corbeille comprise, utilise le média.

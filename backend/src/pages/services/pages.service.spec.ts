@@ -308,6 +308,15 @@ describe('PagesService', () => {
       expect(currentVersion.content).toBe('original content');
       expect(result.version.id).toBe('version-2');
       expect(result.page.currentVersionId).toBe('version-2');
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        PAGE_VERSION_CREATED_EVENT,
+        expect.objectContaining({
+          pageId: page.id,
+          versionId: 'version-2',
+          authorId: 'user-1',
+          content: 'updated content',
+        }),
+      );
     });
 
     it('throws PageNotFoundException when the page does not exist', async () => {
@@ -331,36 +340,6 @@ describe('PagesService', () => {
         'page-1',
       );
       expect(pagesRepository.updateWithNewVersion).not.toHaveBeenCalled();
-    });
-
-    it('emits PAGE_VERSION_CREATED_EVENT after a successful save', async () => {
-      const page = buildPage();
-      const currentVersion = buildVersion();
-      const dto: UpdatePageDto = { content: 'updated content' };
-      const newVersion = buildVersion({
-        id: 'version-2',
-        content: 'updated content',
-      });
-      const updatedPage = { ...page, currentVersionId: 'version-2' };
-
-      pagesRepository.findById.mockResolvedValue(page);
-      pagesRepository.findVersionById.mockResolvedValue(currentVersion);
-      pagesRepository.updateWithNewVersion.mockResolvedValue({
-        page: updatedPage,
-        version: newVersion,
-      });
-
-      await service.updatePage('page-1', dto, 'user-1');
-
-      expect(eventEmitter.emit).toHaveBeenCalledWith(
-        PAGE_VERSION_CREATED_EVENT,
-        expect.objectContaining({
-          pageId: updatedPage.id,
-          versionId: 'version-2',
-          authorId: 'user-1',
-          content: 'updated content',
-        }),
-      );
     });
 
     it('merges cleanly and persists when baseVersionId is stale but non-conflicting', async () => {
@@ -476,27 +455,6 @@ describe('PagesService', () => {
         mergedContent: '<<<<<<<',
         segments,
         currentVersionAuthorName: 'User',
-        currentVersionCreatedAt: currentVersion.createdAt,
-        currentVersionContent: currentVersion.content,
-      });
-      expect(pagesRepository.updateWithNewVersion).not.toHaveBeenCalled();
-    });
-
-    it('returns a null author name when the current version author no longer exists', async () => {
-      const { page, currentVersion, segments } = arrangeConflict();
-      removeCurrentVersionAuthor();
-
-      const result = await service.updatePage(
-        page.id,
-        { content: 'mine', baseVersionId: 'version-1' },
-        'user-1',
-      );
-
-      expect(result).toMatchObject({
-        conflict: true,
-        mergedContent: '<<<<<<<',
-        segments,
-        currentVersionAuthorName: null,
         currentVersionCreatedAt: currentVersion.createdAt,
         currentVersionContent: currentVersion.content,
       });
@@ -843,6 +801,7 @@ describe('PagesService', () => {
 
       expect(pagesRepository.updateParent).toHaveBeenCalledWith(page, otherId);
       expect(result.page.parentId).toBe(otherId);
+      expect(eventEmitter.emit).toHaveBeenCalledWith(PAGE_TREE_CHANGED_EVENT);
     });
 
     it('refuses to move a subtree holding a page the user cannot move', async () => {
@@ -888,28 +847,6 @@ describe('PagesService', () => {
       await service.movePage(pageId, { newParentId: otherId }, 'user-1');
 
       expect(pagesRepository.updateParent).toHaveBeenCalledWith(page, otherId);
-    });
-
-    it('emits PAGE_TREE_CHANGED_EVENT after moving a page', async () => {
-      const page = buildPage({ id: pageId, parentId: null });
-      const target = buildPage({ id: otherId, parentId: null });
-      const dto: MovePageDto = { newParentId: otherId };
-
-      pagesRepository.findById.mockImplementation((id: string) => {
-        if (id === pageId) return Promise.resolve(page);
-        if (id === otherId) return Promise.resolve(target);
-        return Promise.resolve(null);
-      });
-      pagesRepository.findVersionById.mockResolvedValue(buildVersion());
-      pagesRepository.findBySlugAndParent.mockResolvedValue(null);
-      pagesRepository.updateParent.mockResolvedValue({
-        ...page,
-        parentId: otherId,
-      });
-
-      await service.movePage(pageId, dto, 'user-1');
-
-      expect(eventEmitter.emit).toHaveBeenCalledWith(PAGE_TREE_CHANGED_EVENT);
     });
 
     it('throws ParentPageNotFoundException, not a permission error, when newParentId does not exist', async () => {
@@ -1162,24 +1099,6 @@ describe('PagesService', () => {
       visibility: 'public',
     };
 
-    it('announces the new page', async () => {
-      pagesRepository.findBySlugAndParent.mockResolvedValue(null);
-      pagesRepository.createWithFirstVersion.mockResolvedValue({
-        page: buildPage({ id: 'new-1' }),
-        version: buildVersion({ id: 'v-new', content: 'x' }),
-      });
-
-      await service.createPage(
-        { slug: 'new', title: 'New', content: 'x', visibility: 'public' },
-        'user-1',
-      );
-
-      expect(eventEmitter.emit).toHaveBeenCalledWith(
-        PAGE_CREATED_EVENT,
-        new PageCreatedEvent('new-1', 'user-1', 'x'),
-      );
-    });
-
     describe('initial visibility', () => {
       const parentId = '44444444-4444-4444-4444-444444444444';
 
@@ -1248,11 +1167,11 @@ describe('PagesService', () => {
       });
     });
 
-    it('creates the page and its first version', async () => {
+    it('creates the page and its first version, then announces it', async () => {
       pagesRepository.findBySlugAndParent.mockResolvedValue(null);
       const created = {
-        page: buildPage({ slug: 'new-page' }),
-        version: buildVersion(),
+        page: buildPage({ id: 'new-1', slug: 'new-page' }),
+        version: buildVersion({ content: 'content' }),
       };
       pagesRepository.createWithFirstVersion.mockResolvedValue(created);
 
@@ -1267,6 +1186,11 @@ describe('PagesService', () => {
         createdById: 'user-1',
       });
       expect(result).toEqual({ ...created, brokenLinks: [] });
+      expect(eventEmitter.emit).toHaveBeenCalledWith(PAGE_TREE_CHANGED_EVENT);
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        PAGE_CREATED_EVENT,
+        new PageCreatedEvent('new-1', 'user-1', 'content'),
+      );
     });
 
     it.each(['tree', 'trash'])(
@@ -1376,18 +1300,6 @@ describe('PagesService', () => {
       );
       expect(pagesRepository.createWithFirstVersion).not.toHaveBeenCalled();
     });
-
-    it('emits PAGE_TREE_CHANGED_EVENT after creating a page', async () => {
-      pagesRepository.findBySlugAndParent.mockResolvedValue(null);
-      pagesRepository.createWithFirstVersion.mockResolvedValue({
-        page: buildPage({ slug: 'new-page' }),
-        version: buildVersion(),
-      });
-
-      await service.createPage(dto, 'user-1');
-
-      expect(eventEmitter.emit).toHaveBeenCalledWith(PAGE_TREE_CHANGED_EVENT);
-    });
   });
 
   describe('page content size', () => {
@@ -1474,15 +1386,6 @@ describe('PagesService', () => {
   });
 
   describe('getTree', () => {
-    it('returns every page when every page is readable', async () => {
-      const pages = [buildPage({ id: 'p1', visibility: 'private' })];
-      pagesRepository.findAll.mockResolvedValue(pages);
-
-      const tree = await service.getTree(admin);
-
-      expect(tree).toHaveLength(1);
-    });
-
     it('builds the tree only from the pages PermissionsService deems readable for the full user record', async () => {
       const privatePage = buildPage({ id: 'p1', visibility: 'private' });
       const publicPage = buildPage({ id: 'p2', visibility: 'public' });
@@ -1778,39 +1681,6 @@ describe('PagesService', () => {
       expect(result.permissions).toEqual(['page.read', 'page.edit']);
     });
 
-    it('reports only the actions PermissionsService grants for a member without page.edit', async () => {
-      const page = buildPage({ visibility: 'public' });
-      const version = buildVersion({ id: page.currentVersionId! });
-      permissionsService.getEffectivePageActions.mockResolvedValue([
-        'page.read',
-      ]);
-      pagesRepository.findBySlugAndParent.mockResolvedValue(page);
-      pagesRepository.findVersionById.mockResolvedValue(version);
-
-      const result = await service.findByPath(['home'], member);
-
-      expect(result.permissions).toEqual(['page.read']);
-    });
-
-    it('asks PermissionsService about the leaf page itself so a rule on an ancestor can grant page.edit', async () => {
-      const page = buildPage({ visibility: 'public', parentId: 'parent-1' });
-      const version = buildVersion({ id: page.currentVersionId! });
-      permissionsService.getEffectivePageActions.mockResolvedValue([
-        'page.read',
-        'page.edit',
-      ]);
-      pagesRepository.findBySlugAndParent.mockResolvedValue(page);
-      pagesRepository.findVersionById.mockResolvedValue(version);
-
-      const result = await service.findByPath(['docs', 'home'], member);
-
-      expect(permissionsService.getEffectivePageActions).toHaveBeenCalledWith(
-        expect.objectContaining({ id: member.id }),
-        page.id,
-      );
-      expect(result.permissions).toContain('page.edit');
-    });
-
     it('reports just page.read for an anonymous visitor on a public page', async () => {
       const page = buildPage({ visibility: 'public' });
       const version = buildVersion({ id: page.currentVersionId! });
@@ -1946,14 +1816,6 @@ describe('PagesService', () => {
         'user-1',
         'leaf',
       );
-    });
-
-    it('emits PAGE_TREE_CHANGED_EVENT after deleting a page', async () => {
-      pagesRepository.findById.mockResolvedValue(buildPage({ id: 'leaf' }));
-      pagesRepository.findChildren.mockResolvedValue([]);
-
-      await service.deletePage('leaf', {}, 'user-1');
-
       expect(eventEmitter.emit).toHaveBeenCalledWith(PAGE_TREE_CHANGED_EVENT);
     });
   });

@@ -63,14 +63,6 @@ describe('MarkdownRenderer', () => {
       expect(container.querySelector('meta')).toBeNull()
     })
 
-    it('renders the element with the on* attribute (proof the plugin ran; see markdown-sanitize.test.ts for the actual removal assertion)', () => {
-      const { container } = render(
-        <MarkdownRenderer content='<div onclick="evil()">hi</div>' mode="full" />,
-      )
-      expect(container.querySelector('div')).not.toBeNull()
-      expect(container).toHaveTextContent('hi')
-    })
-
     it('neutralizes a javascript: href', () => {
       const { container } = render(
         <MarkdownRenderer content='<a href="javascript:alert(1)">click</a>' mode="full" />,
