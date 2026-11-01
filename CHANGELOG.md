@@ -2,6 +2,10 @@
 
 All notable changes to NestWiki are documented here, newest first, one `## <version> — <date>` section per release. This file is the single source for the in-app "Notes de version" page, which groups releases by minor version (`1.0`, `0.31`…). Entries up to 0.31.10 were written in French, the project's original language.
 
+## 1.4.7 — 2026-11-01
+
+- Dépendances : correctifs de sécurité pour `@hono/node-server` 2.1.5 (serveur MCP), `follow-redirects` 1.16.2, `decode-uri-component` 0.5.1, `minimatch` 11.0.3 et `systeminformation` 5.33.19.
+
 ## 1.4.6 — 2026-10-31
 
 - NestWiki a une mascotte : un rouge-gorge installé dans son nid, sur la barre rouge du logo, une page de wiki dans le bec. Elle accueille les visiteurs sur la page d'accueil et l'écran de connexion, et accompagne les messages « page introuvable », « accès refusé » et « erreur », en version claire ou sombre selon le thème.
