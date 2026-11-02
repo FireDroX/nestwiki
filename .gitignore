@@ -36,3 +36,7 @@ graphify-out/
 
 # Vidéos de présentation
 videos/
+
+# dev-* skills (local config, state and worktrees)
+.dev/
+.worktrees/
