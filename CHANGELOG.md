@@ -2,6 +2,10 @@
 
 All notable changes to NestWiki are documented here, newest first, one `## <version> — <date>` section per release. This file is the single source for the in-app "Notes de version" page, which groups releases by minor version (`1.0`, `0.31`…). Entries up to 0.31.10 were written in French, the project's original language.
 
+## 1.4.8 — 2026-11-02
+
+- Dépendances : `katex` 0.19.1 (rendu des formules LaTeX), `axios` 1.21.0, `socket.io` 4.8.4 (temps réel), `jsdom` 30.1.3 et `@nestjs/mau` 0.2.9 (outils de développement), et `pnpm/action-setup` 6.1.0 dans la CI.
+
 ## 1.4.7 — 2026-11-01
 
 - Dépendances : correctifs de sécurité pour `@hono/node-server` 2.1.5 (serveur MCP), `follow-redirects` 1.16.2, `decode-uri-component` 0.5.1, `minimatch` 11.0.3 et `systeminformation` 5.33.19.
