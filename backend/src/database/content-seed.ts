@@ -181,7 +181,7 @@ Ce guide couvre l'installation locale, la configuration, et le déploiement en p
 
 ## Vue d'ensemble
 
-NestWiki est un monorepo pnpm avec deux packages : \`backend/\` (NestJS + TypeORM + MySQL) et \`frontend/\` (React + Vite). Les pages [Installation](/pages/documentation/guide-demarrage/installation), [Configuration](/pages/documentation/guide-demarrage/configuration) et [Déploiement](/pages/documentation/guide-demarrage/deploiement) détaillent chaque étape ; ce qui suit résume le parcours local complet.
+NestWiki est un monorepo pnpm avec deux packages : \`backend/\` (NestJS + TypeORM + MariaDB) et \`frontend/\` (React + Vite). Les pages [Installation](/pages/documentation/guide-demarrage/installation), [Configuration](/pages/documentation/guide-demarrage/configuration) et [Déploiement](/pages/documentation/guide-demarrage/deploiement) détaillent chaque étape ; ce qui suit résume le parcours local complet.
 
 ## Étapes
 
@@ -191,7 +191,7 @@ NestWiki est un monorepo pnpm avec deux packages : \`backend/\` (NestJS + TypeOR
 <div class="step-number">1</div>
 <div>
 <h3>Installation</h3>
-<p>Cloner le dépôt, installer les dépendances, démarrer MySQL et Minio via Docker. Voir <a href="/pages/documentation/guide-demarrage/installation">Installation</a>.</p>
+<p>Cloner le dépôt, installer les dépendances, démarrer MariaDB et Minio via Docker. Voir <a href="/pages/documentation/guide-demarrage/installation">Installation</a>.</p>
 </div>
 </div>
 
@@ -288,7 +288,7 @@ Seules les pages que vous pouvez lire sont exportées. Une archive est limitée 
 ## Prérequis
 
 - Node.js 22+, [pnpm](https://pnpm.io/) (version pinnée dans le champ \`packageManager\` de \`package.json\`)
-- Docker + Docker Compose (pour MySQL et Minio)
+- Docker + Docker Compose (pour MariaDB et Minio)
 
 <div class="callout">
   <span class="callout-icon">💡</span>
@@ -301,7 +301,7 @@ Seules les pages que vous pouvez lire sont exportées. Une archive est limitée 
 git clone <url-du-dépôt>
 cd wiki
 
-# MySQL + Minio
+# MariaDB + Minio
 docker compose up -d
 
 # Copier les 3 fichiers .env.example -> .env et renseigner les valeurs
@@ -348,7 +348,7 @@ La configuration se fait via trois fichiers \`.env\` distincts, chacun avec un \
 <table class="config-table">
 <thead><tr><th>Fichier</th><th>Rôle</th></tr></thead>
 <tbody>
-<tr><td><code>.env</code> (racine)</td><td>Identifiants MySQL/Minio pour <code>docker-compose.yml</code></td></tr>
+<tr><td><code>.env</code> (racine)</td><td>Identifiants MariaDB/Minio pour <code>docker-compose.yml</code></td></tr>
 <tr><td><code>backend/.env</code></td><td>Port, URL du frontend (CORS), connexion DB, connexion Minio</td></tr>
 <tr><td><code>frontend/.env</code></td><td><code>VITE_API_URL</code>, URL de base de l'API backend (préfixe <code>/api</code> inclus)</td></tr>
 </tbody>
@@ -397,8 +397,8 @@ pnpm run front:dev  # frontend sur http://localhost:5173
 
 Deux versions du \`docker-compose\` sont disponibles :
 
-- **\`docker-compose.yml\`** — version complète (\`mysql\`, \`minio\`, \`backend\`, \`frontend\`), pour un serveur vierge qui n'a encore ni base de données ni stockage objet. Usage manuel uniquement (\`docker compose up -d --build\`), non branché sur le déploiement continu.
-- **\`docker-compose.external.yml\`** — version allégée (\`backend\`, \`frontend\` seulement), pour réutiliser un MariaDB/MySQL et un Minio déjà existants sur le serveur (ex. mutualisés avec d'autres apps) plutôt que d'en relancer une paire dédiée. Le backend rejoint les réseaux Docker **externes** où vivent déjà ces conteneurs, nommés par \`DATABASE_NETWORK\` et \`STORAGE_NETWORK\` dans le \`.env\` racine (\`mariadb-network\` par défaut, ou des réseaux \`--internal\` dédiés pour isoler le backend des autres conteneurs) ; le frontend reste seul avec le backend et ne voit ni la base ni le stockage. **C'est celle-ci qu'utilise \`.github/workflows/deploy.yml\`** (\`docker compose -f docker-compose.external.yml pull\` puis \`up -d\`) — le déploiement continu part donc du principe que le mariadb/minio cible existe déjà sur le serveur ; adapter le workflow si un déploiement doit un jour repartir de la version complète.
+- **\`docker-compose.yml\`** — version complète (\`mariadb\`, \`minio\`, \`backend\`, \`frontend\`), pour un serveur vierge qui n'a encore ni base de données ni stockage objet. Usage manuel uniquement (\`docker compose up -d --build\`), non branché sur le déploiement continu.
+- **\`docker-compose.external.yml\`** — version allégée (\`backend\`, \`frontend\` seulement), pour réutiliser un MariaDB et un Minio déjà existants sur le serveur (ex. mutualisés avec d'autres apps) plutôt que d'en relancer une paire dédiée. Le backend rejoint les réseaux Docker **externes** où vivent déjà ces conteneurs, nommés par \`DATABASE_NETWORK\` et \`STORAGE_NETWORK\` dans le \`.env\` racine (\`mariadb-network\` par défaut, ou des réseaux \`--internal\` dédiés pour isoler le backend des autres conteneurs) ; le frontend reste seul avec le backend et ne voit ni la base ni le stockage. **C'est celle-ci qu'utilise \`.github/workflows/deploy.yml\`** (\`docker compose -f docker-compose.external.yml pull\` puis \`up -d\`) — le déploiement continu part donc du principe que le mariadb/minio cible existe déjà sur le serveur ; adapter le workflow si un déploiement doit un jour repartir de la version complète.
 
 \`backend\`/\`frontend\` se construisent depuis \`backend/Dockerfile\`/\`frontend/Dockerfile\` (contexte = racine du dépôt, pour le workspace pnpm) dans les deux cas. \`backend/Dockerfile\` exécute \`backend/entrypoint.sh\` au démarrage du conteneur, avec \`node\` directement sur le code compilé (l'image ne contient ni pnpm ni les sources TypeScript) : migrations, création du premier admin depuis \`ADMIN_*\` s'il n'en existe aucun, seed du contenu (documentation et notes de version), puis le serveur. Si une étape échoue, le conteneur ne démarre pas (\`set -e\`), plutôt que de tourner sur un schéma ou un contenu incohérent. Toutes les étapes sont idempotentes : redémarrer sans changement ne fait rien.
 
@@ -412,16 +412,16 @@ Deux versions du \`docker-compose\` sont disponibles :
 \`\`\`bash
 git clone <url-du-dépôt> /chemin/vers/nestwiki
 cd /chemin/vers/nestwiki
-cp .env.example .env               # MYSQL_*, MINIO_*, VITE_*
+cp .env.example .env               # MARIADB_*, MINIO_*, VITE_*
 cp backend/.env.example backend/.env
 cp frontend/.env.example frontend/.env
-# éditer les 3 .env — en particulier backend/.env : DB_HOST=mysql et
+# éditer les 3 .env — en particulier backend/.env : DB_HOST=mariadb et
 # MINIO_ENDPOINT=minio (les noms des services docker-compose, pas
 # localhost comme en dev local)
 docker compose up -d --build
 \`\`\`
 
-Les ports \`3000\` et \`8080\` sont publiés sur \`BIND_ADDRESS\` (\`127.0.0.1\` par défaut) : seul un reverse proxy ou un tunnel tournant sur le serveur les atteint. \`BIND_ADDRESS=0.0.0.0\` dans le \`.env\` racine pour les exposer sur toutes les interfaces. Les ports de MySQL (\`3306\`) et du stockage (\`9000\`) suivent \`BACKING_BIND_ADDRESS\`, \`127.0.0.1\` par défaut lui aussi : ne le changer que si une autre machine doit les joindre directement. La console web du stockage (\`9001\`) est désactivée sauf avec \`RUSTFS_CONSOLE_ENABLE=true\`.
+Les ports \`3000\` et \`8080\` sont publiés sur \`BIND_ADDRESS\` (\`127.0.0.1\` par défaut) : seul un reverse proxy ou un tunnel tournant sur le serveur les atteint. \`BIND_ADDRESS=0.0.0.0\` dans le \`.env\` racine pour les exposer sur toutes les interfaces. Les ports de MariaDB (\`3306\`) et du stockage (\`9000\`) suivent \`BACKING_BIND_ADDRESS\`, \`127.0.0.1\` par défaut lui aussi : ne le changer que si une autre machine doit les joindre directement. La console web du stockage (\`9001\`) est désactivée sauf avec \`RUSTFS_CONSOLE_ENABLE=true\`.
 
 Le frontend envoie une Content-Security-Policy (scripts du site et de Cloudflare Turnstile uniquement). Pour afficher le wiki dans une iframe sur un autre site, lister les sites autorisés dans \`CSP_FRAME_ANCESTORS\` du \`.env\` racine, guillemets doubles compris : \`CSP_FRAME_ANCESTORS="'self' https://example.org"\` (\`'self'\` par défaut). Un proxy placé devant ne doit pas remplacer cet en-tête.
 
@@ -436,7 +436,7 @@ cp .env.example .env               # BIND_ADDRESS, DATABASE_NETWORK, STORAGE_NET
 cp backend/.env.example backend/.env
 cp frontend/.env.example frontend/.env
 # backend/.env : DB_HOST/MINIO_ENDPOINT doivent pointer vers les noms de
-# conteneur réels de vos mariadb/minio existants (pas mysql/minio, ni
+# conteneur réels de vos mariadb/minio existants (pas
 # localhost) ; DB_USERNAME/DB_PASSWORD/DB_DATABASE et MINIO_ACCESS_KEY/
 # MINIO_SECRET_KEY/MINIO_BUCKET doivent correspondre à des identifiants
 # déjà valides sur ces instances (ce fichier n'y crée rien pour vous)
