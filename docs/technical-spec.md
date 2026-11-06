@@ -1,6 +1,6 @@
 # NestWiki — Spécification technique
 
-Clone de WikiJS — NestJS / TypeORM / MySQL / React / TypeScript / Tailwind / shadcn / Minio
+Clone de WikiJS — NestJS / TypeORM / MariaDB / React / TypeScript / Tailwind / shadcn / Minio
 
 ---
 
@@ -24,12 +24,12 @@ Clone de WikiJS — NestJS / TypeORM / MySQL / React / TypeScript / Tailwind / s
 | --------------- | -------------------------------------------------------------------- |
 | Backend         | NestJS (Node.js, TypeScript)                                         |
 | ORM             | TypeORM                                                              |
-| Base de données | MySQL 8                                                              |
+| Base de données | MariaDB 11                                                           |
 | Stockage objets | RustFS (S3-compatible ; remplace Minio, dont l'édition Community a été archivée en 2026) |
 | Frontend        | React + TypeScript + Vite                                            |
 | UI              | TailwindCSS + shadcn/ui                                              |
 | Auth            | JWT (access + refresh token)                                         |
-| Recherche       | MySQL FULLTEXT (v1) → migration Meilisearch possible (v2)            |
+| Recherche       | MariaDB FULLTEXT (v1) → migration Meilisearch possible (v2)          |
 
 ---
 
@@ -66,7 +66,7 @@ nestwiki/
 │   │   ├── features/      (auth, pages, editor, search, admin)
 │   │   ├── lib/
 │   │   └── main.tsx
-├── docker-compose.yml (mysql, minio, backend, frontend)
+├── docker-compose.yml (mariadb, minio, backend, frontend)
 └── docker-compose.external.yml (backend, frontend — réutilise un mariadb/minio existants)
 ```
 

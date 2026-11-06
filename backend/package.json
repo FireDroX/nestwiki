@@ -1,7 +1,7 @@
 {
   "name": "backend",
-  "version": "1.4.8",
-  "description": "NestWiki API: NestJS + TypeORM (MySQL) backend with object storage, real-time updates and an MCP server.",
+  "version": "1.4.9",
+  "description": "NestWiki API: NestJS + TypeORM (MariaDB) backend with object storage, real-time updates and an MCP server.",
   "keywords": [
     "wiki",
     "self-hosted",

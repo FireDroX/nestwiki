@@ -12,7 +12,7 @@ export default defineConfig({
     include: ['**/*.e2e-spec.ts'],
     setupFiles: ['./test/setup/test-env.ts'],
     globalSetup: ['./test/setup/global-setup.mjs'],
-    // Spec files share one MySQL test database and truncate it between
+    // Spec files share one MariaDB test database and truncate it between
     // tests — run them one at a time to avoid cross-file races.
     fileParallelism: false,
     testTimeout: 20000,
