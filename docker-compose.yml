@@ -1,30 +1,30 @@
-# Version complète (mysql + minio + backend + frontend) — pour un
+# Version complète (mariadb + minio + backend + frontend) — pour un
 # serveur vierge. Si mariadb/minio existent déjà sur le serveur, voir
 # docker-compose.external.yml à la place.
 #
-# Réseaux : mysql et minio sur `backing`, frontend sur `default`, backend
+# Réseaux : mariadb et minio sur `backing`, frontend sur `default`, backend
 # sur les deux. Le frontend ne voit ni la base ni le stockage.
-# Ports backend/frontend publiés sur BIND_ADDRESS, ports mysql/minio sur
+# Ports backend/frontend publiés sur BIND_ADDRESS, ports mariadb/minio sur
 # BACKING_BIND_ADDRESS (127.0.0.1 par défaut tous les deux, voir
 # .env.example).
 services:
-  mysql:
-    image: mysql:8
+  mariadb:
+    image: mariadb:11
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
+      MARIADB_DATABASE: ${MARIADB_DATABASE}
     ports:
       - "${BACKING_BIND_ADDRESS:-127.0.0.1}:3306:3306"
     volumes:
-      - mysql-data:/var/lib/mysql
+      - mariadb-data:/var/lib/mysql
     networks:
       - backing
     healthcheck:
       test:
         [
           "CMD-SHELL",
-          "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent",
+          "mariadb-admin ping -h 127.0.0.1 -uroot -p$$MARIADB_ROOT_PASSWORD --silent",
         ]
       interval: 5s
       timeout: 5s
@@ -70,10 +70,10 @@ services:
 
   # Application containers (production deploy — see README.md). Not
   # needed for local dev, where the backend/frontend run via `pnpm run
-  # start:dev` / `pnpm run dev` against these same mysql/minio services.
+  # start:dev` / `pnpm run dev` against these same mariadb/minio services.
   #
   # backend/.env on the server must point DB_HOST/MINIO_ENDPOINT at the
-  # `mysql`/`minio` service names below (not `localhost`, unlike the
+  # `mariadb`/`minio` service names below (not `localhost`, unlike the
   # local-dev default in backend/.env.example) — see README.md.
   backend:
     build:
@@ -85,7 +85,7 @@ services:
     ports:
       - "${BIND_ADDRESS:-127.0.0.1}:3000:3000"
     depends_on:
-      mysql:
+      mariadb:
         condition: service_healthy
       minio:
         condition: service_started
@@ -115,5 +115,5 @@ networks:
     driver: bridge
 
 volumes:
-  mysql-data:
+  mariadb-data:
   minio-data:

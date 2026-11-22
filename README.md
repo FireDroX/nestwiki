@@ -41,7 +41,7 @@
 
 ## Quick start (Docker)
 
-You need Docker with Docker Compose. This starts MySQL, an S3-compatible object store ([RustFS](https://rustfs.com)), the API and the web app.
+You need Docker with Docker Compose. This starts MariaDB, an S3-compatible object store ([RustFS](https://rustfs.com)), the API and the web app.
 
 ```bash
 git clone https://github.com/FireDroX/nestwiki.git
@@ -57,13 +57,13 @@ Fill in the values (see [Configuration](#configuration)). Generate every secret 
 openssl rand -hex 32
 ```
 
-For this all-in-one setup, `backend/.env` must point at the Compose services: `DB_HOST=mysql`, `MINIO_ENDPOINT=minio`, `DB_PASSWORD` equal to `MYSQL_ROOT_PASSWORD` and `MINIO_SECRET_KEY` equal to the one in `.env`. Then:
+For this all-in-one setup, `backend/.env` must point at the Compose services: `DB_HOST=mariadb`, `MINIO_ENDPOINT=minio`, `DB_PASSWORD` equal to `MARIADB_ROOT_PASSWORD` and `MINIO_SECRET_KEY` equal to the one in `.env`. Then:
 
 ```bash
 docker compose up -d --build
 ```
 
-Open <http://localhost:8080> and sign in with the `ADMIN_EMAIL` / `ADMIN_PASSWORD` you configured. Every port (web app, API, MySQL, object storage) is published on `127.0.0.1` only: on a remote server, put a reverse proxy or tunnel in front of the web app and API, or set `BIND_ADDRESS=0.0.0.0`. Set `BACKING_BIND_ADDRESS` only if another machine must reach MySQL or the object storage directly. On first start the backend applies the database migrations, creates that admin account, and seeds the built-in documentation and release notes.
+Open <http://localhost:8080> and sign in with the `ADMIN_EMAIL` / `ADMIN_PASSWORD` you configured. Every port (web app, API, MariaDB, object storage) is published on `127.0.0.1` only: on a remote server, put a reverse proxy or tunnel in front of the web app and API, or set `BIND_ADDRESS=0.0.0.0`. Set `BACKING_BIND_ADDRESS` only if another machine must reach MariaDB or the object storage directly. On first start the backend applies the database migrations, creates that admin account, and seeds the built-in documentation and release notes.
 
 ## Configuration
 
@@ -73,11 +73,11 @@ There are three `.env` files, each with a commented `.env.example` next to it.
 
 | Variable | Description |
 | --- | --- |
-| `MYSQL_ROOT_PASSWORD` | Root password of the bundled MySQL container. |
-| `MYSQL_DATABASE` | Database created on first start (`nestwiki`). |
+| `MARIADB_ROOT_PASSWORD` | Root password of the bundled MariaDB container. |
+| `MARIADB_DATABASE` | Database created on first start (`nestwiki`). |
 | `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY` | Credentials of the bundled object storage. |
 | `BIND_ADDRESS` | Host address the web app (`8080`) and API (`3000`) ports are published on: `127.0.0.1` (default) or `0.0.0.0`. |
-| `BACKING_BIND_ADDRESS` | `docker-compose.yml` only: host address the MySQL (`3306`) and object storage (`9000`, console `9001`) ports are published on, `127.0.0.1` by default. |
+| `BACKING_BIND_ADDRESS` | `docker-compose.yml` only: host address the MariaDB (`3306`) and object storage (`9000`, console `9001`) ports are published on, `127.0.0.1` by default. |
 | `RUSTFS_CONSOLE_ENABLE` | `docker-compose.yml` only: `true` turns on the object storage web console (port `9001`), off by default. |
 | `NESTWIKI_TAG`, `BACKEND_MEM_LIMIT` | `docker-compose.external.yml` only: image tag to run (`latest` by default, set to the deployed version by the deploy workflow) and memory limit of the API container (`1g` by default). |
 | `CSP_FRAME_ANCESTORS` | Sites allowed to show the wiki in an iframe (`frame-ancestors` of the web app's Content-Security-Policy), `'self'` by default. Keep the outer double quotes: `"'self' https://example.org"`. |
@@ -91,7 +91,7 @@ There are three `.env` files, each with a commented `.env.example` next to it.
 | --- | --- |
 | `PORT` | HTTP port of the API (`3000`). |
 | `FRONTEND_URL` | Public origin of the web app, allowed by CORS. Also used as the base of absolute links in Markdown exports, so the API should be served from the same origin (`/api`), as in the provided Docker setup. |
-| `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD`, `DB_DATABASE` | MySQL 8 connection. |
+| `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD`, `DB_DATABASE` | MariaDB 11 connection. |
 | `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` | Token signing secrets: at least 32 characters each, different from each other. |
 | `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `ADMIN_DISPLAY_NAME` | First admin account, created only while the database has no admin. Never modified afterwards: change the password from the app. |
 | `MINIO_ENDPOINT`, `MINIO_PORT`, `MINIO_USE_SSL`, `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`, `MINIO_BUCKET` | S3-compatible storage used for media. The bucket is created on start if missing. |
@@ -122,7 +122,7 @@ Requirements: Node.js 22+, [pnpm](https://pnpm.io) (version pinned in `package.j
 
 ```bash
 pnpm install
-docker compose up -d mysql minio      # database and object storage only
+docker compose up -d mariadb minio    # database and object storage only
 cd backend
 pnpm run migration:run
 pnpm run seed:admin                   # first admin from ADMIN_* (also done on start)
@@ -132,7 +132,7 @@ pnpm run back:dev                     # API on http://localhost:3000 (Swagger at
 pnpm run front:dev                    # web app on http://localhost:5173
 ```
 
-Tests: `pnpm --filter backend run test`, `pnpm --filter backend run test:e2e` (needs MySQL and the object storage) and `pnpm --filter frontend run test`.
+Tests: `pnpm --filter backend run test`, `pnpm --filter backend run test:e2e` (needs MariaDB and the object storage) and `pnpm --filter frontend run test`.
 
 ## Documentation
 

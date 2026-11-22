@@ -37,7 +37,7 @@ import { LoginDto } from '../dto/in/login.dto.js';
 import { RegisterDto } from '../dto/in/register.dto.js';
 
 const SALT_ROUNDS = 10;
-const MYSQL_DUPLICATE_ENTRY_CODE = 'ER_DUP_ENTRY';
+const DUPLICATE_ENTRY_CODE = 'ER_DUP_ENTRY';
 const ACCESS_TOKEN_EXPIRATION = '15m';
 const REFRESH_TOKEN_EXPIRATION = '7d';
 
@@ -318,7 +318,7 @@ export class AuthService {
     return (
       error instanceof QueryFailedError &&
       (error as { driverError?: { code?: string } }).driverError?.code ===
-        MYSQL_DUPLICATE_ENTRY_CODE
+        DUPLICATE_ENTRY_CODE
     );
   }
 }

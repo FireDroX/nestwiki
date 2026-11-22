@@ -2,6 +2,17 @@
 
 All notable changes to NestWiki are documented here, newest first, one `## <version> — <date>` section per release. This file is the single source for the in-app "Notes de version" page, which groups releases by minor version (`1.0`, `0.31`…). Entries up to 0.31.10 were written in French, the project's original language.
 
+## 1.4.10 — 2026-11-22
+
+- Sécurité : correctifs pour `hono` 4.13.19 et `@hono/node-server` 2.1.11 (serveur MCP) et pour `fast-xml-parser` 5.12.1 (client de stockage). `pnpm audit` ne remonte plus aucune vulnérabilité.
+- Dépendances : mises à jour au sein de leur version majeure, dont NestJS 12.6, TypeORM 1.1.3, `mysql2` 3.24.6, `@modelcontextprotocol/sdk` 1.32.2, React 19.3.1, `react-router` 8.5.2, `shiki` 4.6.0, `radix-ui` 1.8.1, Vite 8.3.8 et Tailwind CSS 4.3.5. Les surcharges (`overrides`) devenues inutiles sont retirées, et celles de `undici` et `minimatch` ne s'appliquent plus qu'aux paquets qui en ont besoin.
+- Pages : la coloration syntaxique d'un bloc de code fonctionne quelle que soit la casse du langage (` ```C `, ` ```Python `) et avec les langages dont le nom contient un symbole (`c++`, `c#`, `objective-c`), qui s'affichaient jusqu'ici sans couleur ou avec celles d'un autre langage.
+
+## 1.4.9 — 2026-11-06
+
+- Base de données : le `docker-compose.yml` complet et la CI passent de MySQL 8 à MariaDB 11, le moteur de l'instance de production. Les tests tournent désormais sur le même moteur que la prod, et la documentation est à jour.
+- ⚠️ Installation avec `docker-compose.yml` : dans le `.env` racine, renommer `MYSQL_ROOT_PASSWORD` et `MYSQL_DATABASE` en `MARIADB_ROOT_PASSWORD` et `MARIADB_DATABASE`, et mettre `DB_HOST=mariadb` dans `backend/.env`. Le service et le volume s'appellent désormais `mariadb` et `mariadb-data`, et MariaDB ne relit pas les fichiers de MySQL 8 : une base existante est à exporter puis réimporter. `docker-compose.external.yml` n'est pas concerné.
+
 ## 1.4.8 — 2026-11-02
 
 - Dépendances : `katex` 0.19.1 (rendu des formules LaTeX), `axios` 1.21.0, `socket.io` 4.8.4 (temps réel), `jsdom` 30.1.3 et `@nestjs/mau` 0.2.9 (outils de développement), et `pnpm/action-setup` 6.1.0 dans la CI.

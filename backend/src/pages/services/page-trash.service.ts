@@ -24,7 +24,7 @@ import {
 import type { PageTrashRepository } from '../persistence/page-trash.repository.js';
 import type { PagesRepository } from '../persistence/page.repository.js';
 
-const MYSQL_DUPLICATE_ENTRY_CODE = 'ER_DUP_ENTRY';
+const DUPLICATE_ENTRY_CODE = 'ER_DUP_ENTRY';
 
 interface Deleter {
   id: string;
@@ -184,7 +184,7 @@ export class PageTrashService {
     return (
       error instanceof QueryFailedError &&
       (error as { driverError?: { code?: string } }).driverError?.code ===
-        MYSQL_DUPLICATE_ENTRY_CODE
+        DUPLICATE_ENTRY_CODE
     );
   }
 }

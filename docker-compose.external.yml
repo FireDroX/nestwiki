@@ -1,6 +1,6 @@
 # Variante "mariadb/minio déjà existants sur le serveur" — voir la page
 # Déploiement (documentation/guide-demarrage/deploiement) pour le détail.
-# Ne définit ni `mysql` ni `minio` : rejoint les réseaux Docker externes
+# Ne définit ni `mariadb` ni `minio` : rejoint les réseaux Docker externes
 # où vivent déjà ces conteneurs plutôt que d'en relancer une paire dédiée.
 #
 # Réseaux, nommés dans le .env racine (lu par docker compose) :
@@ -19,7 +19,7 @@
 # exposer sur toutes les interfaces.
 #
 # `backend/.env` doit pointer DB_HOST/MINIO_ENDPOINT vers les noms de
-# conteneur réels de ce mariadb/minio existants, pas `mysql`/`minio`.
+# conteneur réels de ce mariadb/minio existants, pas `localhost`.
 #
 # C'est cette version qu'utilise .github/workflows/deploy.yml (le
 # déploiement continu part du principe que le mariadb/minio cible

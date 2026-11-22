@@ -77,7 +77,7 @@ import {
 import { PagePathIndex } from './page-path-index.js';
 import { PageReferenceService } from './page-reference.service.js';
 
-const MYSQL_DUPLICATE_ENTRY_CODE = 'ER_DUP_ENTRY';
+const DUPLICATE_ENTRY_CODE = 'ER_DUP_ENTRY';
 
 @Injectable()
 export class PagesService {
@@ -1039,7 +1039,7 @@ export class PagesService {
     return (
       error instanceof QueryFailedError &&
       (error as { driverError?: { code?: string } }).driverError?.code ===
-        MYSQL_DUPLICATE_ENTRY_CODE
+        DUPLICATE_ENTRY_CODE
     );
   }
 

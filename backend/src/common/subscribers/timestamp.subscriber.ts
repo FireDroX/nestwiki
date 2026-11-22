@@ -8,7 +8,7 @@ import {
 /**
  * `@CreateDateColumn` normally falls back to the DB's own `DEFAULT
  * CURRENT_TIMESTAMP` when the app doesn't set a value before insert —
- * which resolves in the MySQL/MariaDB server's own session timezone,
+ * which resolves in the MariaDB server's own session timezone,
  * not necessarily UTC. In production that server is an external
  * instance this app doesn't own or configure (see
  * docker-compose.external.yml), so a non-UTC server timezone there

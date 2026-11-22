@@ -12,7 +12,7 @@ Ce dépôt a un graphe de connaissance à `graphify-out/` :
 
 ## Projet
 
-**NestWiki** — wiki collaboratif auto-hébergé, open source (AGPL-3.0, `LICENSE`). pnpm workspace avec deux packages : `backend/` (NestJS + TypeORM + MySQL 8) et `frontend/` (React + TypeScript + Vite, TailwindCSS + shadcn/ui). `README.md` (anglais) présente le projet et l'installation ; `docs/technical-spec.md` (français) contient le modèle de données et le tableau complet des endpoints ; `docs/deployment.md` décrit le déploiement continu de l'instance de l'auteur. Le backlog vit dans Jira (projet `WIKI`, un epic `EPIC-<n>` par lot de tickets `WIKI-<n>`).
+**NestWiki** — wiki collaboratif auto-hébergé, open source (AGPL-3.0, `LICENSE`). pnpm workspace avec deux packages : `backend/` (NestJS + TypeORM + MariaDB 11) et `frontend/` (React + TypeScript + Vite, TailwindCSS + shadcn/ui). `README.md` (anglais) présente le projet et l'installation ; `docs/technical-spec.md` (français) contient le modèle de données et le tableau complet des endpoints ; `docs/deployment.md` décrit le déploiement continu de l'instance de l'auteur. Le backlog vit dans Jira (projet `WIKI`, un epic `EPIC-<n>` par lot de tickets `WIKI-<n>`).
 
 Skills : `finish-ticket` pour clôturer un ticket (version, changelog, PR, arrêt pour relecture), `new-backend-module` pour créer un module backend. Ce fichier reste la référence des conventions propres au projet.
 
@@ -21,7 +21,7 @@ Skills : `finish-ticket` pour clôturer un ticket (version, changelog, PR, arrê
 **Toujours lancer l'app depuis `backend/`** via ses scripts `pnpm run <script>` — jamais `nest start`, `node dist/...` ni `npm run`. L'utilisateur a en général déjà ses serveurs de dev (backend `:3000`, frontend `:5173`) : vérifier les ports avant d'en lancer un. `TaskStop` ne tue pas toujours le process `node` sous-jacent ici : vérifier `netstat -ano | grep ":3000"` après l'arrêt, puis `taskkill //F //PID <pid>` si c'est le sien.
 
 ```bash
-docker compose up -d                     # MySQL + RustFS, requis par le backend
+docker compose up -d                     # MariaDB + RustFS, requis par le backend
 cd backend && pnpm run start:dev         # backend en watch
 cd frontend && pnpm run dev              # frontend Vite
 ```
@@ -44,7 +44,7 @@ pnpm run backfill:avatars    # rattache le fichier avatars/{id}/avatar.* resté 
 
 Config : trois fichiers `.env` séparés, chacun avec un `.env.example` à copier :
 
-- racine — `MYSQL_ROOT_PASSWORD`/`MYSQL_DATABASE`, `MINIO_ACCESS_KEY`/`MINIO_SECRET_KEY` pour `docker-compose.yml`, et `VITE_*` lus au build de l'image frontend.
+- racine — `MARIADB_ROOT_PASSWORD`/`MARIADB_DATABASE`, `MINIO_ACCESS_KEY`/`MINIO_SECRET_KEY` pour `docker-compose.yml`, et `VITE_*` lus au build de l'image frontend.
 - `backend/.env` — `PORT`, `FRONTEND_URL` (origine CORS), `DB_*`, `JWT_ACCESS_SECRET`/`JWT_REFRESH_SECRET`, `ADMIN_EMAIL`/`ADMIN_PASSWORD`/`ADMIN_DISPLAY_NAME` (premier admin), `MINIO_ENDPOINT`/`MINIO_PORT`/`MINIO_ACCESS_KEY`/`MINIO_SECRET_KEY`/`MINIO_BUCKET`/`MINIO_USE_SSL`, et optionnellement `MINIO_PUBLIC_ENDPOINT`/`MINIO_PUBLIC_PORT`/`MINIO_PUBLIC_USE_SSL` : `MINIO_ENDPOINT` sert au backend pour parler au stockage en interne (ex. nom du service Docker), `MINIO_PUBLIC_ENDPOINT` sert uniquement à signer les URLs présignées données au navigateur, et retombe sur `MINIO_ENDPOINT` s'il est absent (`storage.service.ts`). `TRUST_PROXY_HOPS` (facultatif, 1 par défaut) donne le nombre de proxys qui ajoutent une entrée à `X-Forwarded-For` : `common/client-ip.ts` en déduit l'IP cliente pour la limitation de débit et Turnstile. Lu via `@nestjs/config` dans `app.module.ts`, et via `dotenv` dans `src/config/data-source.ts` pour le CLI TypeORM. **`validateEnvironment` (`src/config/env.validation.ts`) bloque le démarrage**, y compris en dev, si un secret JWT fait moins de 32 caractères, si les deux secrets JWT sont identiques, ou si `DB_PASSWORD`/`MINIO_SECRET_KEY`/`ADMIN_PASSWORD` est absent ou dans `KNOWN_DEFAULT_SECRETS` (`changeme`, `minioadmin`, `root`…) — sauf `DEV=true` dans `backend/.env` (court-circuite la validation, développement local uniquement, jamais en prod).
 - `frontend/.env` — `VITE_API_URL`, URL de base de l'API préfixe `/api` inclus (`app.setGlobalPrefix('api')` dans `main.ts`), ex. `http://localhost:3000/api`. Consommé par `src/lib/api-client.ts`.
 
@@ -80,7 +80,7 @@ Chaque module suit le même découpage en couches ; `tags` en est l'exemple comp
 
 Auth : JWT (access 15 min + refresh) déposés en cookies `httpOnly` (`accessToken`/`refreshToken`) par `POST /auth/login`/`POST /auth/refresh`, rien dans le corps. Les jetons portent `type: access|refresh`, et `JwtStrategy` passe par `SessionUserResolver` (`common/services/`), qui recharge l'utilisateur à chaque requête (actif, rôle en base, jeton postérieur au dernier changement de mot de passe) : `request.user.role` vient de la base, jamais du claim. Réutiliser `SessionUserResolver.verify` pour tout autre endroit qui lit le cookie de session (gateway temps réel, consentement OAuth). `JwtAuthGuard` exige une session ; `OptionalJwtAuthGuard` laisse passer les anonymes mais répond 401 quand un cookie de session est présent sans utilisateur valide (pour que le frontend rafraîchisse le token) ; `AnonymousFallbackJwtAuthGuard` (réservé à `GET /media/:id/raw`, chargé par `<img>`) retombe toujours en anonyme.
 
-Base de données : MySQL 8 ; tout changement de schéma passe par une migration dans `src/database/migrations/`, en SQL brut via `queryRunner.query` (voir les migrations existantes). `src/config/data-source.ts` est un `DataSource` standalone réservé au CLI TypeORM : les migrations tournent hors contexte Nest, contre `src/**/*.entity.ts` et non `dist/`.
+Base de données : MariaDB 11, via le driver `mysql2` et le type TypeORM `mysql` ; tout changement de schéma passe par une migration dans `src/database/migrations/`, en SQL brut via `queryRunner.query` (voir les migrations existantes). `src/config/data-source.ts` est un `DataSource` standalone réservé au CLI TypeORM : les migrations tournent hors contexte Nest, contre `src/**/*.entity.ts` et non `dist/`.
 
 Deux scripts `tsx` standalone, idempotents :
 
