@@ -6,6 +6,7 @@ All notable changes to NestWiki are documented here, newest first, one `## <vers
 
 - Sécurité : correctifs pour `hono` 4.13.19 et `@hono/node-server` 2.1.11 (serveur MCP) et pour `fast-xml-parser` 5.12.1 (client de stockage). `pnpm audit` ne remonte plus aucune vulnérabilité.
 - Dépendances : mises à jour au sein de leur version majeure, dont NestJS 12.6, TypeORM 1.1.3, `mysql2` 3.24.6, `@modelcontextprotocol/sdk` 1.32.2, React 19.3.1, `react-router` 8.5.2, `shiki` 4.6.0, `radix-ui` 1.8.1, Vite 8.3.8 et Tailwind CSS 4.3.5. Les surcharges (`overrides`) devenues inutiles sont retirées, et celles de `undici` et `minimatch` ne s'appliquent plus qu'aux paquets qui en ont besoin.
+- Pages : la coloration syntaxique d'un bloc de code fonctionne quelle que soit la casse du langage (` ```C `, ` ```Python `) et avec les langages dont le nom contient un symbole (`c++`, `c#`, `objective-c`), qui s'affichaient jusqu'ici sans couleur ou avec celles d'un autre langage.
 
 ## 1.4.9 — 2026-11-06
 

@@ -14,7 +14,7 @@ Le contenu d'une page (champ \`content\` de wiki_create_page / wiki_update_page)
 
 ## Markdown (GFM)
 - Gras, italique, ~~barré~~, \`code en ligne\`, listes, listes numérotées, cases à cocher \`- [ ]\` / \`- [x]\`, citations, tableaux, notes de bas de page \`[^1]\`, liens automatiques, séparateurs \`---\`.
-- Blocs de code : \`\`\`<langage> pour la coloration syntaxique (ts, js, json, bash, sql, python, yaml, html, css, etc.) ; sans langage, le bloc est affiché tel quel.
+- Blocs de code : \`\`\`<langage> pour la coloration syntaxique (ts, js, json, bash, sql, python, c, c++, c#, yaml, html, css, etc., majuscules ou minuscules) ; sans langage, le bloc est affiché tel quel.
 
 ## Liens et médias
 - Lien vers une autre page du wiki : chemin complet depuis la racine, ex. \`[Installation](/pages/documentation/guide-demarrage/installation)\`. Jamais le slug seul : une page non racine serait introuvable.

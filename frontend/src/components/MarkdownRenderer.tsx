@@ -130,9 +130,9 @@ const markdownComponents = {
   h6: (props: ComponentProps<'h6'>) => <MarkdownHeading level={6} {...props} />,
   a: MarkdownLink,
   code({ className, children, node: _node, ...rest }: ComponentProps<'code'> & { node?: unknown }) {
-    const match = /language-(\w+)/.exec(className ?? '')
+    const match = /language-(\S+)/.exec(className ?? '')
     if (match) {
-      return <CodeBlock language={match[1]} code={String(children).replace(/\n$/, '')} />
+      return <CodeBlock language={match[1].toLowerCase()} code={String(children).replace(/\n$/, '')} />
     }
     return (
       <code className={cn('rounded bg-muted px-1 py-0.5 text-sm [overflow-wrap:anywhere]', className)} {...rest}>
