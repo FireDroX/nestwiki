@@ -2,6 +2,11 @@
 
 All notable changes to NestWiki are documented here, newest first, one `## <version> — <date>` section per release. This file is the single source for the in-app "Notes de version" page, which groups releases by minor version (`1.0`, `0.31`…). Entries up to 0.31.10 were written in French, the project's original language.
 
+## 1.4.10 — 2026-11-22
+
+- Sécurité : correctifs pour `hono` 4.13.19 et `@hono/node-server` 2.1.11 (serveur MCP) et pour `fast-xml-parser` 5.12.1 (client de stockage), ainsi que pour `undici` et `minimatch` utilisés par des outils de développement. `pnpm audit` ne remonte plus aucune vulnérabilité.
+- Dépendances : mises à jour au sein de leur version majeure, dont NestJS 12.6, TypeORM 1.1.3, `mysql2` 3.24.6, `@modelcontextprotocol/sdk` 1.32.2, React 19.3.1, `react-router` 8.5.2, `shiki` 4.6.0, `radix-ui` 1.8.1, Vite 8.3.8 et Tailwind CSS 4.3.5. Les surcharges (`overrides`) devenues inutiles sont retirées.
+
 ## 1.4.9 — 2026-11-06
 
 - Base de données : le `docker-compose.yml` complet et la CI passent de MySQL 8 à MariaDB 11, le moteur de l'instance de production. Les tests tournent désormais sur le même moteur que la prod, et la documentation est à jour.
