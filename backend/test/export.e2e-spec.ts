@@ -308,7 +308,7 @@ describe('Export (e2e)', () => {
       expect(response.status).toBe(200);
       expect(response.headers['content-type']).toContain('text/markdown');
       expect(response.headers['content-disposition']).toBe(
-        'attachment; filename="guide.md"',
+        'attachment; filename=guide.md',
       );
       const instanceUrl = instanceUrlFromEnv();
       expect(response.text).toContain('title: "Title guide"');
@@ -329,7 +329,7 @@ describe('Export (e2e)', () => {
       expect(response.status).toBe(200);
       expect(response.headers['content-type']).toBe('application/zip');
       expect(response.headers['content-disposition']).toBe(
-        'attachment; filename="docs.zip"',
+        'attachment; filename=docs.zip',
       );
       const files = readZip(response.body as Buffer);
       expect([...files.keys()]).toEqual([

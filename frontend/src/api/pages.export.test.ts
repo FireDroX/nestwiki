@@ -19,7 +19,36 @@ function blobError(body: string): AxiosError {
   })
 }
 
+async function downloadedFilename(disposition: string | undefined, scope: 'page' | 'subtree' = 'page'): Promise<string> {
+  getMock.mockResolvedValue({
+    data: new Blob(['content']),
+    headers: disposition === undefined ? {} : { 'content-disposition': disposition },
+  })
+  vi.stubGlobal('URL', { ...URL, createObjectURL: () => 'blob:export', revokeObjectURL: () => undefined })
+  let filename = ''
+  const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+    filename = this.download
+  })
+  await downloadPageExport('p1', scope)
+  click.mockRestore()
+  vi.unstubAllGlobals()
+  return filename
+}
+
 describe('downloadPageExport', () => {
+  it.each([
+    ['attachment; filename=guide.md', 'guide.md'],
+    ['attachment; filename="mon guide.md"', 'mon guide.md'],
+    ['attachment; filename="a\\"b.md"', 'a"b.md'],
+    [`attachment; filename="?t?.md"; filename*=UTF-8''%C3%A9t%C3%A9.md`, 'été.md'],
+  ])('names the downloaded file from %s', async (disposition, expected) => {
+    expect(await downloadedFilename(disposition)).toBe(expected)
+  })
+
+  it('falls back to a default name when the header is missing', async () => {
+    expect(await downloadedFilename(undefined, 'subtree')).toBe('pages.zip')
+  })
+
   it('exposes the server error message even though the response was requested as a file', async () => {
     getMock.mockRejectedValue(blobError(JSON.stringify({ error: 'You do not have access to this page' })))
 
