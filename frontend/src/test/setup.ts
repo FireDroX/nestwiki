@@ -34,13 +34,16 @@ window.matchMedia ??=
 
 Element.prototype.scrollIntoView ??= () => {}
 
-// shiki's inlined WASM loader calls Blob#stream(), which jsdom lacks.
-Blob.prototype.stream ??= function (this: Blob) {
-  const bytes = this.arrayBuffer().then((buffer) => new Uint8Array(buffer as ArrayBuffer))
-  return new ReadableStream<Uint8Array<ArrayBuffer>>({
-    async start(controller) {
-      controller.enqueue(await bytes)
-      controller.close()
-    },
-  })
+function polyfillBlobStreamForShikiWasm() {
+  Blob.prototype.stream ??= function (this: Blob) {
+    const bytes = this.arrayBuffer().then((buffer) => new Uint8Array(buffer as ArrayBuffer))
+    return new ReadableStream<Uint8Array<ArrayBuffer>>({
+      async start(controller) {
+        controller.enqueue(await bytes)
+        controller.close()
+      },
+    })
+  }
 }
+
+polyfillBlobStreamForShikiWasm()

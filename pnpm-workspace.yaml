@@ -15,4 +15,5 @@ overrides:
   stream-json: 3.7.0
   katex: 0.19.1
   '@nestjs/mau>undici': 6.29.1
-  minimatch: 11.0.3
+  'readdir-glob>minimatch': 11.0.9
+  '@ts-morph/common>minimatch': 11.0.9
