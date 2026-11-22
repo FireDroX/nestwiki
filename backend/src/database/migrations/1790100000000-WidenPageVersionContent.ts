@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class WidenPageVersionContent1790100000000
-  implements MigrationInterface
-{
+export class WidenPageVersionContent1790100000000 implements MigrationInterface {
   name = 'WidenPageVersionContent1790100000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

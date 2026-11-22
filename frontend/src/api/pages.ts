@@ -209,9 +209,25 @@ export async function getSubtreeContent(id: string): Promise<SubtreePage[]> {
 
 export type PageExportScope = 'page' | 'subtree'
 
+function extendedFilename(disposition: string): string | null {
+  const match = disposition.match(/filename\*\s*=\s*UTF-8''([^;\s]+)/i)
+  if (!match) return null
+  try {
+    return decodeURIComponent(match[1])
+  } catch {
+    return null
+  }
+}
+
+function plainFilename(disposition: string): string | null {
+  const match = disposition.match(/filename\s*=\s*(?:"((?:\\.|[^"\\])*)"|([^;\s]+))/i)
+  if (!match) return null
+  return match[1] !== undefined ? match[1].replace(/\\(.)/g, '$1') : match[2]
+}
+
 function filenameFromDisposition(disposition: string | undefined, fallback: string): string {
-  const match = disposition?.match(/filename="([^"]+)"/)
-  return match ? match[1] : fallback
+  if (!disposition) return fallback
+  return extendedFilename(disposition) || plainFilename(disposition) || fallback
 }
 
 async function withJsonErrorBody(error: unknown): Promise<never> {
