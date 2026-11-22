@@ -2,6 +2,10 @@
 
 All notable changes to NestWiki are documented here, newest first, one `## <version> — <date>` section per release. This file is the single source for the in-app "Notes de version" page, which groups releases by minor version (`1.0`, `0.31`…). Entries up to 0.31.10 were written in French, the project's original language.
 
+## 1.4.11 — 2026-11-22
+
+- Pages : les blocs de code sont de nouveau colorés sur une instance servie par le nginx du frontend. Sa politique de sécurité (CSP) bloquait le WebAssembly utilisé par la coloration syntaxique ; elle l'autorise désormais (`'wasm-unsafe-eval'`), sans rouvrir `eval()` ni les scripts inline.
+
 ## 1.4.10 — 2026-11-22
 
 - Sécurité : correctifs pour `hono` 4.13.19 et `@hono/node-server` 2.1.11 (serveur MCP) et pour `fast-xml-parser` 5.12.1 (client de stockage). `pnpm audit` ne remonte plus aucune vulnérabilité.
