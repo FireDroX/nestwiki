@@ -159,6 +159,8 @@
     "loadError": "Unable to load the trash."
   },
   "pageEditor": {
+    "collapsePanel": "Hide page settings panel",
+    "expandPanel": "Show page settings panel",
     "newPageTitle": "New page",
     "editTitle": "Edit: {{title}}",
     "save": "Save",

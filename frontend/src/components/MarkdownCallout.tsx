@@ -25,6 +25,8 @@ function toCalloutType(value: unknown): CalloutType {
 interface MarkdownCalloutProps {
   'data-callout-type'?: string
   'data-callout-title'?: string
+  'data-source-line'?: number
+  'data-source-line-end'?: number
   children?: ReactNode
 }
 
@@ -38,6 +40,8 @@ export function MarkdownCallout(props: MarkdownCalloutProps) {
     <div
       role="note"
       data-callout={type}
+      data-source-line={props['data-source-line']}
+      data-source-line-end={props['data-source-line-end']}
       className={cn('space-y-2 rounded-md border border-l-4 bg-muted/40 px-4 py-3', borderClassName)}
     >
       <p className={cn('flex items-center gap-2 font-semibold', titleClassName)}>

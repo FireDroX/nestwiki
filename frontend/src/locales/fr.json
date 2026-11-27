@@ -159,6 +159,8 @@
     "loadError": "Impossible de charger la corbeille."
   },
   "pageEditor": {
+    "collapsePanel": "Masquer le panneau des propriétés",
+    "expandPanel": "Afficher le panneau des propriétés",
     "newPageTitle": "Nouvelle page",
     "editTitle": "Modifier : {{title}}",
     "save": "Enregistrer",
