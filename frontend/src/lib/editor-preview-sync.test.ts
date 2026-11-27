@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import {
-  caretLineFromValue,
   findAnchorIndex,
   previewOffsetForLine,
   sourceLineAtOffset,
@@ -12,15 +11,6 @@ const anchors: PreviewAnchor[] = [
   { line: 5, endLine: 8, top: 100, height: 200 },
   { line: 12, endLine: 12, top: 400, height: 30 },
 ]
-
-describe('caretLineFromValue', () => {
-  it('counts newlines before the caret', () => {
-    expect(caretLineFromValue('a\nb\nc', 0)).toBe(1)
-    expect(caretLineFromValue('a\nb\nc', 2)).toBe(2)
-    expect(caretLineFromValue('a\nb\nc', 5)).toBe(3)
-    expect(caretLineFromValue('a\nb', 99)).toBe(2)
-  })
-})
 
 describe('findAnchorIndex', () => {
   it('returns the last index whose line is at most the target', () => {

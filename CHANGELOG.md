@@ -5,7 +5,7 @@ All notable changes to NestWiki are documented here, newest first, one `## <vers
 ## 1.5.2 — 2026-11-27
 
 - Éditeur : en mode scindé (texte à gauche, aperçu à droite), l'aperçu suit le défilement de la zone de texte bloc par bloc, au lieu d'un simple pourcentage qui dérivait avec les images, tableaux et diagrammes.
-- Éditeur : une barre orange clignotante indique dans l'aperçu où se trouve le curseur ; l'aperçu défile pour la garder visible, et elle reste fixe si les animations sont réduites dans le système.
+- Éditeur : une barre orange clignotante indique dans l'aperçu la position du curseur, au caractère près, y compris sur la bonne ligne d'un paragraphe qui passe à la ligne (au bord du bloc pour un diagramme, une formule ou une image) ; l'aperçu défile pour la garder visible, et elle reste fixe si les animations sont réduites dans le système.
 
 ## 1.5.1 — 2026-11-27
 

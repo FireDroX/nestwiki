@@ -1,16 +1,24 @@
 import { type RefObject, useEffect, useRef } from 'react'
 import {
   type AnchorElement,
-  caretLineFromValue,
   collectAnchorElements,
   measureAnchors,
   previewOffsetForLine,
   sourceLineAtOffset,
 } from '#lib/editor-preview-sync'
+import {
+  alignVisibleText,
+  blockSourceSlice,
+  caretPositionFromValue,
+  findContainingAnchorIndex,
+  visibleSourceText,
+} from '#lib/markdown-caret-mapping'
+import { SOURCE_LINE_ATTRIBUTE } from '#lib/markdown-source-lines'
 
 const BOTTOM_TOLERANCE_PX = 2
 const CARET_MARGIN_PX = 24
 const CARET_LEFT_GAP_PX = 6
+const CARET_HALF_WIDTH_PX = 1
 const DEFAULT_LINE_HEIGHT_PX = 22
 const MIRRORED_STYLES = [
   'fontFamily',
@@ -32,6 +40,12 @@ interface UseEditorPreviewSyncOptions {
   caretRef: RefObject<HTMLElement | null>
   enabled: boolean
   content: string
+}
+
+interface CaretBox {
+  left: number
+  top: number
+  height: number
 }
 
 interface LineTopsCache {
@@ -71,6 +85,31 @@ function measureLineTops(textarea: HTMLTextAreaElement): LineTopsCache {
   tops.push(mirror.scrollHeight)
   mirror.remove()
   return { value, width, tops }
+}
+
+function collectOwnTextNodes(block: HTMLElement): Text[] {
+  const nodes: Text[] = []
+  const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT)
+  for (let node = walker.nextNode() as Text | null; node; node = walker.nextNode() as Text | null) {
+    const owner = node.parentElement?.closest(`[${SOURCE_LINE_ATTRIBUTE}]`)
+    if (node.data.length > 0 && owner === block) {
+      nodes.push(node)
+    }
+  }
+  return nodes
+}
+
+function characterEdge(node: Text, offset: number): { x: number; top: number; height: number } | null {
+  const range = document.createRange()
+  const atStart = offset <= 0
+  range.setStart(node, atStart ? 0 : offset - 1)
+  range.setEnd(node, atStart ? Math.min(1, node.length) : offset)
+  const rects = range.getClientRects()
+  if (rects.length === 0) {
+    return null
+  }
+  const rect = atStart ? rects[0] : rects[rects.length - 1]
+  return rect.height > 0 ? { x: atStart ? rect.left : rect.right, top: rect.top, height: rect.height } : null
 }
 
 function previewLineHeight(preview: HTMLElement): number {
@@ -129,16 +168,61 @@ export function useEditorPreviewSync({ textareaRef, previewRef, caretRef, enable
       preview!.scrollTop = Math.min(previewOffsetForLine(anchors, topLine), maxPreviewScroll)
     }
 
+    function blockLeftOffset(block: HTMLElement | null): number {
+      const previewRect = preview!.getBoundingClientRect()
+      const edge = block
+        ? block.getBoundingClientRect().left - previewRect.left + preview!.scrollLeft
+        : parseFloat(getComputedStyle(preview!).paddingLeft)
+      return Math.max(0, edge - CARET_LEFT_GAP_PX)
+    }
+
+    function blockFallbackPosition(block: HTMLElement | null, line: number): CaretBox {
+      const anchors = measureAnchors(preview!, getAnchorElements())
+      return {
+        left: blockLeftOffset(block),
+        top: previewOffsetForLine(anchors, line),
+        height: previewLineHeight(preview!),
+      }
+    }
+
+    function characterPosition(entry: AnchorElement, line: number, column: number): CaretBox | null {
+      const nodes = collectOwnTextNodes(entry.element)
+      const slice = blockSourceSlice(textarea!.value, entry.line, line, column)
+      const match = alignVisibleText(
+        nodes.map((node) => node.data),
+        visibleSourceText(slice),
+      )
+      if (!match) {
+        return null
+      }
+      const edge = characterEdge(nodes[match.segment], match.offset)
+      if (!edge) {
+        return null
+      }
+      const previewRect = preview!.getBoundingClientRect()
+      return {
+        left: Math.max(0, edge.x - previewRect.left + preview!.scrollLeft - CARET_HALF_WIDTH_PX),
+        top: edge.top - previewRect.top + preview!.scrollTop,
+        height: edge.height,
+      }
+    }
+
+    function computeCaretBox(): CaretBox {
+      const { line, column } = caretPositionFromValue(textarea!.value, textarea!.selectionStart)
+      const entries = getAnchorElements()
+      const index = findContainingAnchorIndex(entries, line)
+      if (index < 0) {
+        return blockFallbackPosition(null, line)
+      }
+      return characterPosition(entries[index], line, column) ?? blockFallbackPosition(entries[index].element, line)
+    }
+
     function updateCaret() {
       if (document.activeElement !== textarea) {
         hideCaret()
         return
       }
-      const line = caretLineFromValue(textarea!.value, textarea!.selectionStart)
-      const anchors = measureAnchors(preview!, getAnchorElements())
-      const lineHeight = previewLineHeight(preview!)
-      const top = previewOffsetForLine(anchors, line)
-      const left = Math.max(0, parseFloat(getComputedStyle(preview!).paddingLeft) - CARET_LEFT_GAP_PX)
+      const { left, top, height: lineHeight } = computeCaretBox()
 
       caret!.style.transform = `translate(${left}px, ${top}px)`
       caret!.style.height = `${lineHeight}px`

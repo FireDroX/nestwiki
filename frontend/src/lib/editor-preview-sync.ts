@@ -13,15 +13,6 @@ export interface AnchorElement {
   endLine: number
 }
 
-export function caretLineFromValue(value: string, selectionStart: number): number {
-  let line = 1
-  const end = Math.min(selectionStart, value.length)
-  for (let index = value.indexOf('\n'); index !== -1 && index < end; index = value.indexOf('\n', index + 1)) {
-    line += 1
-  }
-  return line
-}
-
 export function findAnchorIndex(lines: number[], line: number): number {
   let low = 0
   let high = lines.length - 1
