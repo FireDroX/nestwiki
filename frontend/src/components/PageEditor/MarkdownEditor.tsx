@@ -14,6 +14,7 @@ import { Separator } from '#components/ui/separator'
 import { Textarea } from '#components/ui/textarea'
 import { useDebouncedValue } from '#hooks/useDebouncedValue'
 import { cn } from '#lib/utils'
+import { indentSelection, outdentSelection, type TextEdit } from '#utils/text-indent'
 
 const PREVIEW_DEBOUNCE_MS = 200
 
@@ -41,6 +42,7 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
     const [mobileView, setMobileView] = useState<'edit' | 'preview'>('edit')
     const [isDraggingOver, setIsDraggingOver] = useState(false)
     const textareaRef = useRef<HTMLTextAreaElement>(null)
+    const tabReleasedRef = useRef(false)
     const debouncedValue = useDebouncedValue(value, PREVIEW_DEBOUNCE_MS)
 
     function currentSelection(): Selection {
@@ -108,6 +110,48 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
       window.addEventListener('keydown', handleKeyDown)
       return () => window.removeEventListener('keydown', handleKeyDown)
     }, [onSave])
+
+    function applyEdit(textarea: HTMLTextAreaElement, edit: TextEdit) {
+      textarea.setSelectionRange(edit.start, edit.end)
+      let handled = false
+      try {
+        handled =
+          typeof document.execCommand === 'function' &&
+          document.execCommand(edit.text ? 'insertText' : 'delete', false, edit.text)
+      } catch {
+        handled = false
+      }
+      if (!handled) {
+        textarea.setRangeText(edit.text, edit.start, edit.end)
+        onChange(textarea.value)
+      }
+      textarea.setSelectionRange(edit.selectionStart, edit.selectionEnd)
+    }
+
+    function handleKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
+      if (event.nativeEvent.isComposing) return
+      if (event.key === 'Escape') {
+        tabReleasedRef.current = true
+        return
+      }
+      if (['Shift', 'Control', 'Alt', 'Meta'].includes(event.key)) return
+      if (event.key !== 'Tab') {
+        tabReleasedRef.current = false
+        return
+      }
+      if (event.ctrlKey || event.altKey || event.metaKey) return
+      if (tabReleasedRef.current) {
+        tabReleasedRef.current = false
+        return
+      }
+      event.preventDefault()
+      const textarea = event.currentTarget
+      const { value: current, selectionStart, selectionEnd } = textarea
+      const edit = event.shiftKey
+        ? outdentSelection(current, selectionStart, selectionEnd)
+        : indentSelection(current, selectionStart, selectionEnd)
+      if (edit) applyEdit(textarea, edit)
+    }
 
     function handleDrop(event: React.DragEvent<HTMLDivElement>) {
       event.preventDefault()
@@ -177,6 +221,10 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
               ref={textareaRef}
               value={value}
               onChange={(event) => onChange(event.target.value)}
+              onKeyDown={handleKeyDown}
+              onBlur={() => {
+                tabReleasedRef.current = false
+              }}
               placeholder={t('markdownEditor.contentPlaceholder')}
               className="field-sizing-fixed h-full min-h-[60vh] resize-none rounded-none border-0 px-5 py-4 font-mono text-sm shadow-none focus-visible:ring-0"
             />
