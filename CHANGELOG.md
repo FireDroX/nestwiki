@@ -2,6 +2,10 @@
 
 All notable changes to NestWiki are documented here, newest first, one `## <version> — <date>` section per release. This file is the single source for the in-app "Notes de version" page, which groups releases by minor version (`1.0`, `0.31`…). Entries up to 0.31.10 were written in French, the project's original language.
 
+## 1.5.1 — 2026-11-27
+
+- Éditeur : Tab indente de 2 espaces (ligne courante, sélection sur plusieurs lignes, imbrication des éléments de liste) et Maj+Tab désindente, comme dans un éditeur de code. Ctrl+Z annule l'indentation en une étape, et Échap puis Tab fait sortir le focus de la zone de texte.
+
 ## 1.5.0 — 2026-11-27
 
 - Éditeur : sur ordinateur, un bouton à gauche de la barre du haut masque le panneau des propriétés (titre, parent, visibilité, résumé, tags) pour laisser toute la largeur au texte et à l'aperçu. Un second clic le réaffiche sans rien perdre, et le choix est retenu d'une visite à l'autre. Sur mobile, le panneau reste affiché sous l'éditeur.
