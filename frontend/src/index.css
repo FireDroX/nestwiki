@@ -28,6 +28,7 @@
   --border: oklch(0.922 0.005 34.3);
   --input: oklch(0.922 0.005 34.3);
   --ring: oklch(0.714 0.014 41.2);
+  --editor-caret: oklch(0.646 0.222 41.116);
   --chart-1: oklch(0.879 0.169 91.605);
   --chart-2: oklch(0.769 0.188 70.08);
   --chart-3: oklch(0.666 0.179 58.318);
@@ -66,6 +67,7 @@ body {
   --color-chart-2: var(--chart-2);
   --color-chart-1: var(--chart-1);
   --color-ring: var(--ring);
+  --color-editor-caret: var(--editor-caret);
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
@@ -111,6 +113,7 @@ body {
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.547 0.021 43.1);
+  --editor-caret: oklch(0.75 0.18 55);
   --chart-1: oklch(0.879 0.169 91.605);
   --chart-2: oklch(0.769 0.188 70.08);
   --chart-3: oklch(0.666 0.179 58.318);
@@ -202,5 +205,39 @@ body {
   h2,
   h3 {
     break-after: avoid;
+  }
+}
+
+@keyframes editor-caret-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+.editor-preview-caret {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--editor-caret);
+  pointer-events: none;
+  visibility: hidden;
+}
+
+.editor-preview-caret[data-visible='true'] {
+  visibility: visible;
+  animation: editor-caret-blink 1s steps(1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .editor-preview-caret[data-visible='true'] {
+    animation: none;
+  }
+}
+
+@media print {
+  .editor-preview-caret {
+    display: none;
   }
 }
