@@ -19,6 +19,7 @@ import { rehypeHeadingIds, rehypePrefixAnchors } from '#lib/markdown-headings'
 import { MERMAID_TAG_NAME, rehypeMermaid } from '#lib/markdown-mermaid'
 import { rehypeHardenFullMode } from '#lib/markdown-sanitize'
 import { rehypeScopeStyles } from '#lib/markdown-css-scope'
+import { pickSourceLineProps, rehypeSourceLines } from '#lib/markdown-source-lines'
 import { cn } from '#lib/utils'
 import { toLinkedPagePath } from '#utils/page-link'
 
@@ -56,6 +57,7 @@ interface MarkdownRendererProps {
   mode?: 'full' | 'restricted'
   anchorPrefix?: string
   brokenLinks?: string[]
+  sourceLineMarkers?: boolean
 }
 
 const NO_BROKEN_LINKS: ReadonlySet<string> = new Set()
@@ -108,7 +110,8 @@ const MARKDOWN_BODY_CLASSES = cn(
 const markdownComponents = {
   pre({ children, node, className, ...rest }: ComponentProps<'pre'> & { node?: Element }) {
     if (isHighlightedCodeBlock(node)) {
-      return <>{children}</>
+      const sourceLineProps = pickSourceLineProps(rest)
+      return sourceLineProps ? <div {...sourceLineProps}>{children}</div> : <>{children}</>
     }
     return (
       <pre
@@ -147,6 +150,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
   mode = 'restricted',
   anchorPrefix,
   brokenLinks,
+  sourceLineMarkers = false,
 }: MarkdownRendererProps) {
   const scopeId = useId()
   const brokenLinkSet = useMemo(
@@ -161,6 +165,9 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
       : [rehypeRaw, [rehypeSanitize, MARKDOWN_SANITIZE_SCHEMA], rehypeCallouts]
   if (anchorPrefix) {
     rehypePlugins.push([rehypePrefixAnchors, anchorPrefix])
+  }
+  if (sourceLineMarkers && mode === 'full') {
+    rehypePlugins.push(rehypeSourceLines)
   }
 
   return (

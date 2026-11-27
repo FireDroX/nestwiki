@@ -13,6 +13,8 @@ import { Button } from '#components/ui/button'
 import { Separator } from '#components/ui/separator'
 import { Textarea } from '#components/ui/textarea'
 import { useDebouncedValue } from '#hooks/useDebouncedValue'
+import { useEditorPreviewSync } from '#hooks/useEditorPreviewSync'
+import { DESKTOP_TABLE_QUERY, useMediaQuery } from '#hooks/useMediaQuery'
 import { cn } from '#lib/utils'
 import { indentSelection, outdentSelection, type TextEdit } from '#utils/text-indent'
 
@@ -43,7 +45,11 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
     const [isDraggingOver, setIsDraggingOver] = useState(false)
     const textareaRef = useRef<HTMLTextAreaElement>(null)
     const tabReleasedRef = useRef(false)
+    const previewRef = useRef<HTMLDivElement>(null)
+    const caretRef = useRef<HTMLDivElement>(null)
     const debouncedValue = useDebouncedValue(value, PREVIEW_DEBOUNCE_MS)
+    const isSplit = useMediaQuery(DESKTOP_TABLE_QUERY)
+    useEditorPreviewSync({ textareaRef, previewRef, caretRef, enabled: isSplit, content: debouncedValue })
 
     function currentSelection(): Selection {
       const textarea = textareaRef.current
@@ -230,12 +236,14 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorPro
             />
           </div>
           <div
+            ref={previewRef}
             className={cn(
-              'min-h-[60vh] overflow-y-auto px-5 py-4 lg:block',
+              'relative min-h-[60vh] overflow-y-auto px-5 py-4 lg:block',
               mobileView === 'edit' && 'hidden',
             )}
           >
-            <MarkdownRenderer content={debouncedValue} mode="full" />
+            <div ref={caretRef} aria-hidden="true" className="editor-preview-caret" />
+            <MarkdownRenderer content={debouncedValue} mode="full" sourceLineMarkers={isSplit} />
           </div>
         </div>
       </div>

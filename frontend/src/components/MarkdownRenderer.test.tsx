@@ -403,4 +403,55 @@ describe('MarkdownRenderer', () => {
       expect(linkNamed(container, 'Guide')).not.toHaveAttribute('data-broken-link')
     })
   })
+
+  describe('source line markers', () => {
+    const content = [
+      '# Title',
+      '',
+      'Paragraph',
+      '',
+      '- one',
+      '- two',
+      '',
+      '```ts',
+      'const a = 1',
+      '```',
+      '',
+      '| a | b |',
+      '| - | - |',
+      '| 1 | 2 |',
+      '',
+      '```mermaid',
+      'flowchart LR',
+      '  A --> B',
+      '```',
+      '',
+      '> [!NOTE]',
+      '> hello',
+    ].join('\n')
+
+    function startLines(container: HTMLElement, selector: string): string[] {
+      return Array.from(container.querySelectorAll(selector)).map((el) => el.getAttribute('data-source-line') ?? '')
+    }
+
+    it('adds no marker by default', () => {
+      const { container } = render(<MarkdownRenderer content={content} mode="full" />)
+      expect(container.querySelector('[data-source-line]')).toBeNull()
+    })
+
+    it('adds no marker in restricted mode', () => {
+      const { container } = render(<MarkdownRenderer content={content} sourceLineMarkers />)
+      expect(container.querySelector('[data-source-line]')).toBeNull()
+    })
+
+    it('marks blocks with their source lines in full mode', () => {
+      const { container } = render(<MarkdownRenderer content={content} mode="full" sourceLineMarkers />)
+      expect(startLines(container, 'h1')).toEqual(['1'])
+      expect(startLines(container, 'body > div > p, div > p:not([class])')).toContain('3')
+      expect(startLines(container, 'li')).toEqual(['5', '6'])
+      expect(startLines(container, 'tbody tr')).toEqual(['14'])
+      expect(container.querySelector('[data-callout]')?.getAttribute('data-source-line')).toBe('21')
+      expect(container.querySelector('[data-source-line="16"]')?.getAttribute('data-source-line-end')).toBe('19')
+    })
+  })
 })

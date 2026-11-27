@@ -1,6 +1,7 @@
 import { type ReactNode, useEffect, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useTheme } from 'next-themes'
+import { pickSourceLineProps } from '#lib/markdown-source-lines'
 import { usePrintMode } from '#lib/print-mode'
 
 type MermaidRender =
@@ -38,7 +39,18 @@ function MermaidSource({ code }: { code: string }) {
   )
 }
 
-export function MermaidDiagram({ children }: { children?: ReactNode }) {
+export function MermaidDiagram(props: { children?: ReactNode }) {
+  const sourceLineProps = pickSourceLineProps(props)
+  return sourceLineProps ? (
+    <div {...sourceLineProps}>
+      <MermaidDiagramContent>{props.children}</MermaidDiagramContent>
+    </div>
+  ) : (
+    <MermaidDiagramContent>{props.children}</MermaidDiagramContent>
+  )
+}
+
+function MermaidDiagramContent({ children }: { children?: ReactNode }) {
   const { t } = useTranslation()
   const { resolvedTheme } = useTheme()
   const printMode = usePrintMode()
